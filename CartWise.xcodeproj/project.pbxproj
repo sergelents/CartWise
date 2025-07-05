@@ -9,8 +9,6 @@
 /* Begin PBXBuildFile section */
 		D572E21B2E199B420061F187 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D572E2162E199B420061F187 /* Assets.xcassets */; };
 		D572E21C2E199B420061F187 /* CartWiseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2172E199B420061F187 /* CartWiseApp.swift */; };
-		D572E21D2E199B420061F187 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2182E199B420061F187 /* ContentView.swift */; };
-		D572E21E2E199B420061F187 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2192E199B420061F187 /* Item.swift */; };
 		D572E2212E199B460061F187 /* CartWiseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E21F2E199B460061F187 /* CartWiseTests.swift */; };
 		D572E2252E199B490061F187 /* CartWiseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2222E199B490061F187 /* CartWiseUITests.swift */; };
 		D572E2262E199B490061F187 /* CartWiseUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2232E199B490061F187 /* CartWiseUITestsLaunchTests.swift */; };
@@ -39,8 +37,6 @@
 		D572E2032E199B380061F187 /* CartWiseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CartWiseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D572E2162E199B420061F187 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D572E2172E199B420061F187 /* CartWiseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseApp.swift; sourceTree = "<group>"; };
-		D572E2182E199B420061F187 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		D572E2192E199B420061F187 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
 		D572E21F2E199B460061F187 /* CartWiseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseTests.swift; sourceTree = "<group>"; };
 		D572E2222E199B490061F187 /* CartWiseUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseUITests.swift; sourceTree = "<group>"; };
 		D572E2232E199B490061F187 /* CartWiseUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseUITestsLaunchTests.swift; sourceTree = "<group>"; };
@@ -123,8 +119,6 @@
 				D572E22A2E199BCD0061F187 /* Model */,
 				D572E2162E199B420061F187 /* Assets.xcassets */,
 				D572E2172E199B420061F187 /* CartWiseApp.swift */,
-				D572E2182E199B420061F187 /* ContentView.swift */,
-				D572E2192E199B420061F187 /* Item.swift */,
 			);
 			path = CartWise;
 			sourceTree = "<group>";
@@ -289,8 +283,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				D572E21C2E199B420061F187 /* CartWiseApp.swift in Sources */,
-				D572E21D2E199B420061F187 /* ContentView.swift in Sources */,
-				D572E21E2E199B420061F187 /* Item.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
