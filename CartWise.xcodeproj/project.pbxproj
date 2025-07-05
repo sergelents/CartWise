@@ -6,6 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D572E21B2E199B420061F187 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D572E2162E199B420061F187 /* Assets.xcassets */; };
+		D572E21C2E199B420061F187 /* CartWiseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2172E199B420061F187 /* CartWiseApp.swift */; };
+		D572E21D2E199B420061F187 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2182E199B420061F187 /* ContentView.swift */; };
+		D572E21E2E199B420061F187 /* Item.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2192E199B420061F187 /* Item.swift */; };
+		D572E2212E199B460061F187 /* CartWiseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E21F2E199B460061F187 /* CartWiseTests.swift */; };
+		D572E2252E199B490061F187 /* CartWiseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2222E199B490061F187 /* CartWiseUITests.swift */; };
+		D572E2262E199B490061F187 /* CartWiseUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2232E199B490061F187 /* CartWiseUITestsLaunchTests.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D572E1FA2E199B380061F187 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,22 +37,34 @@
 		D572E1EA2E199B370061F187 /* CartWise.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CartWise.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D572E1F92E199B380061F187 /* CartWiseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CartWiseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D572E2032E199B380061F187 /* CartWiseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CartWiseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D572E2162E199B420061F187 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D572E2172E199B420061F187 /* CartWiseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseApp.swift; sourceTree = "<group>"; };
+		D572E2182E199B420061F187 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		D572E2192E199B420061F187 /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
+		D572E21F2E199B460061F187 /* CartWiseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseTests.swift; sourceTree = "<group>"; };
+		D572E2222E199B490061F187 /* CartWiseUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseUITests.swift; sourceTree = "<group>"; };
+		D572E2232E199B490061F187 /* CartWiseUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseUITestsLaunchTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		D572E1EC2E199B370061F187 /* CartWise */ = {
+		D572E22A2E199BCD0061F187 /* Model */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CartWise;
+			path = Model;
 			sourceTree = "<group>";
 		};
-		D572E1FC2E199B380061F187 /* CartWiseTests */ = {
+		D572E22B2E199BD60061F187 /* Views */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CartWiseTests;
+			path = Views;
 			sourceTree = "<group>";
 		};
-		D572E2062E199B380061F187 /* CartWiseUITests */ = {
+		D572E22C2E199BE20061F187 /* ViewModel */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CartWiseUITests;
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		D572E22D2E199BF60061F187 /* Navigation */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Navigation;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -75,9 +97,9 @@
 		D572E1E12E199B370061F187 = {
 			isa = PBXGroup;
 			children = (
-				D572E1EC2E199B370061F187 /* CartWise */,
-				D572E1FC2E199B380061F187 /* CartWiseTests */,
-				D572E2062E199B380061F187 /* CartWiseUITests */,
+				D572E21A2E199B420061F187 /* CartWise */,
+				D572E2202E199B460061F187 /* CartWiseTests */,
+				D572E2242E199B490061F187 /* CartWiseUITests */,
 				D572E1EB2E199B370061F187 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +112,38 @@
 				D572E2032E199B380061F187 /* CartWiseUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D572E21A2E199B420061F187 /* CartWise */ = {
+			isa = PBXGroup;
+			children = (
+				D572E22D2E199BF60061F187 /* Navigation */,
+				D572E22C2E199BE20061F187 /* ViewModel */,
+				D572E22B2E199BD60061F187 /* Views */,
+				D572E22A2E199BCD0061F187 /* Model */,
+				D572E2162E199B420061F187 /* Assets.xcassets */,
+				D572E2172E199B420061F187 /* CartWiseApp.swift */,
+				D572E2182E199B420061F187 /* ContentView.swift */,
+				D572E2192E199B420061F187 /* Item.swift */,
+			);
+			path = CartWise;
+			sourceTree = "<group>";
+		};
+		D572E2202E199B460061F187 /* CartWiseTests */ = {
+			isa = PBXGroup;
+			children = (
+				D572E21F2E199B460061F187 /* CartWiseTests.swift */,
+			);
+			path = CartWiseTests;
+			sourceTree = "<group>";
+		};
+		D572E2242E199B490061F187 /* CartWiseUITests */ = {
+			isa = PBXGroup;
+			children = (
+				D572E2222E199B490061F187 /* CartWiseUITests.swift */,
+				D572E2232E199B490061F187 /* CartWiseUITestsLaunchTests.swift */,
+			);
+			path = CartWiseUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -108,7 +162,10 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				D572E1EC2E199B370061F187 /* CartWise */,
+				D572E22A2E199BCD0061F187 /* Model */,
+				D572E22B2E199BD60061F187 /* Views */,
+				D572E22C2E199BE20061F187 /* ViewModel */,
+				D572E22D2E199BF60061F187 /* Navigation */,
 			);
 			name = CartWise;
 			packageProductDependencies = (
@@ -130,9 +187,6 @@
 			dependencies = (
 				D572E1FB2E199B380061F187 /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				D572E1FC2E199B380061F187 /* CartWiseTests */,
-			);
 			name = CartWiseTests;
 			packageProductDependencies = (
 			);
@@ -152,9 +206,6 @@
 			);
 			dependencies = (
 				D572E2052E199B380061F187 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				D572E2062E199B380061F187 /* CartWiseUITests */,
 			);
 			name = CartWiseUITests;
 			packageProductDependencies = (
@@ -212,6 +263,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D572E21B2E199B420061F187 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,6 +288,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D572E21C2E199B420061F187 /* CartWiseApp.swift in Sources */,
+				D572E21D2E199B420061F187 /* ContentView.swift in Sources */,
+				D572E21E2E199B420061F187 /* Item.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -243,6 +298,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D572E2212E199B460061F187 /* CartWiseTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -250,6 +306,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D572E2252E199B490061F187 /* CartWiseUITests.swift in Sources */,
+				D572E2262E199B490061F187 /* CartWiseUITestsLaunchTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -402,6 +460,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -429,6 +488,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

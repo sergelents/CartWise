@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct CartWiseApp: App {
+    @StateObject private var appCoordinator = AppCoordinator()
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
@@ -25,7 +27,7 @@ struct CartWiseApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppCoordinatorView(coordinator: appCoordinator)
         }
         .modelContainer(sharedModelContainer)
     }
