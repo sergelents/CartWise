@@ -77,3 +77,5 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     }
     
 }
+
+// This code was generated with the help of Claude, saving me 3 hours of research and development.

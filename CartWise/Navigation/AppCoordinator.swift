@@ -83,3 +83,5 @@ struct AppCoordinatorView: View {
         }
     }
 }
+
+// This code was generated with the help of Claude, saving me 2 hours of research and development.
