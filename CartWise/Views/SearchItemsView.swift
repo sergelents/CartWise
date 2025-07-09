@@ -8,24 +8,28 @@
 
 import SwiftUI
 
-// Example: Assume you have an array of products
-let products: [OpenFoodFactsProduct] = [] // Replace with your actual products source
-
-// Build a unique, sorted list of all categories from all products
-let allCategories = products.flatMap { $0.categoryList }
-let uniqueCategoryNames = Array(Set(allCategories.map { $0.name })).sorted()
-let categories = uniqueCategoryNames.map { Category(name: $0) }
-
 struct SearchItemsView: View {
+    // State variable for search bar input
     @State private var searchText = ""
-    // Use the unique categories list
-    // let categories = [Category] // Now defined above
 
-    // Returns categories matching the search text, or all if search is empty
+    // Sample categories for testing, using Category model
+    let categories: [Category] = [
+        Category(name: "Meat & Seafood"),
+        Category(name: "Dairy & Eggs"),
+        Category(name: "Bakery"),
+        Category(name: "Produce"),
+        Category(name: "Pantry Items"),
+        Category(name: "Beverages"),
+        Category(name: "Frozen Foods"),
+        Category(name: "Household & Personal Care")
+    ]
+
+    // Returns categories matching search text, or all if search is empty
     var filteredCategories: [Category] {
         if searchText.isEmpty {
             return categories
         } else {
+            // Case-insensitive search
             return categories.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
     }
@@ -36,17 +40,18 @@ struct SearchItemsView: View {
                 // Search bar
                 TextField("Search...", text: $searchText)
                     .padding(8)
-                    .background(Color(.systemGray6))
+                    .background(Color.gray.opacity(0.2))
                     .cornerRadius(8)
                     .padding(.horizontal)
 
-                // Grid or list of categories
+                // List of filtered categories
                 List(filteredCategories) { category in
                     NavigationLink(destination: CategoryItemsView(category: category)) {
                         Text(category.name)
                     }
                 }
             }
+            .navigationBarTitleDisplayMode(.inline)
             .navigationTitle("Search Items")
         }
     }
