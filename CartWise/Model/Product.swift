@@ -59,53 +59,64 @@ struct Ingredient: Codable, Sendable {
     let text: String
 }
 
-// Local Product Model for the app
-struct Product: Identifiable, Hashable {
-    let id = UUID()
-    let name: String
-    let brand: String?
-    let price: Double?
-    let imageURL: String?
-    let category: ProductCategory
-    let description: String?
+// Extension to add convenience methods to Core Data Product
+extension Product {
+    // Convert categories string to ProductCategory enum
+    var productCategory: ProductCategory? {
+        guard let categories = categories else { return nil }
+        return ProductCategory.from(categories)
+    }
     
-    // Sample products for each category
-    static let sampleProducts: [Product] = [
-        // Bakery
-        Product(name: "Chocolate Cupcakes", brand: "Sweet Treats", price: 4.99, imageURL: nil, category: .bakery, description: "Delicious chocolate cupcakes with frosting"),
-        Product(name: "White Bread", brand: "Fresh Bakery", price: 2.49, imageURL: nil, category: .bakery, description: "Soft white bread, perfect for sandwiches"),
-        Product(name: "Wheat Bread", brand: "Healthy Grains", price: 3.99, imageURL: nil, category: .bakery, description: "Whole wheat bread with seeds"),
-        Product(name: "Chocolate Chip Cookies", brand: "Cookie Corner", price: 5.99, imageURL: nil, category: .bakery, description: "Fresh baked chocolate chip cookies"),
-        Product(name: "Croissants", brand: "French Bakery", price: 3.49, imageURL: nil, category: .bakery, description: "Buttery French croissants"),
+    // Sample products for testing (will be replaced with real API data)
+    static func sampleProducts(context: NSManagedObjectContext) -> [Product] {
+        let sampleData = [
+            // Bakery
+            (name: "Chocolate Cupcakes", brand: "Sweet Treats", categories: "Bakery", imageURL: nil),
+            (name: "White Bread", brand: "Fresh Bakery", categories: "Bakery", imageURL: nil),
+            (name: "Wheat Bread", brand: "Healthy Grains", categories: "Bakery", imageURL: nil),
+            (name: "Chocolate Chip Cookies", brand: "Cookie Corner", categories: "Bakery", imageURL: nil),
+            (name: "Croissants", brand: "French Bakery", categories: "Bakery", imageURL: nil),
+            
+            // Dairy & Eggs
+            (name: "Whole Milk", brand: "Farm Fresh", categories: "Dairy & Eggs", imageURL: nil),
+            (name: "Large Eggs", brand: "Happy Hens", categories: "Dairy & Eggs", imageURL: nil),
+            (name: "Cheddar Cheese", brand: "Dairy Delight", categories: "Dairy & Eggs", imageURL: nil),
+            
+            // Produce
+            (name: "Bananas", brand: nil, categories: "Produce", imageURL: nil),
+            (name: "Apples", brand: nil, categories: "Produce", imageURL: nil),
+            (name: "Spinach", brand: nil, categories: "Produce", imageURL: nil),
+            
+            // Meat & Seafood
+            (name: "Chicken Breast", brand: "Farm Raised", categories: "Meat & Seafood", imageURL: nil),
+            (name: "Salmon Fillet", brand: "Ocean Fresh", categories: "Meat & Seafood", imageURL: nil),
+            
+            // Beverages
+            (name: "Orange Juice", brand: "Sunshine", categories: "Beverages", imageURL: nil),
+            (name: "Coffee Beans", brand: "Morning Brew", categories: "Beverages", imageURL: nil),
+            
+            // Pantry Items
+            (name: "Pasta", brand: "Italian Kitchen", categories: "Pantry Items", imageURL: nil),
+            (name: "Olive Oil", brand: "Mediterranean", categories: "Pantry Items", imageURL: nil),
+            
+            // Frozen Foods
+            (name: "Frozen Pizza", brand: "Quick Bite", categories: "Frozen Foods", imageURL: nil),
+            (name: "Ice Cream", brand: "Sweet Dreams", categories: "Frozen Foods", imageURL: nil),
+            
+            // Household & Personal Care
+            (name: "Toothpaste", brand: "Fresh Smile", categories: "Household & Personal Care", imageURL: nil),
+            (name: "Paper Towels", brand: "Clean & Soft", categories: "Household & Personal Care", imageURL: nil)
+        ]
         
-        // Dairy & Eggs
-        Product(name: "Whole Milk", brand: "Farm Fresh", price: 3.99, imageURL: nil, category: .dairy, description: "Fresh whole milk"),
-        Product(name: "Large Eggs", brand: "Happy Hens", price: 4.49, imageURL: nil, category: .dairy, description: "Farm fresh large eggs"),
-        Product(name: "Cheddar Cheese", brand: "Dairy Delight", price: 6.99, imageURL: nil, category: .dairy, description: "Sharp cheddar cheese block"),
-        
-        // Produce
-        Product(name: "Bananas", brand: nil, price: 1.99, imageURL: nil, category: .produce, description: "Fresh yellow bananas"),
-        Product(name: "Apples", brand: nil, price: 3.99, imageURL: nil, category: .produce, description: "Crisp red apples"),
-        Product(name: "Spinach", brand: nil, price: 2.49, imageURL: nil, category: .produce, description: "Fresh spinach leaves"),
-        
-        // Meat & Seafood
-        Product(name: "Chicken Breast", brand: "Farm Raised", price: 8.99, imageURL: nil, category: .meat, description: "Boneless skinless chicken breast"),
-        Product(name: "Salmon Fillet", brand: "Ocean Fresh", price: 12.99, imageURL: nil, category: .meat, description: "Fresh Atlantic salmon"),
-        
-        // Beverages
-        Product(name: "Orange Juice", brand: "Sunshine", price: 4.99, imageURL: nil, category: .beverages, description: "100% pure orange juice"),
-        Product(name: "Coffee Beans", brand: "Morning Brew", price: 9.99, imageURL: nil, category: .beverages, description: "Premium coffee beans"),
-        
-        // Pantry Items
-        Product(name: "Pasta", brand: "Italian Kitchen", price: 2.99, imageURL: nil, category: .pantry, description: "Spaghetti pasta"),
-        Product(name: "Olive Oil", brand: "Mediterranean", price: 7.99, imageURL: nil, category: .pantry, description: "Extra virgin olive oil"),
-        
-        // Frozen Foods
-        Product(name: "Frozen Pizza", brand: "Quick Bite", price: 6.99, imageURL: nil, category: .frozen, description: "Pepperoni frozen pizza"),
-        Product(name: "Ice Cream", brand: "Sweet Dreams", price: 4.99, imageURL: nil, category: .frozen, description: "Vanilla ice cream"),
-        
-        // Household & Personal Care
-        Product(name: "Toothpaste", brand: "Fresh Smile", price: 3.99, imageURL: nil, category: .household, description: "Mint toothpaste"),
-        Product(name: "Paper Towels", brand: "Clean & Soft", price: 5.99, imageURL: nil, category: .household, description: "Absorbent paper towels")
-    ]
+        return sampleData.map { data in
+            Product(context: context, 
+                   barcode: UUID().uuidString, 
+                   name: data.name, 
+                   brands: data.brand, 
+                   imageURL: data.imageURL, 
+                   nutritionGrade: nil, 
+                   categories: data.categories, 
+                   ingredients: nil)
+        }
+    }
 }

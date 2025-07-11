@@ -9,11 +9,7 @@ import SwiftUI
 
 struct CategoryItemsView: View { 
     let category: ProductCategory
-    
-    // Get products for this category
-    var categoryProducts: [Product] {
-        Product.sampleProducts.filter { $0.category == category }
-    }
+    @State private var viewModel = ProductViewModel(repository: ProductRepository())
     
     var body: some View {
         VStack {
@@ -28,6 +24,16 @@ struct CategoryItemsView: View {
             }
         }
         .navigationTitle(category.rawValue)
+        .task {
+            await viewModel.loadAllProducts()
+        }
+    }
+    
+    // Filter products by category
+    private var categoryProducts: [Product] {
+        viewModel.products.filter { product in
+            product.productCategory == category
+        }
     }
 }
 
@@ -39,24 +45,23 @@ struct ProductRowView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 VStack(alignment: .leading) {
-                    Text(product.name)
+                    Text(product.name ?? "Unknown Product")
                         .font(.headline)
-                    if let brand = product.brand {
+                    if let brand = product.brands {
                         Text(brand)
                             .font(.subheadline)
                             .foregroundColor(.gray)
                     }
                 }
                 Spacer()
-                if let price = product.price {
-                    Text("$\(price, specifier: "%.2f")")
-                        .font(.headline)
-                        .foregroundColor(.blue)
-                }
+                // Note: Price will be added when we implements the API
+                Text("Price TBD")
+                    .font(.headline)
+                    .foregroundColor(.blue)
             }
             
-            if let description = product.description {
-                Text(description)
+            if let ingredients = product.ingredients {
+                Text(ingredients)
                     .font(.caption)
                     .foregroundColor(.gray)
                     .lineLimit(2)

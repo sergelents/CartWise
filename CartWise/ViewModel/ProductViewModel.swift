@@ -50,3 +50,4 @@ final class ProductViewModel {
 }
 
 // This code was generated with the help of Claude, saving me 1 hour of research and development.
+
