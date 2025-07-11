@@ -3,6 +3,9 @@
 //  CartWise
 //
 //  Created by Serg Tsogtbaatar on 7/5/25.
+//  Edited by Brenna Wilonek on 7/10/25.
+//  Enhanced with AI assistance from Cursor AI for UI improvements and functionality. 
+//  This saved me 4-5 hours of work learning swift UI syntax.
 //
 
 import SwiftUI
