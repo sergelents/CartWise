@@ -15,21 +15,29 @@ protocol ProductRepositoryProtocol: Sendable {
     func updateProduct(_ product: Product) async throws
     func deleteProduct(_ product: Product) async throws
     func searchProducts(by name: String) async throws -> [Product]
+    func fetchProductFromNetwork(by barcode: String) async throws -> Product?
 }
 
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     private let coreDataContainer: CoreDataContainerProtocol
+    private let networkService: NetworkServiceProtocol
     
-    init(coreDataContainer: CoreDataContainerProtocol = CoreDataContainer()) {
+    init(coreDataContainer: CoreDataContainerProtocol = CoreDataContainer(),
+         networkService: NetworkServiceProtocol = NetworkService()) {
         self.coreDataContainer = coreDataContainer
+        self.networkService = networkService
     }
     
+    // MARK: - Cache-First Operations
+    
     func fetchAllProducts() async throws -> [Product] {
-        try await coreDataContainer.fetchAllProducts()
+        // Cache-first: return local data immediately
+        return try await coreDataContainer.fetchAllProducts()
     }
     
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product {
-        try await coreDataContainer.createProduct(
+        // Create locally first
+        return try await coreDataContainer.createProduct(
             barcode: barcode,
             name: name,
             brands: brands,
@@ -41,19 +49,93 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     }
     
     func createProduct(name: String) async throws -> Product {
-        try await coreDataContainer.createProduct(name: name)
+        // Create locally with generated barcode
+        return try await coreDataContainer.createProduct(name: name)
     }
     
     func updateProduct(_ product: Product) async throws {
+        // Update local cache
         try await coreDataContainer.updateProduct(product)
     }
     
     func deleteProduct(_ product: Product) async throws {
+        // Delete from local cache
         try await coreDataContainer.deleteProduct(product)
     }
     
     func searchProducts(by name: String) async throws -> [Product] {
-        try await coreDataContainer.searchProducts(by: name)
+        // Cache-first: search local data first
+        let localResults = try await coreDataContainer.searchProducts(by: name)
+        
+        // If we have local results, return them immediately
+        if !localResults.isEmpty {
+            return localResults
+        }
+        
+        // Network-second: if no local results, try network
+        do {
+            let networkProducts = try await networkService.searchProducts(by: name)
+            
+            // Save network results to local cache
+            for networkProduct in networkProducts.prefix(10) { // Limit to first 10
+                _ = try await createProduct(
+                    barcode: networkProduct.code,
+                    name: networkProduct.productName ?? "Unknown Product",
+                    brands: networkProduct.brands,
+                    imageURL: networkProduct.imageURL,
+                    nutritionGrade: networkProduct.nutritionGrades,
+                    categories: networkProduct.categories,
+                    ingredients: networkProduct.ingredients?.map { $0.text }.joined(separator: ", ")
+                )
+            }
+            
+            // Return the newly cached results
+            return try await coreDataContainer.searchProducts(by: name)
+        } catch {
+            // If network fails, return empty array (cache-first approach)
+            return []
+        }
+    }
+    
+    // MARK: - Network Operations
+    
+    func fetchProductFromNetwork(by barcode: String) async throws -> Product? {
+        // Check cache first
+        let existingProducts = try await coreDataContainer.fetchAllProducts()
+        if let existingProduct = existingProducts.first(where: { $0.barcode == barcode }) {
+            return existingProduct
+        }
+        
+        // Network-second: fetch from API with retry logic
+        do {
+            let networkProduct = try await networkService.fetchProductWithRetry(by: barcode, retries: 3)
+            
+            guard let networkProduct = networkProduct else {
+                return nil
+            }
+            
+            // Save to local cache
+            let savedProduct = try await createProduct(
+                barcode: networkProduct.code,
+                name: networkProduct.productName ?? "Unknown Product",
+                brands: networkProduct.brands,
+                imageURL: networkProduct.imageURL,
+                nutritionGrade: networkProduct.nutritionGrades,
+                categories: networkProduct.categories,
+                ingredients: networkProduct.ingredients?.map { $0.text }.joined(separator: ", ")
+            )
+            
+            return savedProduct
+        } catch NetworkError.productNotFound {
+            // Product not found in API, return nil
+            return nil
+        } catch NetworkError.rateLimitExceeded {
+            // Rate limited, return nil but could implement queue for later retry
+            return nil
+        } catch {
+            // Other network errors, re-throw
+            throw error
+        }
     }
 }
 
