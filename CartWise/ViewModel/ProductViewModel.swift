@@ -5,11 +5,11 @@
 //  Created by Serg Tsogtbaatar on 7/7/25.
 //
 import SwiftUI
+import Combine
 
 @MainActor
-@Observable
-final class ProductViewModel {
-    var products: [Product] = []
+final class ProductViewModel: ObservableObject {
+    @Published var products: [Product] = []
     var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
@@ -47,6 +47,18 @@ final class ProductViewModel {
             }
         }
     
+    func createProductByName(_ name: String) async {
+        do {
+            // Generate a random barcode for now, or use a UUID string
+            let barcode = UUID().uuidString
+            _ = try await repository.createProduct(barcode: barcode, name: name, brands: nil, imageURL: nil, nutritionGrade: nil, categories: nil, ingredients: nil)
+            await loadAllProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+  
     func searchProducts(by name: String) async {
         do {
             products = try await repository.searchProducts(by: name)
@@ -65,7 +77,6 @@ final class ProductViewModel {
             errorMessage = error.localizedDescription
         }
     }
-
 }
 
 // This code was generated with the help of Claude, saving me 1 hour of research and development.
