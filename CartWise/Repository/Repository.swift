@@ -11,71 +11,50 @@ import CoreData
 protocol ProductRepositoryProtocol: Sendable {
     func fetchAllProducts() async throws -> [Product]
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product
+    func createProduct(name: String) async throws -> Product
     func updateProduct(_ product: Product) async throws
     func deleteProduct(_ product: Product) async throws
     func searchProducts(by name: String) async throws -> [Product]
 }
 
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
-    private let coreDataStack: CoreDataStack
+    private let coreDataContainer: CoreDataContainerProtocol
     
-    init(coreDataStack: CoreDataStack = CoreDataStack.shared) {
-        self.coreDataStack = coreDataStack
+    init(coreDataContainer: CoreDataContainerProtocol = CoreDataContainer()) {
+        self.coreDataContainer = coreDataContainer
     }
     
     func fetchAllProducts() async throws -> [Product] {
-        try await coreDataStack.performBackgroundTask { context in
-            let request: NSFetchRequest<Product> = Product.fetchRequest()
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \Product.updatedAt, ascending: false)]
-            return try context.fetch(request)
-        }
+        try await coreDataContainer.fetchAllProducts()
     }
     
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product {
-        try await coreDataStack.performBackgroundTask { context in
-            let product = Product(
-                context: context,
-                barcode: barcode,
-                name: name,
-                brands: brands,
-                imageURL: imageURL,
-                nutritionGrade: nutritionGrade,
-                categories: categories,
-                ingredients: ingredients
-            )
-            
-            try context.save()
-            return product
-        }
+        try await coreDataContainer.createProduct(
+            barcode: barcode,
+            name: name,
+            brands: brands,
+            imageURL: imageURL,
+            nutritionGrade: nutritionGrade,
+            categories: categories,
+            ingredients: ingredients
+        )
+    }
+    
+    func createProduct(name: String) async throws -> Product {
+        try await coreDataContainer.createProduct(name: name)
     }
     
     func updateProduct(_ product: Product) async throws {
-        try await coreDataStack.performBackgroundTask { context in
-            let objectID = product.objectID
-            let productInContext = try context.existingObject(with: objectID) as! Product
-            productInContext.updatedAt = Date()
-            try context.save()
-        }
+        try await coreDataContainer.updateProduct(product)
     }
     
     func deleteProduct(_ product: Product) async throws {
-        try await coreDataStack.performBackgroundTask { context in
-            let objectID = product.objectID
-            let productInContext = try context.existingObject(with: objectID)
-            context.delete(productInContext)
-            try context.save()
-        }
+        try await coreDataContainer.deleteProduct(product)
     }
     
     func searchProducts(by name: String) async throws -> [Product] {
-        try await coreDataStack.performBackgroundTask { context in
-            let request: NSFetchRequest<Product> = Product.fetchRequest()
-            request.predicate = NSPredicate(format: "name CONTAINS[cd] %@", name)
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \Product.name, ascending: true)]
-            return try context.fetch(request)
-        }
+        try await coreDataContainer.searchProducts(by: name)
     }
-    
 }
 
 // This code was generated with the help of Claude, saving me 3 hours of research and development.
