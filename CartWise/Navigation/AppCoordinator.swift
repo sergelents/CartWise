@@ -48,7 +48,8 @@ struct AppCoordinatorView: View {
     @ObservedObject var coordinator: AppCoordinator
     
     var body: some View {
-        TabView(selection: $coordinator.selectedTab) {
+        NavigationView {
+            TabView(selection: $coordinator.selectedTab) {
             YourListView()
                 .tabItem {
                     Image(systemName: coordinator.selectedTab == .yourList ?
@@ -80,6 +81,7 @@ struct AppCoordinatorView: View {
                     Text(TabItem.myProfile.rawValue)
                 }
                 .tag(TabItem.myProfile)
+            }
         }
     }
 }
