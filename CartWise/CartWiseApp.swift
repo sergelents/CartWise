@@ -3,7 +3,7 @@
 //  CartWise
 //
 //  Created by Serg Tsogtbaatar on 7/5/25.
-//
+//  Modified by Alex Kumar on 7/12/25
 
 import SwiftUI
 
@@ -14,6 +14,15 @@ struct CartWiseApp: App {
     var body: some Scene {
         WindowGroup {
             AppCoordinatorView(coordinator: appCoordinator)
+            
+    init() {
+            FirebaseApp.configure()
+        }
+        
+        var body: some Scene {
+            WindowGroup {
+                LoginView() // Start with login screen
+            }
         }
     }
 }

@@ -53,6 +53,11 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		6086E4DD2E22D8F900E6A19C /* Utilities */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Utilities;
+			sourceTree = "<group>";
+		};
 		D572E22A2E199BCD0061F187 /* Model */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Model;
@@ -123,6 +128,7 @@
 		D572E21A2E199B420061F187 /* CartWise */ = {
 			isa = PBXGroup;
 			children = (
+				6086E4DD2E22D8F900E6A19C /* Utilities */,
 				57E0A8172E1F214300A52D48 /* Info.plist */,
 				57E0A7EB2E1F1BA300A52D48 /* Resources */,
 				D572E25D2E1C53AC0061F187 /* Repository */,
@@ -179,6 +185,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				57E0A7EB2E1F1BA300A52D48 /* Resources */,
+				6086E4DD2E22D8F900E6A19C /* Utilities */,
 				D572E22A2E199BCD0061F187 /* Model */,
 				D572E22B2E199BD60061F187 /* Views */,
 				D572E22C2E199BE20061F187 /* ViewModel */,
