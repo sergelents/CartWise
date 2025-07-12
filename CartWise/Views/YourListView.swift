@@ -5,7 +5,7 @@
 //  Created by Serg Tsogtbaatar on 7/5/25.
 //  Edited by Brenna Wilonek on 7/10/25.
 //  Enhanced with AI assistance from Cursor AI for UI improvements and functionality. 
-//  This saved me 4-5 hours of work learning swift UI syntax.
+//  This saved me 6-9 hours of work learning swift UI syntax.
 //
 
 import SwiftUI
@@ -16,14 +16,21 @@ import UIKit
 struct YourListView: View {
     @State private var suggestedStore: String = "Whole Foods Market"
     @State private var storeAddress: String = "1701 Wewatta St."
-    @State private var total: Double = 43.00
+    @State private var total: Double = 0.00
     @State private var allItemsChecked: Bool = false
     @State private var isEditing: Bool = false
     @State private var selectedItemsForDeletion: Set<UUID> = []
-    // Static sample data
+    // Static sample data, this will be replaced with the user's list once backend is implemented
     @State private var items: [ShoppingItem] = SampleData.shoppingItems
+
+    // Restore 4 items if list is empty and add button is not functional, made by AI
+    private func restoreSampleItemsIfNeeded() {
+        if items.isEmpty {
+            items = Array(SampleData.shoppingItems.prefix(4))
+        }
+    }
     
-    // Navigation state
+    // Navigation state, edited by AI
     @State private var selectedTabIndex: Int = 0
     @State private var showingRatingPrompt: Bool = false
     
@@ -45,7 +52,7 @@ struct YourListView: View {
     }
 }
 
-// MARK: - Main Content View
+//  Main Content View, edited by AI
 struct MainContentView: View {
     @Binding var items: [ShoppingItem]
     @Binding var isEditing: Bool
@@ -64,54 +71,52 @@ struct MainContentView: View {
                 .ignoresSafeArea()
             
             // Main Content
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    // Header
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Your Shopping List")
-                            .font(.poppins(size:32, weight: .bold))
-                            .foregroundColor(.primary)
-                        
-                        Text("\(items.count) items • $\(String(format: "%.2f", items.reduce(0) { $0 + $1.price }))")
-                            .font(.poppins(size:15, weight: .regular))
-                            .foregroundColor(.gray)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-
-                    // Item List Card
-                    ShoppingListCard(
-                        items: $items,
-                        isEditing: $isEditing,
-                        allItemsChecked: $allItemsChecked,
-                        selectedItemsForDeletion: $selectedItemsForDeletion,
-                        showingRatingPrompt: $showingRatingPrompt
-                    )
-
-                    // Store Card
-                    StoreCard(
-                        suggestedStore: suggestedStore,
-                        storeAddress: storeAddress,
-                        total: items.reduce(0) { $0 + $1.price }
-                    )
-
-                    Spacer()
+            VStack(alignment: .leading, spacing: 24) {
+                // Header
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your Shopping List")
+                        .font(.poppins(size:32, weight: .bold))
+                        .foregroundColor(.primary)
+                    
+                    Text("\(items.count) items • $\(String(format: "%.2f", items.reduce(0) { $0 + $1.price }))")
+                        .font(.poppins(size:15, weight: .regular))
+                        .foregroundColor(.gray)
                 }
-                .padding(.top)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+                // Item List Card
+                ShoppingListCard(
+                    items: $items,
+                    isEditing: $isEditing,
+                    allItemsChecked: $allItemsChecked,
+                    selectedItemsForDeletion: $selectedItemsForDeletion,
+                    showingRatingPrompt: $showingRatingPrompt
+                )
+
+                // Store Card
+                StoreCard(
+                    suggestedStore: suggestedStore,
+                    storeAddress: storeAddress,
+                    total: items.reduce(0) { $0 + $1.price }
+                )
+
+                Spacer()
             }
+            .padding(.top)
             
             // Bottom Tab Bar
             VStack {
                 Spacer()
-                BottomTabBar(selectedTabIndex: $selectedTabIndex)
+                MenuBar(selectedTabIndex: $selectedTabIndex)
             }
             .ignoresSafeArea(.container, edges: .bottom)
         }
     }
 }
 
-// MARK: - Shopping List Card
+// Shopping List Card
 struct ShoppingListCard: View {
     @Binding var items: [ShoppingItem]
     @Binding var isEditing: Bool
@@ -123,92 +128,169 @@ struct ShoppingListCard: View {
         VStack(spacing: 12) {
             // Header
             HStack {
-                Text("\(items.count) Items")
-                    .font(.poppins(size:15, weight: .regular))
-                    .foregroundColor(.gray)
-                Spacer()
-                Button(action: {
-                    if isEditing {
-                        items.removeAll { selectedItemsForDeletion.contains($0.id) }
-                    }
-                    isEditing.toggle()
-                }) {
-                    Text(isEditing ? "Delete Selected" : "Edit")
-                        .font(.poppins(size:15, weight: .regular))
-                        .underline()
-                        .foregroundColor(isEditing ? .red : .gray)
-                }
-                                        Button(action: {
-                            if allItemsChecked {
-                                // Uncheck all items
-                                allItemsChecked.toggle()
-                                for index in items.indices {
-                                    items[index].isCompleted = allItemsChecked
-                                }
+                if isEditing {
+                    HStack(spacing: 16) {
+                        Button(action: {
+                            items.removeAll { selectedItemsForDeletion.contains($0.id) }
+                            isEditing = false
+                            selectedItemsForDeletion.removeAll()
+                        }) {
+                            Text("Delete")
+                                .font(.poppins(size:15, weight: .regular))
+                                .underline()
+                                .foregroundColor(.red)
+                        }
+                        Button(action: {
+                            if selectedItemsForDeletion.count == items.count {
+                                selectedItemsForDeletion.removeAll()
                             } else {
-                                // Check all items and show rating prompt
-                                allItemsChecked.toggle()
-                                for index in items.indices {
-                                    items[index].isCompleted = allItemsChecked
-                                }
-                                showingRatingPrompt = true
+                                selectedItemsForDeletion = Set(items.map { $0.id })
                             }
                         }) {
-                            Image(systemName: allItemsChecked ? "checkmark.circle.fill" : "checkmark.circle")
-                                .foregroundColor(AppColors.accentOrange)
-                                .font(.system(size: 20))
+                            Text(selectedItemsForDeletion.count == items.count ? "Deselect All" : "Select All")
+                                .font(.poppins(size:15, weight: .regular))
+                                .underline()
+                                .foregroundColor(.blue)
                         }
-                        .buttonStyle(PlainButtonStyle())
+                    }
+                    Spacer()
+                    Button(action: {
+                        isEditing = false
+                        selectedItemsForDeletion.removeAll()
+                    }) {
+                        Text("Cancel")
+                            .font(.poppins(size:15, weight: .regular))
+                            .underline()
+                            .foregroundColor(.gray)
+                    }
+                } else {
+                    Text("\(items.count) Items")
+                        .font(.poppins(size:15, weight: .regular))
+                        .foregroundColor(.gray)
+                    Spacer()
+                    Button(action: {
+                        isEditing.toggle()
+                    }) {
+                        Text("Edit")
+                            .font(.poppins(size:15, weight: .regular))
+                            .underline()
+                            .foregroundColor(.gray)
+                    }
+                }
             }
             .padding(.horizontal)
 
             Divider()
             
             // Item List
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(items) { item in
-                        ShoppingListItemRow(
-                            item: item,
-                            isEditing: isEditing,
-                            isSelected: selectedItemsForDeletion.contains(item.id),
-                            onToggle: {
-                                if isEditing {
-                                    if selectedItemsForDeletion.contains(item.id) {
-                                        selectedItemsForDeletion.remove(item.id)
-                                    } else {
-                                        selectedItemsForDeletion.insert(item.id)
-                                    }
-                                } else {
-                                    if let index = items.firstIndex(where: { $0.id == item.id }) {
-                                        items[index].isCompleted.toggle()
-                                    }
-                                }
-                            },
-                            onDelete: {
-                                items.removeAll { $0.id == item.id }
-                            }
-                        )
+            if items.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "basket")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 60, height: 60)
+                        .foregroundColor(AppColors.accentGreen.opacity(0.7))
+                    Text("You have nothing on your list!")
+                        .font(.poppins(size: 18, weight: .semibold))
+                        .foregroundColor(.gray)
+                    HStack(spacing: 4) {
+                        Text("Tap the")
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(AppColors.accentGreen)
+                            .font(.system(size: 16))
+                        Text("button to add your first item.")
                     }
+                        .font(.poppins(size: 15, weight: .regular))
+                        .foregroundColor(.gray.opacity(0.7))
+                    Button("Restore Sample Items") {
+                        if items.isEmpty {
+                            items = Array(SampleData.shoppingItems.prefix(4))
+                        }
+                    }
+                    .font(.poppins(size: 15, weight: .semibold))
+                    .foregroundColor(AppColors.accentGreen)
+                    .padding(.top, 8)
                 }
-                .padding(.top, 8)
+                .frame(maxWidth: .infinity, minHeight: 120)
+                .padding(.vertical, 24)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(items) { item in
+                            ShoppingListItemRow(
+                                item: item,
+                                isEditing: isEditing,
+                                isSelected: selectedItemsForDeletion.contains(item.id),
+                                onToggle: {
+                                    if isEditing {
+                                        if selectedItemsForDeletion.contains(item.id) {
+                                            selectedItemsForDeletion.remove(item.id)
+                                        } else {
+                                            selectedItemsForDeletion.insert(item.id)
+                                        }
+                                    } else {
+                                        if let index = items.firstIndex(where: { $0.id == item.id }) {
+                                            items[index].isCompleted.toggle()
+                                        }
+                                    }
+                                },
+                                onDelete: {
+                                    items.removeAll { $0.id == item.id }
+                                }
+                            )
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                .frame(maxHeight: 200)
             }
-            .frame(maxHeight: 200)
 
-            // Add Button
-            Button(action: {
-                // TODO: Add item functionality
-            }) {
-                Image(systemName: "plus")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(.white)
+            // Add Button & Check All Button 
+            HStack(spacing: 56) {
+                Button(action: {
+                    // TODO: Add item functionality
+                }) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(AppColors.accentGreen)
+                        .shadow(color: AppColors.accentGreen.opacity(0.3), radius: 8, x: 0, y: 4)
+                )
+                
+                Button(action: {
+                    if allItemsChecked {
+                        // Uncheck all items
+                        allItemsChecked.toggle()
+                        for index in items.indices {
+                            items[index].isCompleted = allItemsChecked
+                        }
+                    } else {
+                        // Check all items and show rating prompt
+                        allItemsChecked.toggle()
+                        for index in items.indices {
+                            items[index].isCompleted = allItemsChecked
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // 0.5 seconds delay
+                            showingRatingPrompt = true
+                        }
+                    }
+                }) {
+                    Image(systemName: allItemsChecked ? "checkmark.circle.fill" : "checkmark.circle")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(AppColors.accentOrange)
+                        .shadow(color: AppColors.accentOrange.opacity(0.3), radius: 8, x: 0, y: 4)
+                )
             }
-            .frame(width: 44, height: 44)
-            .background(
-                Circle()
-                    .fill(AppColors.accentGreen)
-                    .shadow(color: AppColors.accentGreen.opacity(0.3), radius: 8, x: 0, y: 4)
-            )
+            .frame(maxWidth: .infinity)
             .padding(.top, 8)
         }
         .padding()
@@ -219,7 +301,7 @@ struct ShoppingListCard: View {
     }
 }
 
-// MARK: - Store Card
+// Store Card
 struct StoreCard: View {
     let suggestedStore: String
     let storeAddress: String
@@ -243,7 +325,7 @@ struct StoreCard: View {
                 .foregroundColor(.gray)
 
             Button("Change Store") {
-                // TODO: Store picker logic
+                // TODO: Store changer functionality
             }
             .font(.poppins(size:15, weight: .bold))
             .padding(.vertical, 4)
@@ -260,8 +342,8 @@ struct StoreCard: View {
     }
 }
 
-// MARK: - Bottom Tab Bar
-struct BottomTabBar: View {
+// Menu Bar, edited by AI
+struct MenuBar: View {
     @Binding var selectedTabIndex: Int
     
     var body: some View {
@@ -309,7 +391,7 @@ struct BottomTabBar: View {
     }
 }
 
-// MARK: - Tab Button
+// Tab Button
 struct TabButton: View {
     let icon: String
     let title: String
@@ -342,7 +424,7 @@ struct TabButton: View {
 
 
 
-// MARK: - Sample Data
+// Sample Data created by AI
 struct ShoppingItem: Identifiable {
     let id = UUID()
     let name: String
@@ -374,6 +456,7 @@ struct SampleData {
     ]
 }
 
+// Shopping List circle logic
 struct ShoppingListItemRow: View {
     let item: ShoppingItem
     let isEditing: Bool
@@ -414,18 +497,22 @@ struct ShoppingListItemRow: View {
                     .font(.poppins(size:15, weight: .regular))
                     .strikethrough(item.isCompleted)
                     .foregroundColor(item.isCompleted ? .gray : .primary)
-                Text(item.details)
-                    .font(.poppins(size:12, weight: .regular))
-                    .foregroundColor(.gray)
+                if !item.details.isEmpty {
+                    Text(item.details)
+                        .font(.poppins(size:12, weight: .regular))
+                        .foregroundColor(.gray)
+                }
             }
 
             Spacer()
 
-            // Price centered vertically
-            Text(String(format: "$%.2f", item.price))
-                .font(.poppins(size:15, weight: .regular))
-                .foregroundColor(item.isCompleted ? .gray : .primary)
-                .frame(minWidth: 60, alignment: .center)
+            // check for valid price
+            if item.price > 0.01 {
+                Text(String(format: "$%.2f", item.price))
+                    .font(.poppins(size:15, weight: .regular))
+                    .foregroundColor(item.isCompleted ? .gray : .primary)
+                    .frame(minWidth: 60, alignment: .center)
+            }
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
@@ -447,7 +534,7 @@ struct ShoppingListItemRow: View {
     YourListView()
 }
 
-// MARK: - Rating Prompt View
+// Rating Prompt View
 struct RatingPromptView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showRatingScreen = false
@@ -506,14 +593,14 @@ struct RatingPromptView: View {
         .background(AppColors.backgroundSecondary)
         .sheet(isPresented: $showRatingScreen) {
             ShoppingExperienceRatingView(dismissAll: {
-                dismiss() // dismiss the prompt
-                showRatingScreen = false // close the rating sheet
+                dismiss() 
+                showRatingScreen = false 
             })
         }
     }
 }
 
-// MARK: - Shopping Experience Rating View
+// Shopping Experience Rating View
 struct ShoppingExperienceRatingView: View {
     var dismissAll: () -> Void
     @State private var pricingRating: Int = 0
@@ -600,7 +687,7 @@ struct ShoppingExperienceRatingView: View {
     }
 }
 
-// MARK: - Star Rating View
+// Star Rating View
 struct StarRatingView: View {
     @Binding var rating: Int
     var accentColor: Color = .yellow
