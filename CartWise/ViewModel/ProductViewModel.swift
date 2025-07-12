@@ -58,6 +58,25 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+  
+    func searchProducts(by name: String) async {
+        do {
+            products = try await repository.searchProducts(by: name)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func createProduct(byName name: String) async {
+        do {
+            let newProduct = try await repository.createProduct(name: name)
+            products.append(newProduct)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 }
 
 // This code was generated with the help of Claude, saving me 1 hour of research and development.

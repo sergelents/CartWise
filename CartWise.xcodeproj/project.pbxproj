@@ -13,6 +13,7 @@
 		D572E2252E199B490061F187 /* CartWiseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2222E199B490061F187 /* CartWiseUITests.swift */; };
 		D572E2262E199B490061F187 /* CartWiseUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2232E199B490061F187 /* CartWiseUITestsLaunchTests.swift */; };
 		D572E25F2E1C53BA0061F187 /* Repository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E25E2E1C53B60061F187 /* Repository.swift */; };
+		D572E3092E20AA770061F187 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E3082E20A9E20061F187 /* APIService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,6 +44,7 @@
 		D572E2222E199B490061F187 /* CartWiseUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseUITests.swift; sourceTree = "<group>"; };
 		D572E2232E199B490061F187 /* CartWiseUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		D572E25E2E1C53B60061F187 /* Repository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repository.swift; sourceTree = "<group>"; };
+		D572E3082E20A9E20061F187 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -154,6 +156,7 @@
 		D572E25D2E1C53AC0061F187 /* Repository */ = {
 			isa = PBXGroup;
 			children = (
+				D572E3082E20A9E20061F187 /* APIService.swift */,
 				D572E25E2E1C53B60061F187 /* Repository.swift */,
 			);
 			path = Repository;
@@ -302,6 +305,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D572E3092E20AA770061F187 /* APIService.swift in Sources */,
 				D572E21C2E199B420061F187 /* CartWiseApp.swift in Sources */,
 				D572E25F2E1C53BA0061F187 /* Repository.swift in Sources */,
 			);
@@ -467,7 +471,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = LDW5T59NC3;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
