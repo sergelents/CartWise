@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-import SwiftUI
 
 class AppCoordinator: ObservableObject {
     @Published var selectedTab: TabItem = .yourList
@@ -48,8 +47,7 @@ struct AppCoordinatorView: View {
     @ObservedObject var coordinator: AppCoordinator
     
     var body: some View {
-        NavigationView {
-            TabView(selection: $coordinator.selectedTab) {
+        TabView(selection: $coordinator.selectedTab) {
             YourListView()
                 .tabItem {
                     Image(systemName: coordinator.selectedTab == .yourList ?
@@ -81,7 +79,6 @@ struct AppCoordinatorView: View {
                     Text(TabItem.myProfile.rawValue)
                 }
                 .tag(TabItem.myProfile)
-            }
         }
     }
 }
