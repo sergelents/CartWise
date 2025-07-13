@@ -13,7 +13,6 @@ struct PersistenceController {
     static var preview: PersistenceController = {
         let result = PersistenceController(inMemory: true)
         let viewContext = result.container.viewContext
-        // Add sample data for previews
         let user = UserEntity(context: viewContext)
         user.id = UUID().uuidString
         user.username = "testuser"
