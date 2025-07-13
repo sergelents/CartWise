@@ -9,63 +9,95 @@ import SwiftUI
 
 struct LoginView: View {
     @Environment(\.managedObjectContext) private var context
-    @StateObject private var viewModel: AuthViewModel
+    @StateObject private var viewModel = AuthViewModel(context: PersistenceController.shared.container.viewContext)
+    @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
+
     @State private var username = ""
     @State private var password = ""
-    
-    init() {
-        self._viewModel = StateObject(wrappedValue: AuthViewModel(context: PersistenceController.shared.container.viewContext))
-    }
-    
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Username", text: $username)
-                        .textContentType(.username)
-                        .autocapitalization(.none)
-                        .font(DesignSystem.bodyFont)
-                        .padding()
-                        .background(DesignSystem.backgroundColor)
-                        .cornerRadius(8)
-                    SecureField("Password", text: $password)
-                        .font(DesignSystem.bodyFont)
-                        .padding()
-                        .background(DesignSystem.backgroundColor)
-                        .cornerRadius(8)
-                }
+            VStack(spacing: 20) {
+                // App Logo/Title
+                Text("CartWise")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .padding(.top, 50)
                 
+                Spacer()
+                
+                VStack(spacing: 20) {
+                    // Username Field
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Username")
+                            .font(.headline)
+                        TextField("Enter username", text: $username)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .autocapitalization(.none)
+                            .textContentType(.username)
+                    }
+                    
+                    // Password Field
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("Password")
+                            .font(.headline)
+                        SecureField("Enter password", text: $password)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .textContentType(.password)
+                    }
+                }
+                .padding(.horizontal)
+
+                // Error Message
                 if let error = viewModel.error {
                     Text(error)
                         .foregroundColor(.red)
-                        .font(DesignSystem.bodyFont)
+                        .font(.caption)
+                        .padding(.horizontal)
                 }
-                
+
+                // Login Button
                 Button(action: {
-                    Task { await viewModel.login(username: username, password: password) }
+                    Task {
+                        await viewModel.login(username: username, password: password)
+                        if viewModel.user != nil {
+                            isLoggedIn = true
+                        }
+                    }
                 }) {
-                    Text("Log In")
-                        .font(DesignSystem.buttonFont)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(DesignSystem.primaryColor)
-                        .cornerRadius(8)
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
+                    } else {
+                        Text("Log In")
+                            .fontWeight(.semibold)
+                    }
                 }
-                
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+                .padding(.horizontal)
+                .disabled(viewModel.isLoading || username.isEmpty || password.isEmpty)
+
+                // Sign Up Link
                 NavigationLink("Don't have an account? Sign Up", destination: SignUpView())
-                    .font(DesignSystem.bodyFont)
-                    .foregroundColor(DesignSystem.accentColor)
+                    .padding(.top, 10)
+                
+                Spacer()
             }
             .navigationTitle("Log In")
-            .background(DesignSystem.backgroundColor)
+            .navigationBarHidden(true)
         }
     }
 }
 
+// Preview
 struct LoginView_Previews: PreviewProvider {
     static var previews: some View {
         LoginView()
-            .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+            .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
     }
 }
