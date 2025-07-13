@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-import SwiftUI
 
 class AppCoordinator: ObservableObject {
     @Published var selectedTab: TabItem = .yourList
