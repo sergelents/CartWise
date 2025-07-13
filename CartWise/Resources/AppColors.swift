@@ -19,5 +19,6 @@ struct AppColors {
     static let textPrimary = Color("FontColorBlack")
     static let textSecondary = Color("FontColorWhite")
     static let backgroundPrimary = Color("BackgroundColor")
+    static let backgroundSecondary = Color.gray.opacity(0.05)
 }
 
