@@ -5,59 +5,60 @@
 //  Created by Alex Kumar on 7/12/25.
 //
 
-import FirebaseAuth
-import FirebaseFirestore
+import CoreData
 import Foundation
 
 class AuthViewModel: ObservableObject {
     @Published var user: User?
     @Published var error: String?
-    private let db = Firestore.firestore()
+    private let context: NSManagedObjectContext
+    
+    init(context: NSManagedObjectContext) {
+        self.context = context
+    }
     
     @MainActor
-    func signUp(email: String, password: String, username: String) async {
+    func signUp(username: String, password: String) async {
         do {
-            let result = try await Auth.auth().createUser(withEmail: email, password: password)
-            self.user = User(id: result.user.uid, username: username, updates: 0)
-            try await saveUserData(userId: result.user.uid, username: username)
+            // Check if username exists
+            let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "username == %@", username)
+            let existingUsers = try context.fetch(fetchRequest)
+            if !existingUsers.isEmpty {
+                self.error = "Username already taken"
+                return
+            }
+            
+            // Create new user
+            let userEntity = UserEntity(context: context)
+            userEntity.id = UUID().uuidString
+            userEntity.username = username
+            userEntity.password = password // Mock: store plain text for demo
+            userEntity.updates = 0
+            userEntity.level = "Newbie"
+            userEntity.createdAt = Date()
+            
+            try context.save()
+            self.user = User(id: userEntity.id!, username: userEntity.username!, updates: Int(userEntity.updates))
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Failed to sign up: \(error.localizedDescription)"
         }
     }
     
     @MainActor
-    func login(email: String, password: String) async {
+    func login(username: String, password: String) async {
         do {
-            let result = try await Auth.auth().signIn(withEmail: email, password: password)
-            await loadUserData(userId: result.user.uid)
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-    
-    @MainActor
-    private func saveUserData(userId: String, username: String) async throws {
-        try await db.collection("users").document(userId).setData([
-            "username": username,
-            "updates": 0,
-            "level": "Newbie",
-            "createdAt": Timestamp()
-        ])
-    }
-    
-    @MainActor
-    func loadUserData(userId: String) async {
-        do {
-            let document = try await db.collection("users").document(userId).getDocument()
-            if let data = document.data() {
-                self.user = User(
-                    id: userId,
-                    username: data["username"] as? String ?? "",
-                    updates: data["updates"] as? Int ?? 0
-                )
+            let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "username == %@ AND password == %@", username, password)
+            let users = try context.fetch(fetchRequest)
+            
+            if let userEntity = users.first {
+                self.user = User(id: userEntity.id!, username: userEntity.username!, updates: Int(userEntity.updates))
+            } else {
+                self.error = "Invalid username or password"
             }
         } catch {
-            self.error = error.localizedDescription
+            self.error = "Failed to log in: \(error.localizedDescription)"
         }
     }
 }

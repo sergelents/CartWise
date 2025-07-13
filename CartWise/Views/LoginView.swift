@@ -8,16 +8,21 @@
 import SwiftUI
 
 struct LoginView: View {
-    @StateObject private var viewModel = AuthViewModel()
-    @State private var email = ""
+    @Environment(\.managedObjectContext) private var context
+    @StateObject private var viewModel: AuthViewModel
+    @State private var username = ""
     @State private var password = ""
+    
+    init() {
+        self._viewModel = StateObject(wrappedValue: AuthViewModel(context: PersistenceController.shared.container.viewContext))
+    }
     
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
+                    TextField("Username", text: $username)
+                        .textContentType(.username)
                         .autocapitalization(.none)
                         .font(DesignSystem.bodyFont)
                         .padding()
@@ -37,7 +42,7 @@ struct LoginView: View {
                 }
                 
                 Button(action: {
-                    Task { await viewModel.login(email: email, password: password) }
+                    Task { await viewModel.login(username: username, password: password) }
                 }) {
                     Text("Log In")
                         .font(DesignSystem.buttonFont)
@@ -55,16 +60,12 @@ struct LoginView: View {
             .navigationTitle("Log In")
             .background(DesignSystem.backgroundColor)
         }
-        .task {
-            if viewModel.user != nil {
-                await viewModel.loadUserData(userId: viewModel.user!.id)
-            }
-        }
     }
 }
 
 struct LoginView_Previews: PreviewProvider {
     static var previews: some View {
         LoginView()
+            .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
     }
 }
