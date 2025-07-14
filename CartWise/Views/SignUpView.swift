@@ -9,11 +9,15 @@ import SwiftUI
 
 struct SignUpView: View {
     @Environment(\.managedObjectContext) private var context
-    @StateObject private var viewModel = AuthViewModel(context: PersistenceController.shared.container.viewContext)
+    @StateObject private var viewModel: AuthViewModel
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
 
     @State private var username = ""
     @State private var password = ""
+
+    init() {
+        _viewModel = StateObject(wrappedValue: AuthViewModel(context: PersistenceController.shared.container.viewContext))
+    }
 
     var body: some View {
         NavigationStack {
@@ -54,9 +58,12 @@ struct SignUpView: View {
 
                 Button(action: {
                     Task {
+                        print("Sign up button tapped with username: \(username)")
                         await viewModel.signUp(username: username, password: password)
+                        print("Sign up completed. User: \(String(describing: viewModel.user)), Error: \(String(describing: viewModel.error))")
                         if viewModel.user != nil {
                             isLoggedIn = true
+                            print("User signed up successfully")
                         }
                     }
                 }) {

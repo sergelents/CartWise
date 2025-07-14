@@ -14,6 +14,7 @@ struct CartWiseApp: App {
     var body: some Scene {
         WindowGroup {
             AppCoordinatorView(coordinator: appCoordinator)
+                .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
         }
     }
 }

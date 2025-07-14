@@ -13,12 +13,12 @@ extension UserEntity {
         return NSFetchRequest<UserEntity>(entityName: "UserEntity")
     }
 
-    @NSManaged public var id: String
-    @NSManaged public var username: String
-    @NSManaged public var password: String
+    @NSManaged public var id: String?
+    @NSManaged public var username: String?
+    @NSManaged public var password: String?
     @NSManaged public var updates: Int32
-    @NSManaged public var level: String
-    @NSManaged public var createdAt: Date
+    @NSManaged public var level: String?
+    @NSManaged public var createdAt: Date?
 }
 
 extension UserEntity : Identifiable {
