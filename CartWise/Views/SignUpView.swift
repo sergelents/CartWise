@@ -85,6 +85,8 @@ struct SignUpView: View {
                 .disabled(viewModel.isLoading || username.isEmpty || password.isEmpty)
 
                 NavigationLink("Already have an account? Log In", destination: LoginView())
+                    .foregroundColor(.black)
+                    .font(.system(size: 16, weight: .medium))
                     .padding(.top, 10)
                 
                 Spacer()
