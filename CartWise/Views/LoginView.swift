@@ -74,24 +74,24 @@ struct LoginView: View {
                 }) {
                     if viewModel.isLoading {
                         ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .progressViewStyle(CircularProgressViewStyle(tint: AppColors.textSecondary))
                             .scaleEffect(0.8)
                     } else {
                         Text("Log In")
                             .fontWeight(.semibold)
+                            .foregroundColor(AppColors.textSecondary)
                     }
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
-                .background(Color.blue)
-                .foregroundColor(.white)
+                .background(AppColors.accentGreen)
                 .cornerRadius(10)
                 .padding(.horizontal)
                 .disabled(viewModel.isLoading || username.isEmpty || password.isEmpty)
 
                 // Sign Up Link
                 NavigationLink("Don't have an account? Sign Up", destination: SignUpView())
-                    .foregroundColor(.black)
+                    .foregroundColor(AppColors.textPrimary)
                     .font(.system(size: 16, weight: .medium))
                     .padding(.top, 10)
                 
