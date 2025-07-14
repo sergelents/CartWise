@@ -91,6 +91,8 @@ struct LoginView: View {
 
                 // Sign Up Link
                 NavigationLink("Don't have an account? Sign Up", destination: SignUpView())
+                    .foregroundColor(.black)
+                    .font(.system(size: 16, weight: .medium))
                     .padding(.top, 10)
                 
                 Spacer()
