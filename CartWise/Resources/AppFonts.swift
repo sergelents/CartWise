@@ -17,13 +17,16 @@ enum CustomFont: String {
     case regular = "Poppins-Regular"
     case semiBold = "Poppins-SemiBold"
     case bold = "Poppins-Bold"
+    case black = "Poppins-Black"
 
     init(weight: Font.Weight) {
         switch weight {
-        case .semibold:
-            self = .semiBold
+        case .black, .heavy:
+            self = .black
         case .bold:
             self = .bold
+        case .semibold:
+            self = .semiBold
         case .regular:
             self = .regular
         default:

@@ -8,6 +8,18 @@
 import CoreData
 import Foundation
 
+// Product categories enum
+enum ProductCategory: String, CaseIterable {
+    case meat = "Meat & Seafood"
+    case dairy = "Dairy & Eggs"
+    case bakery = "Bakery"
+    case produce = "Produce"
+    case pantry = "Pantry Items"
+    case beverages = "Beverages"
+    case frozen = "Frozen Foods"
+    case household = "Household & Personal Care"
+}
+
 struct OpenFoodFactsResponse: Codable, Sendable {
     let status: Int
     let product: OpenFoodFactsProduct?
