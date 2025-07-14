@@ -3,7 +3,7 @@
 //  CartWise
 //
 //  Created by Serg Tsogtbaatar on 7/5/25.
-//  Edited by Brenna Wilonek on 7/10/25.
+//  Edited by Brenna Wilson on 7/10/25 - 7/13/25
 //  Enhanced with AI assistance from Cursor AI for UI improvements and functionality. 
 //  This saved me 6-9 hours of work learning swift UI syntax.
 //
@@ -35,22 +35,26 @@ struct YourListView: View {
     @State private var showingRatingPrompt: Bool = false
     
     var body: some View {
-        MainContentView(
-            items: $items,
-            isEditing: $isEditing,
-            allItemsChecked: $allItemsChecked,
-            selectedItemsForDeletion: $selectedItemsForDeletion,
-            suggestedStore: suggestedStore,
-            storeAddress: storeAddress,
-            total: total,
-            selectedTabIndex: $selectedTabIndex,
-            showingRatingPrompt: $showingRatingPrompt
-        )
-        .sheet(isPresented: $showingRatingPrompt) {
-            RatingPromptView()
+        NavigationStack {
+            MainContentView(
+                items: $items,
+                isEditing: $isEditing,
+                allItemsChecked: $allItemsChecked,
+                selectedItemsForDeletion: $selectedItemsForDeletion,
+                suggestedStore: suggestedStore,
+                storeAddress: storeAddress,
+                total: total,
+                selectedTabIndex: $selectedTabIndex,
+                showingRatingPrompt: $showingRatingPrompt
+            )
+            .sheet(isPresented: $showingRatingPrompt) {
+                RatingPromptView()
+            }
         }
     }
+
 }
+
 
 //  Main Content View, edited by AI
 struct MainContentView: View {
@@ -107,11 +111,11 @@ struct MainContentView: View {
             .padding(.top)
             
             // Bottom Tab Bar
-            VStack {
-                Spacer()
-                MenuBar(selectedTabIndex: $selectedTabIndex)
-            }
-            .ignoresSafeArea(.container, edges: .bottom)
+            // VStack {
+            //     Spacer()
+            //     MenuBar(selectedTabIndex: $selectedTabIndex)
+            // }
+            // .ignoresSafeArea(.container, edges: .bottom)
         }
     }
 }
@@ -342,54 +346,54 @@ struct StoreCard: View {
     }
 }
 
-// Menu Bar, edited by AI
-struct MenuBar: View {
-    @Binding var selectedTabIndex: Int
+// // Menu Bar, edited by AI
+// struct MenuBar: View {
+//     @Binding var selectedTabIndex: Int
     
-    var body: some View {
-        HStack(spacing: 0) {
-            TabButton(
-                icon: "list.bullet",
-                title: "List",
-                isSelected: selectedTabIndex == 0
-            ) {
-                selectedTabIndex = 0
-            }
+//     var body: some View {
+//         HStack(spacing: 0) {
+//             TabButton(
+//                 icon: "list.bullet",
+//                 title: "List",
+//                 isSelected: selectedTabIndex == 0
+//             ) {
+//                 selectedTabIndex = 0
+//             }
             
-            TabButton(
-                icon: "magnifyingglass",
-                title: "Search",
-                isSelected: selectedTabIndex == 1
-            ) {
-                selectedTabIndex = 1
-            }
+//             TabButton(
+//                 icon: "magnifyingglass",
+//                 title: "Search",
+//                 isSelected: selectedTabIndex == 1
+//             ) {
+//                 selectedTabIndex = 1
+//             }
             
-            TabButton(
-                icon: "barcode.viewfinder",
-                title: "Scan",
-                isSelected: selectedTabIndex == 2
-            ) {
-                selectedTabIndex = 2
-            }
+//             TabButton(
+//                 icon: "barcode.viewfinder",
+//                 title: "Scan",
+//                 isSelected: selectedTabIndex == 2
+//             ) {
+//                 selectedTabIndex = 2
+//             }
             
-            TabButton(
-                icon: "person.circle",
-                title: "Profile",
-                isSelected: selectedTabIndex == 3
-            ) {
-                selectedTabIndex = 3
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 28)
-                .fill(.ultraThinMaterial)
-                .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: -4)
-        )
-        .padding(.horizontal, 12)
-    }
-}
+//             TabButton(
+//                 icon: "person.circle",
+//                 title: "Profile",
+//                 isSelected: selectedTabIndex == 3
+//             ) {
+//                 selectedTabIndex = 3
+//             }
+//         }
+//         .padding(.horizontal, 16)
+//         .padding(.vertical, 8)
+//         .background(
+//             RoundedRectangle(cornerRadius: 28)
+//                 .fill(.ultraThinMaterial)
+//                 .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: -4)
+//         )
+//         .padding(.horizontal, 12)
+//     }
+// }
 
 // Tab Button
 struct TabButton: View {
@@ -708,4 +712,3 @@ struct StarRatingView: View {
         }
     }
 }
-
