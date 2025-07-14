@@ -7,12 +7,16 @@
 
 import SwiftUI
 
-
 class AppCoordinator: ObservableObject {
     @Published var selectedTab: TabItem = .yourList
+    @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     
     func selectTab(_ tab: TabItem) {
         selectedTab = tab
+    }
+    
+    func logout() {
+        isLoggedIn = false
     }
 }
 
@@ -41,44 +45,49 @@ enum TabItem: String, CaseIterable {
     }
 }
 
-
-
 struct AppCoordinatorView: View {
     @ObservedObject var coordinator: AppCoordinator
+    @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     
     var body: some View {
-        TabView(selection: $coordinator.selectedTab) {
-            YourListView()
-                .tabItem {
-                    Image(systemName: coordinator.selectedTab == .yourList ?
-                          TabItem.yourList.selectedIconName : TabItem.yourList.iconName)
-                    Text(TabItem.yourList.rawValue)
+        Group {
+            if isLoggedIn {
+                TabView(selection: $coordinator.selectedTab) {
+                    YourListView()
+                        .tabItem {
+                            Image(systemName: coordinator.selectedTab == .yourList ?
+                                  TabItem.yourList.selectedIconName : TabItem.yourList.iconName)
+                            Text(TabItem.yourList.rawValue)
+                        }
+                        .tag(TabItem.yourList)
+                    
+                    SearchItemsView()
+                        .tabItem {
+                            Image(systemName: coordinator.selectedTab == .searchItems ?
+                                  TabItem.searchItems.selectedIconName : TabItem.searchItems.iconName)
+                            Text(TabItem.searchItems.rawValue)
+                        }
+                        .tag(TabItem.searchItems)
+                    
+                    AddItemsView()
+                        .tabItem {
+                            Image(systemName: coordinator.selectedTab == .addItems ?
+                                  TabItem.addItems.selectedIconName : TabItem.addItems.iconName)
+                            Text(TabItem.addItems.rawValue)
+                        }
+                        .tag(TabItem.addItems)
+                    
+                    MyProfileView()
+                        .tabItem {
+                            Image(systemName: coordinator.selectedTab == .myProfile ?
+                                  TabItem.myProfile.selectedIconName : TabItem.myProfile.iconName)
+                            Text(TabItem.myProfile.rawValue)
+                        }
+                        .tag(TabItem.myProfile)
                 }
-                .tag(TabItem.yourList)
-            
-            SearchItemsView()
-                .tabItem {
-                    Image(systemName: coordinator.selectedTab == .searchItems ?
-                          TabItem.searchItems.selectedIconName : TabItem.searchItems.iconName)
-                    Text(TabItem.searchItems.rawValue)
-                }
-                .tag(TabItem.searchItems)
-            
-            AddItemsView()
-                .tabItem {
-                    Image(systemName: coordinator.selectedTab == .addItems ?
-                          TabItem.addItems.selectedIconName : TabItem.addItems.iconName)
-                    Text(TabItem.addItems.rawValue)
-                }
-                .tag(TabItem.addItems)
-            
-            MyProfileView()
-                .tabItem {
-                    Image(systemName: coordinator.selectedTab == .myProfile ?
-                          TabItem.myProfile.selectedIconName : TabItem.myProfile.iconName)
-                    Text(TabItem.myProfile.rawValue)
-                }
-                .tag(TabItem.myProfile)
+            } else {
+                LoginView()
+            }
         }
     }
 }
