@@ -13,6 +13,7 @@
 		D572E2252E199B490061F187 /* CartWiseUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2222E199B490061F187 /* CartWiseUITests.swift */; };
 		D572E2262E199B490061F187 /* CartWiseUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2232E199B490061F187 /* CartWiseUITestsLaunchTests.swift */; };
 		D572E25F2E1C53BA0061F187 /* Repository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E25E2E1C53B60061F187 /* Repository.swift */; };
+		57E0AAEE2E21DFB200A52D48 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E0AAED2E21DFB200A52D48 /* APIService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,6 +44,7 @@
 		D572E2222E199B490061F187 /* CartWiseUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseUITests.swift; sourceTree = "<group>"; };
 		D572E2232E199B490061F187 /* CartWiseUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartWiseUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		D572E25E2E1C53B60061F187 /* Repository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repository.swift; sourceTree = "<group>"; };
+		57E0AAED2E21DFB200A52D48 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */

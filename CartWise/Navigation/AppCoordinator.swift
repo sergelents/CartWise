@@ -68,6 +68,7 @@ struct AppCoordinatorView: View {
                             Text(TabItem.searchItems.rawValue)
                         }
                         .tag(TabItem.searchItems)
+                        .tint(Color.accentColorBlue)
                     
                     AddItemsView()
                         .tabItem {
@@ -84,7 +85,7 @@ struct AppCoordinatorView: View {
                             Text(TabItem.myProfile.rawValue)
                         }
                         .tag(TabItem.myProfile)
-                }
+                }.tint(Color.accentColorBlue)
             } else {
                 LoginView()
             }
