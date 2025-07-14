@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7F4FACBD2E25B4E300633226 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 6086E4E42E22E7B500E6A19C /* FirebaseAuth */; };
+		7F4FACBE2E25B4E300633226 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 6086E4E62E22E7B500E6A19C /* FirebaseFirestore */; };
+		7F4FAD142E25B53200633226 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F4FAD132E25B53200633226 /* APIService.swift */; };
 		D572E21B2E199B420061F187 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D572E2162E199B420061F187 /* Assets.xcassets */; };
 		D572E21C2E199B420061F187 /* CartWiseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E2172E199B420061F187 /* CartWiseApp.swift */; };
 		D572E2212E199B460061F187 /* CartWiseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D572E21F2E199B460061F187 /* CartWiseTests.swift */; };
@@ -34,6 +37,7 @@
 
 /* Begin PBXFileReference section */
 		57E0A8172E1F214300A52D48 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		7F4FAD132E25B53200633226 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		D572E1EA2E199B370061F187 /* CartWise.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CartWise.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D572E1F92E199B380061F187 /* CartWiseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CartWiseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D572E2032E199B380061F187 /* CartWiseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CartWiseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -83,8 +87,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6086E4E52E22E7B500E6A19C /* FirebaseAuth in Frameworks */,
-				6086E4E72E22E7B500E6A19C /* FirebaseFirestore in Frameworks */,
+				7F4FACBE2E25B4E300633226 /* FirebaseFirestore in Frameworks */,
+				7F4FACBD2E25B4E300633226 /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -128,7 +132,6 @@
 		D572E21A2E199B420061F187 /* CartWise */ = {
 			isa = PBXGroup;
 			children = (
-				6086E4E12E22E61300E6A19C /* GoogleService-Info.plist */,
 				6086E4DD2E22D8F900E6A19C /* Utilities */,
 				57E0A8172E1F214300A52D48 /* Info.plist */,
 				57E0A7EB2E1F1BA300A52D48 /* Resources */,
@@ -163,7 +166,7 @@
 		D572E25D2E1C53AC0061F187 /* Repository */ = {
 			isa = PBXGroup;
 			children = (
-				57E0AAED2E21DFB200A52D48 /* APIService.swift */,
+				7F4FAD132E25B53200633226 /* APIService.swift */,
 				D572E25E2E1C53B60061F187 /* Repository.swift */,
 			);
 			path = Repository;
@@ -294,7 +297,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				D572E21B2E199B420061F187 /* Assets.xcassets in Resources */,
-				6086E4E22E22E61300E6A19C /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -319,7 +321,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				57E0AAEE2E21DFB200A52D48 /* APIService.swift in Sources */,
+				7F4FAD142E25B53200633226 /* APIService.swift in Sources */,
 				D572E21C2E199B420061F187 /* CartWiseApp.swift in Sources */,
 				D572E25F2E1C53BA0061F187 /* Repository.swift in Sources */,
 			);
