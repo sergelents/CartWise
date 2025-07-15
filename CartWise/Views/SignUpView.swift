@@ -22,11 +22,17 @@ struct SignUpView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
+                // Shopping Cart Icon
+                Image(systemName: "cart.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(AppColors.accentGreen)
+                    .padding(.top, 50)
+                
                 Text("CartWise")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .foregroundColor(AppColors.textPrimary)
-                    .padding(.top, 50)
+                    .padding(.top, 10)
                 
                 Spacer()
                 
