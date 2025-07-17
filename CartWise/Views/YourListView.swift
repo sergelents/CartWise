@@ -59,9 +59,9 @@ struct YourListView: View {
     private func addProductToSystem(name: String, brand: String?, category: String?) {
         Task {
             if let brand = brand, !brand.isEmpty {
-                await productViewModel.createProductWithDetails(name: name, brand: brand, category: category)
+                await productViewModel.createProduct(byName: name, brand: brand, category: category)
             } else {
-                await productViewModel.createProductByName(name)
+                await productViewModel.createProduct(byName: name, brand: nil, category: category)
             }
         }
     }
@@ -360,7 +360,7 @@ struct SmartAddProductModal: View {
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
     @State private var productBrand = ""
-    @State private var selectedCategory: ProductCategory = .pantry
+    @State private var selectedCategory: ProductCategory = .none
     @State private var showCategoryPicker = false
     @State private var isCreatingNew = false
     @State private var showCursor = false
@@ -739,7 +739,8 @@ struct CreateNewProductSection: View {
             // Add Button
             Button("Add to List") {
                 let brand = productBrand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : productBrand.trimmingCharacters(in: .whitespacesAndNewlines)
-                onAdd(productName, brand, selectedCategory.rawValue)
+                let category = selectedCategory == .none ? nil : selectedCategory.rawValue
+                onAdd(productName, brand, category)
             }
             .font(.poppins(size: 16, weight: .semibold))
             .foregroundColor(.white)
@@ -766,9 +767,9 @@ struct CategoryPickerView: View {
                     HStack {
                         Text(category.rawValue)
                             .font(.poppins(size: 16, weight: .regular))
-                            .foregroundColor(.primary)
+                            .foregroundColor(category == .none ? .gray : .primary)
                         Spacer()
-                        if selectedCategory == category {
+                        if selectedCategory == category && category != .none {
                             Image(systemName: "checkmark")
                                 .foregroundColor(AppColors.accentGreen)
                         }

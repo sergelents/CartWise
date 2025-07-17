@@ -95,17 +95,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func createProductByName(_ name: String) async {
-        do {
-            // Generate a random barcode for now, or use a UUID string
-            let barcode = UUID().uuidString
-            _ = try await repository.createProduct(barcode: barcode, name: name, brands: nil, imageURL: nil, nutritionGrade: nil, categories: nil, ingredients: nil)
-            await loadAllProducts()
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
+
   
     func searchProducts(by name: String) async {
         do {
@@ -116,17 +106,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func createProduct(byName name: String) async {
-        do {
-            let newProduct = try await repository.createProduct(name: name)
-            products.append(newProduct)
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-    
-    func createProductWithDetails(name: String, brand: String?, category: String?) async {
+    func createProduct(byName name: String, brand: String? = nil, category: String? = nil) async {
         do {
             let barcode = UUID().uuidString
             _ = try await repository.createProduct(
@@ -145,46 +125,35 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    // Future barcode scanning functionality
-    func addProductByBarcode(_ barcode: String) async {
-        do {
-            // First try to fetch from network (Open Food Facts API)
-            if try await repository.fetchProductFromNetwork(by: barcode) != nil {
-                // Product found and saved to local cache
-                await loadAllProducts()
-                errorMessage = nil
-            } else {
-                // Product not found in network, create a placeholder
-                _ = try await repository.createProduct(
-                    barcode: barcode,
-                    name: "Product (Barcode: \(barcode))",
-                    brands: nil,
-                    imageURL: nil,
-                    nutritionGrade: nil,
-                    categories: nil,
-                    ingredients: nil
-                )
-                await loadAllProducts()
-                errorMessage = "Product not found in database. Added as placeholder."
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
+
     
-    // Clear all products (for debugging)
-    func clearAllProducts() async {
-        do {
-            // Delete all products from Core Data
-            for product in products {
-                try await repository.deleteProduct(product)
-            }
-            await loadAllProducts()
-            errorMessage = "All products cleared successfully."
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
+    // // Future barcode scanning functionality
+    // func addProductByBarcode(_ barcode: String) async {
+    //     do {
+    //         // First try to fetch from network (Open Food Facts API)
+    //         if try await repository.fetchProductFromNetwork(by: barcode) != nil {
+    //             // Product found and saved to local cache
+    //             await loadAllProducts()
+    //             errorMessage = nil
+    //         } else {
+    //             // Product not found in network, create a placeholder
+    //             _ = try await repository.createProduct(
+    //                 barcode: barcode,
+    //                 name: "Product (Barcode: \(barcode))",
+    //                 brands: nil,
+    //                 imageURL: nil,
+    //                 nutritionGrade: nil,
+    //                 categories: nil,
+    //                 ingredients: nil
+    //             )
+    //             await loadAllProducts()
+    //             errorMessage = "Product not found in database. Added as placeholder."
+    //         }
+    //     } catch {
+    //         errorMessage = error.localizedDescription
+    //     }
+    // }
+    
 }
 
 // This code was generated with the help of Claude, saving me 1 hour of research and development.
