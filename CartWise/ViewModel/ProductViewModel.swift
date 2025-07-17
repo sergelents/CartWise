@@ -137,6 +137,11 @@ final class ProductViewModel: ObservableObject {
     
     func createProduct(byName name: String, brand: String? = nil, category: String? = nil) async {
         do {
+            if await isDuplicateProduct(name: name) {
+                errorMessage = "Product '\(name)' already exists in your list"
+                return
+            }
+            
             let barcode = UUID().uuidString
             _ = try await repository.createProduct(
                 barcode: barcode,
@@ -154,34 +159,17 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
+    private func isDuplicateProduct(name: String) async -> Bool {
+        do {
+            let existingProducts = try await repository.searchProducts(by: name)
+            return existingProducts.contains { product in
+                product.name?.lowercased() == name.lowercased()
+            }
+        } catch {
+            return false // If search fails, allow creation
+        }
+    }
 
-    
-    // // Future barcode scanning functionality
-    // func addProductByBarcode(_ barcode: String) async {
-    //     do {
-    //         // First try to fetch from network (Open Food Facts API)
-    //         if try await repository.fetchProductFromNetwork(by: barcode) != nil {
-    //             // Product found and saved to local cache
-    //             await loadAllProducts()
-    //             errorMessage = nil
-    //         } else {
-    //             // Product not found in network, create a placeholder
-    //             _ = try await repository.createProduct(
-    //                 barcode: barcode,
-    //                 name: "Product (Barcode: \(barcode))",
-    //                 brands: nil,
-    //                 imageURL: nil,
-    //                 nutritionGrade: nil,
-    //                 categories: nil,
-    //                 ingredients: nil
-    //             )
-    //             await loadAllProducts()
-    //             errorMessage = "Product not found in database. Added as placeholder."
-    //         }
-    //     } catch {
-    //         errorMessage = error.localizedDescription
-    //     }
-    // }
     
 }
 
