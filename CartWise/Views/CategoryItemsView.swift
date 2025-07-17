@@ -107,53 +107,144 @@ struct CategoryItemsView: View {
 // Product Card View
 struct ProductCard: View {
     let product: ProductItem
+    @State private var showingDetail = false
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Product image placeholder
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.systemGray5))
-                .frame(width: 60, height: 60)
-                .overlay(
-                    Image(systemName: "photo")
-                        .foregroundColor(.gray)
-                )
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(product.name)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.primary)
+        Button(action: {
+            showingDetail = true
+        }) {
+            HStack(spacing: 12) {
+                // Product image placeholder
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(.systemGray5))
+                    .frame(width: 60, height: 60)
+                    .overlay(
+                        Image(systemName: "photo")
+                            .foregroundColor(.gray)
+                    )
                 
-                if let brand = product.brand, !brand.isEmpty {
-                    Text(brand)
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(product.name)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                    
+                    if let brand = product.brand {
+                        Text(brand)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
 
-                // TODO: if it's on sale?
-                
-                // Do we need to add nutrition grade?
-                if let nutritionGrade = product.nutritionGrade, !nutritionGrade.isEmpty {
-                    Text("Grade: \(nutritionGrade.uppercased())")
-                        .font(.system(size: 12))
+                    if let nutritionGrade = product.nutritionGrade, !nutritionGrade.isEmpty {
+                        Text("Grade: \(nutritionGrade.uppercased())")
+                            .font(.system(size: 12))
+                            .foregroundColor(.blue)
+                    }
+                }
+                Spacer()
+                // Add to list button
+                Button(action: {
+                    // TODO: Add to shopping list functionality
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 24))
                         .foregroundColor(.blue)
                 }
             }
-            
-            Spacer()
-            
-            // Add to list button
-            Button(action: {
-                // TODO: Add to shopping list functionality
-            }) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 24))
-                    .foregroundColor(.blue)
+            .padding()
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .sheet(isPresented: $showingDetail) {
+            ProductDetailView(product: product)
+        }
+    }
+}
+
+// Product Detail View
+struct ProductDetailView: View {
+    let product: ProductItem
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Product Image
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemGray5))
+                        .frame(height: 200)
+                        .overlay(
+                            Image(systemName: "photo")
+                                .font(.system(size: 40))
+                                .foregroundColor(.gray)
+                        )
+                    
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Product Name
+                        Text(product.name)
+                            .font(.system(size:24, weight: .bold))
+                            .foregroundColor(.primary)
+                        
+                        // Brand
+                        if let brand = product.brand {
+                            HStack {
+                                Text("Brand:")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                Text(brand)
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                        
+                        // Nutrition Grade
+                        if let nutritionGrade = product.nutritionGrade, !nutritionGrade.isEmpty {
+                            HStack {
+                                Text("Nutrition Grade:")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.secondary)
+                                Text(nutritionGrade.uppercased())
+                                    .font(.system(size:16, weight: .bold))
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        
+                        // Category
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Category:")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.secondary)
+                            Text(product.category.rawValue)
+                                .font(.system(size: 14))
+                                .foregroundColor(.primary)
+                                .lineLimit(nil)
+                        }
+                        
+                        // Sample additional info
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Product Details:")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.secondary)
+                            Text("This is a sample product from the \(product.category.rawValue) category. Tap the plus button to add it to your shopping list.")
+                                .font(.system(size: 14))
+                                .foregroundColor(.primary)
+                                .lineLimit(nil)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+            .navigationTitle("Product Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
             }
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
 }
