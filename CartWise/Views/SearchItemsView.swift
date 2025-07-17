@@ -17,12 +17,11 @@ struct SearchItemsView: View {
     // Returns categories matching search text, or all if search is empty
     // TODO: Add search functionality to find products by name instead
     var filteredCategories: [ProductCategory] {
-        let allCategories = ProductCategory.allCases.filter { $0 != .none }
         if searchText.isEmpty {
-            return allCategories
+            ProductCategory.allCases
         } else {
             // Case-insensitive search
-            return allCategories.filter { $0.rawValue.localizedCaseInsensitiveContains(searchText) }
+            ProductCategory.allCases.filter { $0.rawValue.localizedCaseInsensitiveContains(searchText) }
         }
     }
 
@@ -87,7 +86,6 @@ struct CategoryCard: View {
     // Icon name for each category - need to change to better icons..
     private var iconName: String {
         switch category {
-        case .none: return "questionmark.circle"
         case .meat: return "fish"
         case .dairy: return "oval.portrait.fill"
         case .bakery: return "birthday.cake"
