@@ -2,3 +2,4 @@ GoogleService-Info.plist
 
 # Build scripts
 rebuild_cartwise.sh
+*.xcuserstate
