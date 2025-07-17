@@ -149,7 +149,7 @@ final class ProductViewModel: ObservableObject {
     func addProductByBarcode(_ barcode: String) async {
         do {
             // First try to fetch from network (Open Food Facts API)
-            if let networkProduct = try await repository.fetchProductFromNetwork(by: barcode) {
+            if try await repository.fetchProductFromNetwork(by: barcode) != nil {
                 // Product found and saved to local cache
                 await loadAllProducts()
                 errorMessage = nil

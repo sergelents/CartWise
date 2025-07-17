@@ -363,6 +363,9 @@ struct SmartAddProductModal: View {
     @State private var selectedCategory: ProductCategory = .pantry
     @State private var showCategoryPicker = false
     @State private var isCreatingNew = false
+    @State private var showCursor = false
+    @State private var isCancelPressed = false
+    @FocusState private var isSearchFocused: Bool
     @ObservedObject var productViewModel: ProductViewModel
     let onAdd: (String, String?, String?) -> Void
     
@@ -379,11 +382,38 @@ struct SmartAddProductModal: View {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.gray)
-                        TextField("Search products...", text: $searchText)
-                            .font(.poppins(size: 16, weight: .regular))
-                            .onChange(of: searchText) { _ in
-                                isCreatingNew = false
+                        
+                        ZStack(alignment: .leading) {
+                            TextField("", text: $searchText)
+                                .font(.poppins(size: 16, weight: .regular))
+                                .focused($isSearchFocused)
+                                .onChange(of: searchText) {
+                                    isCreatingNew = false
+                                }
+                                .onChange(of: isSearchFocused) { _, focused in
+                                    if focused && searchText.isEmpty {
+                                        showCursor = true
+                                    } else {
+                                        showCursor = false
+                                    }
+                                }
+                            
+                            // Placeholder text when not focused
+                            if searchText.isEmpty && !isSearchFocused {
+                                Text("Search products...")
+                                    .font(.poppins(size: 16, weight: .regular))
+                                    .foregroundColor(.gray)
+                                    .allowsHitTesting(false)
                             }
+                            
+                            // Solid cursor when focused
+                            if searchText.isEmpty && isSearchFocused {
+                                Rectangle()
+                                    .fill(AppColors.accentGreen)
+                                    .frame(width: 2, height: 20)
+                                    .allowsHitTesting(false)
+                            }
+                        }
                     }
                     .padding()
                     .background(Color(.systemGray6))
@@ -431,9 +461,19 @@ struct SmartAddProductModal: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Text("Cancel")
+                        .font(.poppins(size: 16, weight: .regular))
+                        .foregroundColor(isCancelPressed ? .gray.opacity(0.5) : .gray)
+                        .underline()
+                        .padding(.leading, 8)
+                        .padding(.top, 4)
+                        .onTapGesture {
+                            isCancelPressed = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                isCancelPressed = false
+                                dismiss()
+                            }
+                        }
                 }
             }
             .sheet(isPresented: $showCategoryPicker) {
@@ -557,7 +597,7 @@ struct SearchResultsSection: View {
                 }
             }
         }
-        .onChange(of: searchText) { newValue in
+        .onChange(of: searchText) { _, newValue in
             if !newValue.isEmpty {
                 performSearch()
             } else {
@@ -765,9 +805,9 @@ struct ShoppingListItemRow: View {
                             .foregroundColor(.red)
                             .font(.system(size: 20))
                     } else {
-                        Circle()
-                            .strokeBorder(.red, lineWidth: 1)
-                            .frame(width: 20, height: 20)
+                        Image(systemName: "circle")
+                            .foregroundColor(.red)
+                            .font(.system(size: 20))
                     }
                 } else {
                     // Show completion status
@@ -1034,6 +1074,8 @@ struct RecentProductRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
+
+
 
 #Preview {
     YourListView()
