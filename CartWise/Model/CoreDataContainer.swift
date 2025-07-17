@@ -10,6 +10,7 @@ import CoreData
 
 protocol CoreDataContainerProtocol: Sendable {
     func fetchAllProducts() async throws -> [Product]
+    func fetchRecentProducts(limit: Int) async throws -> [Product]
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product
     func createProduct(name: String) async throws -> Product
     func updateProduct(_ product: Product) async throws
@@ -33,6 +34,18 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             let request: NSFetchRequest<Product> = Product.fetchRequest()
             request.predicate = NSPredicate(format: "isInShoppingList == YES")
             request.sortDescriptors = [NSSortDescriptor(keyPath: \Product.createdAt, ascending: false)]
+            return try context.fetch(request)
+        }
+    }
+    
+    func fetchRecentProducts(limit: Int) async throws -> [Product] {
+        // Use viewContext through the actor
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            let request: NSFetchRequest<Product> = Product.fetchRequest()
+            // Get all products (not just shopping list) sorted by creation date
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \Product.createdAt, ascending: false)]
+            request.fetchLimit = limit
             return try context.fetch(request)
         }
     }

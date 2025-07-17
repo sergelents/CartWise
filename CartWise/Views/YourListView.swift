@@ -225,13 +225,7 @@ struct ShoppingListCard: View {
                     }
                         .font(.poppins(size: 15, weight: .regular))
                         .foregroundColor(.gray.opacity(0.7))
-                    VStack(spacing: 12) {
-                        Button("Add New Product") {
-                            showingAddProductModal = true
-                        }
-                        .font(.poppins(size: 15, weight: .semibold))
-                        .foregroundColor(AppColors.accentGreen)
-                    }
+
                 }
                 .frame(maxWidth: .infinity, minHeight: 120)
                 .padding(.vertical, 24)
@@ -256,6 +250,10 @@ struct ShoppingListCard: View {
                                         // Toggle completion status
                                         Task {
                                             await productViewModel.toggleProductCompletion(product)
+                                            // Check if all products are completed after toggling
+                                            if productViewModel.allProductsCompleted {
+                                                showingRatingPrompt = true
+                                            }
                                         }
                                     }
                                 },
@@ -291,6 +289,8 @@ struct ShoppingListCard: View {
                 Button(action: {
                     Task {
                         await productViewModel.toggleAllProductsCompletion()
+                        // Show rating prompt after completing all items
+                        showingRatingPrompt = true
                     }
                 }) {
                     Image(systemName: "checkmark.circle")
@@ -395,7 +395,7 @@ struct SmartAddProductModal: View {
                 // Results Section
                 if searchText.isEmpty {
                     // Show recent products when search is empty
-                    RecentProductsSection(onAdd: onAdd)
+                    RecentProductsSection(productViewModel: productViewModel, onAdd: onAdd, dismiss: dismiss)
                 } else {
                     // Show search results
                     SearchResultsSection(
@@ -428,7 +428,6 @@ struct SmartAddProductModal: View {
                 
                 Spacer()
             }
-            .navigationTitle("Add Product")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -445,7 +444,9 @@ struct SmartAddProductModal: View {
 }
 
 struct RecentProductsSection: View {
+    @ObservedObject var productViewModel: ProductViewModel
     let onAdd: (String, String?, String?) -> Void
+    let dismiss: DismissAction
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -453,11 +454,30 @@ struct RecentProductsSection: View {
                 .font(.poppins(size: 18, weight: .semibold))
                 .padding(.horizontal)
             
-            // TODO: Implement recent products logic
-            Text("No recent products yet")
-                .font(.poppins(size: 14, weight: .regular))
-                .foregroundColor(.gray)
+            if productViewModel.recentProducts.isEmpty {
+                Text("No recent products yet")
+                    .font(.poppins(size: 14, weight: .regular))
+                    .foregroundColor(.gray)
+                    .padding(.horizontal)
+            } else {
+                LazyVStack(spacing: 8) {
+                    ForEach(productViewModel.recentProducts.prefix(5), id: \.objectID) { product in
+                        RecentProductRow(product: product) {
+                            Task {
+                                await productViewModel.addExistingProductToShoppingList(product)
+                                await productViewModel.loadAllProducts()
+                            }
+                            dismiss()
+                        }
+                    }
+                }
                 .padding(.horizontal)
+            }
+        }
+        .onAppear {
+            Task {
+                await productViewModel.loadRecentProducts(limit: 10)
+            }
         }
     }
 }
@@ -973,6 +993,45 @@ struct StarRatingView: View {
                     }
             }
         }
+    }
+}
+
+struct RecentProductRow: View {
+    let product: Product
+    let onAdd: () -> Void
+    
+    var body: some View {
+        Button(action: onAdd) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(product.name ?? "Unknown Product")
+                        .font(.poppins(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                    
+                    if let brands = product.brands, !brands.isEmpty {
+                        Text(brands)
+                            .font(.poppins(size: 14, weight: .regular))
+                            .foregroundColor(.gray)
+                    }
+                    
+                    if let categories = product.categories, !categories.isEmpty {
+                        Text(categories)
+                            .font(.poppins(size: 12, weight: .regular))
+                            .foregroundColor(.gray.opacity(0.7))
+                    }
+                }
+                
+                Spacer()
+                
+                Image(systemName: "plus.circle.fill")
+                    .foregroundColor(AppColors.accentGreen)
+                    .font(.system(size: 20))
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

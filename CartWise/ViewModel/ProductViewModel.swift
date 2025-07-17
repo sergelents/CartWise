@@ -10,9 +10,15 @@ import Combine
 @MainActor
 final class ProductViewModel: ObservableObject {
     @Published var products: [Product] = []
+    @Published var recentProducts: [Product] = []
     var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
+    
+    // Computed property to check if all products are completed
+    var allProductsCompleted: Bool {
+        !products.isEmpty && products.allSatisfy { $0.isCompleted }
+    }
     
     init(repository: ProductRepositoryProtocol) {
             self.repository = repository
@@ -26,6 +32,15 @@ final class ProductViewModel: ObservableObject {
                 errorMessage = error.localizedDescription
             }
         }
+    
+    func loadRecentProducts(limit: Int = 10) async {
+        do {
+            recentProducts = try await repository.fetchRecentProducts(limit: limit)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
     
     func updateProduct(_ product: Product) async {
         do {
