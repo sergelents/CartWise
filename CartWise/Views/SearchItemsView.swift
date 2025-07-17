@@ -68,7 +68,7 @@ struct CategoryCard: View {
                         startPoint: .leading,
                         endPoint: .trailing
                     )
-)
+                )
             
             // Category name
             Text(category.rawValue)
@@ -76,8 +76,9 @@ struct CategoryCard: View {
                 .foregroundColor(.primary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
+                .minimumScaleFactor(0.8)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 95, maxHeight: 95)
         .padding()
         .background(Color(.systemGray6))
         .cornerRadius(12)
