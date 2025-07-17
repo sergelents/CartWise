@@ -147,11 +147,11 @@ struct ShoppingListCard: View {
                 if isEditing {
                     HStack(spacing: 16) {
                         Button(action: {
-                            // Delete selected items
+                            // Remove selected items from shopping list
                             for barcode in selectedItemsForDeletion {
                                 if let product = productViewModel.products.first(where: { $0.barcode == barcode }) {
                                     Task {
-                                        await productViewModel.deleteProduct(product)
+                                        await productViewModel.removeProduct(product)
                                     }
                                 }
                             }
@@ -259,7 +259,7 @@ struct ShoppingListCard: View {
                                 },
                                 onDelete: {
                                     Task {
-                                        await productViewModel.deleteProduct(product)
+                                        await productViewModel.removeProduct(product)
                                     }
                                 }
                             )

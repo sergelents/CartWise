@@ -10,6 +10,7 @@ import CoreData
 
 protocol CoreDataContainerProtocol: Sendable {
     func fetchAllProducts() async throws -> [Product]
+    func fetchListProducts() async throws -> [Product]
     func fetchRecentProducts(limit: Int) async throws -> [Product]
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product
     func createProduct(name: String) async throws -> Product
@@ -18,6 +19,7 @@ protocol CoreDataContainerProtocol: Sendable {
     func toggleProductCompletion(_ product: Product) async throws
     func addProductToShoppingList(_ product: Product) async throws
     func searchProducts(by name: String) async throws -> [Product]
+    func removeProductFromShoppingList(_ product: Product) async throws
 }
 
 final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
@@ -28,6 +30,16 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     }
     
     func fetchAllProducts() async throws -> [Product] {
+        // Use viewContext through the actor
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            let request: NSFetchRequest<Product> = Product.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \Product.createdAt, ascending: false)]
+            return try context.fetch(request)
+        }
+    }
+    
+    func fetchListProducts() async throws -> [Product] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
         return try await context.perform {
@@ -52,7 +64,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product {
         try await coreDataStack.performBackgroundTask { context in
-            print("DEBUG: CoreDataContainer - Creating product with name: '\(name)', barcode: '\(barcode)'")
             let product = Product(
                 context: context,
                 barcode: barcode,
@@ -64,9 +75,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 ingredients: ingredients
             )
             
-            print("DEBUG: CoreDataContainer - Product created, name: '\(product.name ?? "nil")', barcode: '\(product.barcode ?? "nil")'")
             try context.save()
-            print("DEBUG: CoreDataContainer - Context saved successfully")
             return product
         }
     }
@@ -99,6 +108,15 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     }
     
     func deleteProduct(_ product: Product) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! Product
+            context.delete(productInContext)
+            try context.save()
+        }
+    }
+    
+    func removeProductFromShoppingList(_ product: Product) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             let productInContext = try context.existingObject(with: objectID) as! Product

@@ -10,11 +10,13 @@ import CoreData
 
 protocol ProductRepositoryProtocol: Sendable {
     func fetchAllProducts() async throws -> [Product]
+    func fetchListProducts() async throws -> [Product]
     func fetchRecentProducts(limit: Int) async throws -> [Product]
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product
     func createProduct(name: String) async throws -> Product
     func updateProduct(_ product: Product) async throws
     func deleteProduct(_ product: Product) async throws
+    func removeProductFromShoppingList(_ product: Product) async throws
     func toggleProductCompletion(_ product: Product) async throws
     func addProductToShoppingList(_ product: Product) async throws
     func searchProducts(by name: String) async throws -> [Product]
@@ -34,8 +36,13 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     // MARK: - Cache-First Operations
     
     func fetchAllProducts() async throws -> [Product] {
-        // Cache-first: return local data immediately
+        // Cache-first: return all local data immediately
         return try await coreDataContainer.fetchAllProducts()
+    }
+    
+    func fetchListProducts() async throws -> [Product] {
+        // Cache-first: return shopping list data immediately
+        return try await coreDataContainer.fetchListProducts()
     }
     
     func fetchRecentProducts(limit: Int) async throws -> [Product] {
@@ -67,8 +74,13 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     }
     
     func deleteProduct(_ product: Product) async throws {
-        // Delete from local cache
+        // Permanently delete from local cache
         try await coreDataContainer.deleteProduct(product)
+    }
+    
+    func removeProductFromShoppingList(_ product: Product) async throws {
+        // Soft delete: remove from shopping list only
+        try await coreDataContainer.removeProductFromShoppingList(product)
     }
     
     func toggleProductCompletion(_ product: Product) async throws {

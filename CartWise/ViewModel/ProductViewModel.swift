@@ -25,13 +25,22 @@ final class ProductViewModel: ObservableObject {
         }
     
     func loadAllProducts() async {
-            do {
-                products = try await repository.fetchAllProducts()
-                errorMessage = nil
-            } catch {
-                errorMessage = error.localizedDescription
-            }
+        do {
+            products = try await repository.fetchListProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
         }
+    }
+    
+    func loadProducts() async {
+        do {
+            products = try await repository.fetchAllProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
     
     func loadRecentProducts(limit: Int = 10) async {
         do {
@@ -53,14 +62,34 @@ final class ProductViewModel: ObservableObject {
     }
     
     func deleteProduct(_ product: Product) async {
-            do {
-                try await repository.deleteProduct(product)
-                products.removeAll { $0.barcode == product.barcode }
-                errorMessage = nil
-            } catch {
-                errorMessage = error.localizedDescription
-            }
+        do {
+            try await repository.deleteProduct(product)
+            products.removeAll { $0.barcode == product.barcode }
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
         }
+    }
+    
+    func removeProduct(_ product: Product) async {
+        do {
+            try await repository.removeProductFromShoppingList(product)
+            products.removeAll { $0.barcode == product.barcode }
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func permanentlyDeleteProduct(_ product: Product) async {
+        do {
+            try await repository.deleteProduct(product)
+            products.removeAll { $0.barcode == product.barcode }
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
     
     func toggleProductCompletion(_ product: Product) async {
         do {
