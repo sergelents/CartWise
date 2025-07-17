@@ -66,6 +66,7 @@ struct CategorySampleData {
 
 struct CategoryItemsView: View { 
     let category: ProductCategory
+    @State private var selectedItemsToAdd: Set<UUID> = []
     
     var body: some View {
         VStack {
@@ -88,7 +89,17 @@ struct CategoryItemsView: View {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         ForEach(categoryProducts) { product in
-                            ProductCard(product: product)
+                            ProductCard(
+                                product: product,
+                                isSelected: selectedItemsToAdd.contains(product.id),
+                                onToggle: {
+                                    if selectedItemsToAdd.contains(product.id) {
+                                        selectedItemsToAdd.remove(product.id)
+                                    } else {
+                                        selectedItemsToAdd.insert(product.id)
+                                    }
+                                }
+                            )
                         }
                     }
                     .padding()
@@ -107,6 +118,10 @@ struct CategoryItemsView: View {
 // Product Card View
 struct ProductCard: View {
     let product: ProductItem
+    let isSelected: Bool
+    let onToggle: () -> Void
+
+    // Display product details when tapped
     @State private var showingDetail = false
     
     var body: some View {
@@ -142,13 +157,18 @@ struct ProductCard: View {
                 }
                 Spacer()
                 // Add to list button
-                Button(action: {
+                Button(action: onToggle) {
                     // TODO: Add to shopping list functionality
-                }) {
-                    Image(systemName: "plus.circle.fill")
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(Color.accentColorGreen)
                         .font(.system(size: 24))
-                        .foregroundColor(.blue)
-                }
+                    } else {
+                        Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(Color.accentColorBlue)
+                    }
+                } 
             }
             .padding()
             .background(Color(.systemBackground))
