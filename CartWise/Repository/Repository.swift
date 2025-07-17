@@ -83,7 +83,41 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     
     func searchProducts(by name: String) async throws -> [Product] {
         // Local-only search for now
-        return try await coreDataContainer.searchProducts(by: name)
+        // Cache-first: search local data first
+        let localResults = try await coreDataContainer.searchProducts(by: name)
+
+        // If we have local results, return them immediately
+        if !localResults.isEmpty {
+            return localResults
+        }
+
+        // Return empty array if no local results found
+        return []
+
+        // using different api later, relying on local cache for now
+        // // Network-second: if no local results, try network
+        // do {
+        //     let networkProducts = try await networkService.searchProducts(by: name)
+
+        //     // Save network results to local cache
+        //     for networkProduct in networkProducts.prefix(10) { // Limit to first 10
+        //         _ = try await createProduct(
+        //             barcode: networkProduct.code,
+        //             name: networkProduct.productName ?? "Unknown Product",
+        //             brands: networkProduct.brands,
+        //             imageURL: networkProduct.imageURL,
+        //             nutritionGrade: networkProduct.nutritionGrades,
+        //             categories: networkProduct.categories,
+        //             ingredients: networkProduct.ingredients?.map { $0.text }.joined(separator: ", ")
+        //         )
+        //     }
+
+        //     // Return the newly cached results
+        //     return try await coreDataContainer.searchProducts(by: name)
+        // } catch {
+        //     // If network fails, return empty array (cache-first approach)
+        //     return []
+        // }
     }
     
     // MARK: - Network Operations
