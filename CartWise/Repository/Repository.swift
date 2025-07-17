@@ -10,10 +10,15 @@ import CoreData
 
 protocol ProductRepositoryProtocol: Sendable {
     func fetchAllProducts() async throws -> [Product]
+    func fetchListProducts() async throws -> [Product]
+    func fetchRecentProducts(limit: Int) async throws -> [Product]
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product
     func createProduct(name: String) async throws -> Product
     func updateProduct(_ product: Product) async throws
     func deleteProduct(_ product: Product) async throws
+    func removeProductFromShoppingList(_ product: Product) async throws
+    func toggleProductCompletion(_ product: Product) async throws
+    func addProductToShoppingList(_ product: Product) async throws
     func searchProducts(by name: String) async throws -> [Product]
     func fetchProductFromNetwork(by barcode: String) async throws -> Product?
 }
@@ -31,8 +36,18 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     // MARK: - Cache-First Operations
     
     func fetchAllProducts() async throws -> [Product] {
-        // Cache-first: return local data immediately
+        // Cache-first: return all local data immediately
         return try await coreDataContainer.fetchAllProducts()
+    }
+    
+    func fetchListProducts() async throws -> [Product] {
+        // Cache-first: return shopping list data immediately
+        return try await coreDataContainer.fetchListProducts()
+    }
+    
+    func fetchRecentProducts(limit: Int) async throws -> [Product] {
+        // Cache-first: return local data immediately
+        return try await coreDataContainer.fetchRecentProducts(limit: limit)
     }
     
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product {
@@ -59,42 +74,62 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     }
     
     func deleteProduct(_ product: Product) async throws {
-        // Delete from local cache
+        // Permanently delete from local cache
         try await coreDataContainer.deleteProduct(product)
     }
     
+    func removeProductFromShoppingList(_ product: Product) async throws {
+        // Soft delete: remove from shopping list only
+        try await coreDataContainer.removeProductFromShoppingList(product)
+    }
+    
+    func toggleProductCompletion(_ product: Product) async throws {
+        // Toggle completion status
+        try await coreDataContainer.toggleProductCompletion(product)
+    }
+    
+    func addProductToShoppingList(_ product: Product) async throws {
+        // Add existing product to shopping list
+        try await coreDataContainer.addProductToShoppingList(product)
+    }
+    
     func searchProducts(by name: String) async throws -> [Product] {
+        // Local-only search for now
         // Cache-first: search local data first
         let localResults = try await coreDataContainer.searchProducts(by: name)
-        
+
         // If we have local results, return them immediately
         if !localResults.isEmpty {
             return localResults
         }
-        
-        // Network-second: if no local results, try network
-        do {
-            let networkProducts = try await networkService.searchProducts(by: name)
-            
-            // Save network results to local cache
-            for networkProduct in networkProducts.prefix(10) { // Limit to first 10
-                _ = try await createProduct(
-                    barcode: networkProduct.code,
-                    name: networkProduct.productName ?? "Unknown Product",
-                    brands: networkProduct.brands,
-                    imageURL: networkProduct.imageURL,
-                    nutritionGrade: networkProduct.nutritionGrades,
-                    categories: networkProduct.categories,
-                    ingredients: networkProduct.ingredients?.map { $0.text }.joined(separator: ", ")
-                )
-            }
-            
-            // Return the newly cached results
-            return try await coreDataContainer.searchProducts(by: name)
-        } catch {
-            // If network fails, return empty array (cache-first approach)
-            return []
-        }
+
+        // Return empty array if no local results found
+        return []
+
+        // using different api later, relying on local cache for now
+        // // Network-second: if no local results, try network
+        // do {
+        //     let networkProducts = try await networkService.searchProducts(by: name)
+
+        //     // Save network results to local cache
+        //     for networkProduct in networkProducts.prefix(10) { // Limit to first 10
+        //         _ = try await createProduct(
+        //             barcode: networkProduct.code,
+        //             name: networkProduct.productName ?? "Unknown Product",
+        //             brands: networkProduct.brands,
+        //             imageURL: networkProduct.imageURL,
+        //             nutritionGrade: networkProduct.nutritionGrades,
+        //             categories: networkProduct.categories,
+        //             ingredients: networkProduct.ingredients?.map { $0.text }.joined(separator: ", ")
+        //         )
+        //     }
+
+        //     // Return the newly cached results
+        //     return try await coreDataContainer.searchProducts(by: name)
+        // } catch {
+        //     // If network fails, return empty array (cache-first approach)
+        //     return []
+        // }
     }
     
     // MARK: - Network Operations

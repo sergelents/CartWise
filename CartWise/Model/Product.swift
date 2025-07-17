@@ -10,6 +10,7 @@ import Foundation
 
 // Product categories enum
 enum ProductCategory: String, CaseIterable {
+    case none = "Select Category"
     case meat = "Meat & Seafood"
     case dairy = "Dairy & Eggs"
     case bakery = "Bakery"

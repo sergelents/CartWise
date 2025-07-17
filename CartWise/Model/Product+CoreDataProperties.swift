@@ -22,6 +22,8 @@ extension Product {
     @NSManaged public var createdAt: Date?
     @NSManaged public var imageURL: String?
     @NSManaged public var ingredients: String?
+    @NSManaged public var isCompleted: Bool
+    @NSManaged public var isInShoppingList: Bool
     @NSManaged public var name: String?
     @NSManaged public var nutritionGrade: String?
     @NSManaged public var updatedAt: Date?
@@ -38,6 +40,8 @@ extension Product {
         self.nutritionGrade = nutritionGrade
         self.categories = categories
         self.ingredients = ingredients
+        self.isCompleted = false
+        self.isInShoppingList = true
         self.createdAt = Date()
         self.updatedAt = Date()
     }
