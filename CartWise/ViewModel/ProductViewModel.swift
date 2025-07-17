@@ -159,7 +159,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    private func isDuplicateProduct(name: String) async -> Bool {
+    func isDuplicateProduct(name: String) async -> Bool {
         do {
             let existingProducts = try await repository.searchProducts(by: name)
             return existingProducts.contains { product in

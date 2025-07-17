@@ -9,7 +9,6 @@
 //
 
 import SwiftUI
-import UIKit
 
 struct YourListView: View {
     @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
@@ -21,6 +20,8 @@ struct YourListView: View {
     @State private var selectedItemsForDeletion: Set<String> = []
     @State private var showingAddProductModal = false
     @State private var showingRatingPrompt: Bool = false
+    @State private var showingDuplicateAlert = false
+    @State private var duplicateProductName = ""
     
     var body: some View {
         NavigationStack {
@@ -41,12 +42,12 @@ struct YourListView: View {
             .sheet(isPresented: $showingAddProductModal) {
                 SmartAddProductModal(productViewModel: productViewModel, onAdd: addProductToSystem)
             }
-            .alert("Error", isPresented: .constant(productViewModel.errorMessage != nil)) {
+            .alert("Duplicate Product", isPresented: $showingDuplicateAlert) {
                 Button("OK") {
-                    productViewModel.errorMessage = nil
+                    showingDuplicateAlert = false
                 }
             } message: {
-                Text(productViewModel.errorMessage ?? "")
+                Text("A product named \"\(duplicateProductName)\" already exists in your list.")
             }
             .onAppear {
                 Task {
@@ -58,6 +59,14 @@ struct YourListView: View {
     
     private func addProductToSystem(name: String, brand: String?, category: String?) {
         Task {
+            // Check for duplicate first
+            if await productViewModel.isDuplicateProduct(name: name) {
+                duplicateProductName = name
+                showingDuplicateAlert = true
+                return
+            }
+            
+            // Proceed with creation if no duplicate
             if let brand = brand, !brand.isEmpty {
                 await productViewModel.createProduct(byName: name, brand: brand, category: category)
             } else {
@@ -1075,6 +1084,7 @@ struct RecentProductRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
+
 
 
 
