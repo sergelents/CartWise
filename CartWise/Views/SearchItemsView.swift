@@ -99,3 +99,7 @@ struct CategoryCard: View {
     }
 }
 
+
+#Preview {
+    SearchItemsView()
+}
