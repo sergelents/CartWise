@@ -20,7 +20,7 @@ protocol ProductRepositoryProtocol: Sendable {
     func toggleProductCompletion(_ product: Product) async throws
     func addProductToShoppingList(_ product: Product) async throws
     func searchProducts(by name: String) async throws -> [Product]
-    func fetchProductFromNetwork(by barcode: String) async throws -> Product?
+    func fetchProductFromNetwork(by name: String) async throws -> Product?
 }
 
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
@@ -103,47 +103,43 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             return localResults
         }
 
-        // Return empty array if no local results found
-        return []
+        // Network-second: if no local results, try network
+        do {
+            let networkProducts = try await networkService.searchProducts(by: name)
 
-        // using different api later, relying on local cache for now
-        // // Network-second: if no local results, try network
-        // do {
-        //     let networkProducts = try await networkService.searchProducts(by: name)
+            // Save network results to local cache
+            for networkProduct in networkProducts.prefix(10) { // Limit to first 10
+                _ = try await createProduct(
+                    barcode: networkProduct.barcode ?? networkProduct.id,
+                    name: networkProduct.productName,
+                    brands: networkProduct.brand,
+                    imageURL: networkProduct.imageURL,
+                    nutritionGrade: nil, // Not available in grocery prices API
+                    categories: networkProduct.category,
+                    ingredients: nil // Not available in grocery prices API
+                )
+            }
 
-        //     // Save network results to local cache
-        //     for networkProduct in networkProducts.prefix(10) { // Limit to first 10
-        //         _ = try await createProduct(
-        //             barcode: networkProduct.code,
-        //             name: networkProduct.productName ?? "Unknown Product",
-        //             brands: networkProduct.brands,
-        //             imageURL: networkProduct.imageURL,
-        //             nutritionGrade: networkProduct.nutritionGrades,
-        //             categories: networkProduct.categories,
-        //             ingredients: networkProduct.ingredients?.map { $0.text }.joined(separator: ", ")
-        //         )
-        //     }
-
-        //     // Return the newly cached results
-        //     return try await coreDataContainer.searchProducts(by: name)
-        // } catch {
-        //     // If network fails, return empty array (cache-first approach)
-        //     return []
-        // }
+            // Return the newly cached results
+            return try await coreDataContainer.searchProducts(by: name)
+        } catch {
+            // If network fails, return empty array (cache-first approach)
+            return []
+        }
     }
     
     // MARK: - Network Operations
     
-    func fetchProductFromNetwork(by barcode: String) async throws -> Product? {
+    func fetchProductFromNetwork(by name: String) async throws -> Product? {
         // Check cache first
         let existingProducts = try await coreDataContainer.fetchAllProducts()
-        if let existingProduct = existingProducts.first(where: { $0.barcode == barcode }) {
+        if let existingProduct = existingProducts.first(where: { $0.name?.lowercased() == name.lowercased() }) {
             return existingProduct
         }
         
         // Network-second: fetch from API with retry logic
         do {
-            let networkProduct = try await networkService.fetchProductWithRetry(by: barcode, retries: 3)
+            let networkProduct = try await networkService.fetchProductWithRetry(by: name, retries: 3)
             
             guard let networkProduct = networkProduct else {
                 return nil
@@ -151,13 +147,13 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             
             // Save to local cache
             let savedProduct = try await createProduct(
-                barcode: networkProduct.code,
-                name: networkProduct.productName ?? "Unknown Product",
-                brands: networkProduct.brands,
+                barcode: networkProduct.barcode ?? networkProduct.id,
+                name: networkProduct.productName,
+                brands: networkProduct.brand,
                 imageURL: networkProduct.imageURL,
-                nutritionGrade: networkProduct.nutritionGrades,
-                categories: networkProduct.categories,
-                ingredients: networkProduct.ingredients?.map { $0.text }.joined(separator: ", ")
+                nutritionGrade: nil, // Not available in grocery prices API
+                categories: networkProduct.category,
+                ingredients: nil // Not available in grocery prices API
             )
             
             return savedProduct
@@ -174,4 +170,4 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     }
 }
 
-// This code was generated with the help of Claude, saving me 3 hours of research and development.
+// This code was generated with the help of Claude, saving me 7 hours of research and development.

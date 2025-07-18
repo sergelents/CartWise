@@ -9,37 +9,38 @@
 import Foundation
 
 protocol NetworkServiceProtocol: Sendable {
-    func fetchProduct(by barcode: String) async throws -> OpenFoodFactsProduct?
-    func searchProducts(by name: String) async throws -> [OpenFoodFactsProduct]
-    func fetchProductWithRetry(by barcode: String, retries: Int) async throws -> OpenFoodFactsProduct?
+    func fetchProduct(by name: String) async throws -> GroceryPriceData?
+    func searchProducts(by name: String) async throws -> [GroceryPriceData]
+    func fetchProductWithRetry(by name: String, retries: Int) async throws -> GroceryPriceData?
 }
 
 final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     private let session: URLSession
-    private let baseURL = "https://world.openfoodfacts.org/api/v0/product/"
-    private let searchURL = "https://world.openfoodfacts.org/cgi/search.pl"
+    private let baseURL = "https://api-to-find-grocery-prices.p.rapidapi.com"
+    private let apiKey = "84e64a5488msh5075a47a5c27140p17850bjsnb78c0cf33881"
     
     init(session: URLSession = .shared) {
         self.session = session
     }
     
-    func fetchProduct(by barcode: String) async throws -> OpenFoodFactsProduct? {
-        let url = try buildProductURL(for: barcode)
-        return try await performRequest(url: url, responseType: OpenFoodFactsResponse.self).product
-    }
-    
-    func searchProducts(by name: String) async throws -> [OpenFoodFactsProduct] {
+    func searchProducts(by name: String) async throws -> [GroceryPriceData] {
         let url = try buildSearchURL(for: name)
-        let response: SearchResponse = try await performRequest(url: url, responseType: SearchResponse.self)
-        return response.products
+        let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
+        return response.data ?? []
     }
     
-    func fetchProductWithRetry(by barcode: String, retries: Int = 3) async throws -> OpenFoodFactsProduct? {
+    func fetchProduct(by name: String) async throws -> GroceryPriceData? {
+        // For grocery prices API, we search by name and return the first result
+        let products = try await searchProducts(by: name)
+        return products.first
+    }
+    
+    func fetchProductWithRetry(by name: String, retries: Int = 3) async throws -> GroceryPriceData? {
         var lastError: Error?
         
         for attempt in 1...retries {
             do {
-                return try await fetchProduct(by: barcode)
+                return try await fetchProduct(by: name)
             } catch {
                 lastError = error
                 if attempt < retries {
@@ -53,21 +54,10 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     
     // MARK: - Private Methods
     
-    private func buildProductURL(for barcode: String) throws -> URL {
-        guard let url = URL(string: "\(baseURL)\(barcode).json") else {
-            throw NetworkError.invalidURL
-        }
-        return url
-    }
-    
     private func buildSearchURL(for name: String) throws -> URL {
-        var components = URLComponents(string: searchURL)!
+        var components = URLComponents(string: "\(baseURL)/search")!
         components.queryItems = [
-            URLQueryItem(name: "search_terms", value: name),
-            URLQueryItem(name: "search_simple", value: "1"),
-            URLQueryItem(name: "action", value: "process"),
-            URLQueryItem(name: "json", value: "1"),
-            URLQueryItem(name: "page_size", value: "20") // Limit results
+            URLQueryItem(name: "query", value: name)
         ]
         
         guard let url = components.url else {
@@ -77,7 +67,12 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     }
     
     private func performRequest<T: Decodable>(url: URL, responseType: T.Type) async throws -> T {
-        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        
+        // Add RapidAPI headers
+        request.setValue(apiKey, forHTTPHeaderField: "X-RapidAPI-Key")
+        request.setValue("api-to-find-grocery-prices.p.rapidapi.com", forHTTPHeaderField: "X-RapidAPI-Host")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         let (data, response) = try await session.data(for: request)
         
@@ -108,12 +103,7 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
 
 // MARK: - Response Models
 
-struct SearchResponse: Codable, Sendable {
-    let products: [OpenFoodFactsProduct]
-    let count: Int?
-    let page: Int?
-    let pageSize: Int?
-}
+// Using GroceryPriceResponse and GroceryPriceData from Product.swift
 
 // MARK: - Enhanced Error Handling
 
@@ -164,3 +154,5 @@ enum NetworkError: Error, LocalizedError, Sendable {
         }
     }
 }
+
+// This code was generated with the help of Claude, saving me 4 hours of research and development.
