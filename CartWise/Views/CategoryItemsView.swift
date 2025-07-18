@@ -268,7 +268,7 @@ struct ProductDetailView: View {
          private func addToShoppingList() {
          Task {
              // Create product using ProductViewModel
-             await productViewModel.createProduct(
+             await productViewModel.createProductForShoppingList(
                  byName: product.name,
                  brand: product.brand,
                  category: product.category.rawValue
