@@ -188,14 +188,18 @@ struct ProductCard: View {
 
 // Product Detail View
 struct ProductDetailView: View {
-   let product: ProductItem
+    let product: ProductItem
+    
+    // ProductViewModel for adding to shopping list
+    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
 
-   // Adding to shopping list and to favorites
-   @State private var isAddingToFavorites = false
-   @State private var isAddingToShoppingList = false
+    // Adding to shopping list and to favorites
+    @State private var isAddingToFavorites = false
+    @State private var isAddingToShoppingList = false
+    @State private var showingSuccessMessage = false
 
-   // Dismissing the view
-   @Environment(\.dismiss) private var dismiss
+    // Dismissing the view
+    @Environment(\.dismiss) private var dismiss
   
    var body: some View {
        NavigationView {
@@ -222,15 +226,15 @@ struct ProductDetailView: View {
                        lastUpdatedBy: "Kelly Yong"
                    )
 
-                   // Add to Shopping List and Add to Favorites View
-                   AddToShoppingListAndFavoritesView(
-                       onAddToShoppingList: {
-                           // TODO: Add to shopping list functionality
-                       },
-                       onAddToFavorites: {
-                           isAddingToFavorites.toggle()
-                       }
-                   )
+                    // Add to Shopping List and Add to Favorites View
+                    AddToShoppingListAndFavoritesView(
+                        onAddToShoppingList: {
+                            addToShoppingList()
+                        }, 
+                        onAddToFavorites: {
+                            isAddingToFavorites.toggle()
+                        }
+                    )
 
                    // Update Price View
                    UpdatePriceView(
@@ -255,7 +259,27 @@ struct ProductDetailView: View {
                }
            }
        }
+       .alert("Added to Shopping List!", isPresented: $showingSuccessMessage) {
+           Button("OK") { }
+       } message: {
+           Text("\(product.name) has been added to your shopping list.")
+       }
    }
+         private func addToShoppingList() {
+         Task {
+             // Create product using ProductViewModel
+             await productViewModel.createProduct(
+                 byName: product.name,
+                 brand: product.brand,
+                 category: product.category.rawValue
+             )
+             
+             // Show success message
+             await MainActor.run {
+                 showingSuccessMessage = true
+             }
+         }
+     }
 }
 
 // Store view
@@ -396,11 +420,16 @@ struct CustomButtonView: View {
    let buttonColor: Color
    let textColor: Color
    let action: () -> Void
+   @State var isAdded : Bool = false
+   @State var isAddedImageName: String
+   @State var isAddedColor: Color
   
    var body: some View {
-       Button(action: action) {
+       Button(action: {
+        action()
+        self.isAdded.toggle()}) {
            HStack(alignment: .center, spacing: 2) {
-               Image(systemName: imageName)
+               Image(systemName: isAdded ? isAddedImageName : imageName)
                    .font(.system(size: 14))
                    .foregroundColor(textColor)
                Text(title)
@@ -410,7 +439,7 @@ struct CustomButtonView: View {
            }
            .padding(.vertical, 8)
            .padding(.horizontal, 8)
-           .background(buttonColor)
+           .background(isAdded ? isAddedColor : buttonColor)
            .cornerRadius(8)
        }
    }
@@ -430,20 +459,24 @@ struct AddToShoppingListAndFavoritesView: View {
                imageName: "plus.circle.fill",
                fontSize: 13,
                weight: .bold,
-               buttonColor: Color.accentColorRed,
+               buttonColor: Color.accentColorBlue,
                textColor: .white,
-               action: onAddToShoppingList
+               action: onAddToShoppingList,
+               isAddedImageName: "checkmark.circle.fill",
+               isAddedColor: Color.accentColorGreen
            )
            Spacer()
            // Add to Favorite Button
            CustomButtonView(
                title: "Add to Favorite",
-               imageName: "heart.circle.fill",
+               imageName: "heart.circle",
                fontSize: 13,
                weight: .bold,
                buttonColor: Color.accentColorCoral,
                textColor: .white,
-               action: onAddToFavorites
+               action: onAddToFavorites,
+               isAddedImageName: "heart.fill",
+               isAddedColor: Color.accentColorRed
            )
        }
        .padding(.horizontal, 10)
