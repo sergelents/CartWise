@@ -13,7 +13,6 @@ protocol ProductRepositoryProtocol: Sendable {
     func fetchListProducts() async throws -> [Product]
     func fetchRecentProducts(limit: Int) async throws -> [Product]
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product
-    func createProduct(name: String) async throws -> Product
     func updateProduct(_ product: Product) async throws
     func deleteProduct(_ product: Product) async throws
     func removeProductFromShoppingList(_ product: Product) async throws
@@ -61,11 +60,6 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             categories: categories,
             ingredients: ingredients
         )
-    }
-    
-    func createProduct(name: String) async throws -> Product {
-        // Create locally with generated barcode
-        return try await coreDataContainer.createProduct(name: name)
     }
     
     func updateProduct(_ product: Product) async throws {

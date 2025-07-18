@@ -3,6 +3,7 @@
 //  CartWise
 //
 //  Created by Serg Tsogtbaatar on 7/7/25.
+//  Updated by Brenna Wilson on 7/17/25 -7/18/25
 //
 
 import Foundation
@@ -13,7 +14,6 @@ protocol CoreDataContainerProtocol: Sendable {
     func fetchListProducts() async throws -> [Product]
     func fetchRecentProducts(limit: Int) async throws -> [Product]
     func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product
-    func createProduct(name: String) async throws -> Product
     func updateProduct(_ product: Product) async throws
     func deleteProduct(_ product: Product) async throws
     func toggleProductCompletion(_ product: Product) async throws
@@ -73,24 +73,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 nutritionGrade: nutritionGrade,
                 categories: categories,
                 ingredients: ingredients
-            )
-            
-            try context.save()
-            return product
-        }
-    }
-    
-    func createProduct(name: String) async throws -> Product {
-        try await coreDataStack.performBackgroundTask { context in
-            let product = Product(
-                context: context,
-                barcode: UUID().uuidString, // Generate a unique identifier
-                name: name,
-                brands: nil,
-                imageURL: nil,
-                nutritionGrade: nil,
-                categories: nil,
-                ingredients: nil
             )
             
             try context.save()

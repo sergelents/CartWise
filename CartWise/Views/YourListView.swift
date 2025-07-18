@@ -51,7 +51,7 @@ struct YourListView: View {
             }
             .onAppear {
                 Task {
-                    await productViewModel.loadAllProducts()
+                    await productViewModel.loadListProducts()
                 }
             }
         }
@@ -68,9 +68,9 @@ struct YourListView: View {
             
             // Proceed with creation if no duplicate
             if let brand = brand, !brand.isEmpty {
-                await productViewModel.createProduct(byName: name, brand: brand, category: category)
+                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category)
             } else {
-                await productViewModel.createProduct(byName: name, brand: nil, category: category)
+                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
             }
         }
     }
@@ -126,6 +126,7 @@ struct MainContentView: View {
                     showingAddProductModal: $showingAddProductModal
                 )
 
+                // TODO: Add store card functionality and price calculation
                 // Store Card
                 StoreCard(
                     suggestedStore: suggestedStore,
@@ -514,7 +515,7 @@ struct RecentProductsSection: View {
                         RecentProductRow(product: product) {
                             Task {
                                 await productViewModel.addExistingProductToShoppingList(product)
-                                await productViewModel.loadAllProducts()
+                                await productViewModel.loadListProducts()
                             }
                             dismiss()
                         }

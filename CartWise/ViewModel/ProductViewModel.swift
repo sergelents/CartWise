@@ -3,7 +3,7 @@
 //  CartWise
 //
 //  Created by Serg Tsogtbaatar on 7/7/25.
-//
+//  Updated by Brenna Wilson on 7/17/25 -7/18/25
 import SwiftUI
 import Combine
 
@@ -24,7 +24,7 @@ final class ProductViewModel: ObservableObject {
             self.repository = repository
         }
     
-    func loadAllProducts() async {
+    func loadListProducts() async {
         do {
             products = try await repository.fetchListProducts()
             errorMessage = nil
@@ -54,7 +54,7 @@ final class ProductViewModel: ObservableObject {
     func updateProduct(_ product: Product) async {
         do {
             try await repository.updateProduct(product)
-            await loadAllProducts() // Refresh the list
+            // No automatic refresh - let calling view decide
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -94,7 +94,7 @@ final class ProductViewModel: ObservableObject {
     func toggleProductCompletion(_ product: Product) async {
         do {
             try await repository.toggleProductCompletion(product)
-            await loadAllProducts() // Refresh the list to show updated completion status
+            await loadListProducts() // Refresh the list to show updated completion status
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -107,7 +107,7 @@ final class ProductViewModel: ObservableObject {
             for product in products {
                 try await repository.toggleProductCompletion(product)
             }
-            await loadAllProducts() // Refresh the list
+            await loadListProducts() // Refresh the list
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -117,7 +117,7 @@ final class ProductViewModel: ObservableObject {
     func addExistingProductToShoppingList(_ product: Product) async {
         do {
             try await repository.addProductToShoppingList(product)
-            await loadAllProducts()
+            await loadListProducts()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -135,7 +135,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func createProduct(byName name: String, brand: String? = nil, category: String? = nil) async {
+    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil) async {
         do {
             if await isDuplicateProduct(name: name) {
                 errorMessage = "Product '\(name)' already exists in your list"
@@ -152,7 +152,7 @@ final class ProductViewModel: ObservableObject {
                 categories: category,
                 ingredients: nil
             )
-            await loadAllProducts()
+            await loadListProducts()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
