@@ -9,17 +9,17 @@ import Foundation
 import CoreData
 
 protocol CoreDataContainerProtocol: Sendable {
-    func fetchAllProducts() async throws -> [Product]
-    func fetchListProducts() async throws -> [Product]
-    func fetchRecentProducts(limit: Int) async throws -> [Product]
-    func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product
-    func createProduct(name: String) async throws -> Product
-    func updateProduct(_ product: Product) async throws
-    func deleteProduct(_ product: Product) async throws
-    func toggleProductCompletion(_ product: Product) async throws
-    func addProductToShoppingList(_ product: Product) async throws
-    func searchProducts(by name: String) async throws -> [Product]
-    func removeProductFromShoppingList(_ product: Product) async throws
+    func fetchAllProducts() async throws -> [GroceryItem]
+    func fetchListProducts() async throws -> [GroceryItem]
+    func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
+    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem
+    func createProduct(name: String) async throws -> GroceryItem
+    func updateProduct(_ product: GroceryItem) async throws
+    func deleteProduct(_ product: GroceryItem) async throws
+    func toggleProductCompletion(_ product: GroceryItem) async throws
+    func addProductToShoppingList(_ product: GroceryItem) async throws
+    func searchProducts(by name: String) async throws -> [GroceryItem]
+    func removeProductFromShoppingList(_ product: GroceryItem) async throws
 }
 
 final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
@@ -29,50 +29,53 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         self.coreDataStack = coreDataStack
     }
     
-    func fetchAllProducts() async throws -> [Product] {
+    func fetchAllProducts() async throws -> [GroceryItem] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
         return try await context.perform {
-            let request: NSFetchRequest<Product> = Product.fetchRequest()
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \Product.createdAt, ascending: false)]
+            let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.createdAt, ascending: false)]
             return try context.fetch(request)
         }
     }
     
-    func fetchListProducts() async throws -> [Product] {
+    func fetchListProducts() async throws -> [GroceryItem] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
         return try await context.perform {
-            let request: NSFetchRequest<Product> = Product.fetchRequest()
+            let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
             request.predicate = NSPredicate(format: "isInShoppingList == YES")
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \Product.createdAt, ascending: false)]
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.createdAt, ascending: false)]
             return try context.fetch(request)
         }
     }
     
-    func fetchRecentProducts(limit: Int) async throws -> [Product] {
+    func fetchRecentProducts(limit: Int) async throws -> [GroceryItem] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
         return try await context.perform {
-            let request: NSFetchRequest<Product> = Product.fetchRequest()
+            let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
             // Get all products (not just shopping list) sorted by creation date
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \Product.createdAt, ascending: false)]
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.createdAt, ascending: false)]
             request.fetchLimit = limit
             return try context.fetch(request)
         }
     }
     
-    func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product {
+    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem {
         try await coreDataStack.performBackgroundTask { context in
-            let product = Product(
+            let product = GroceryItem(
                 context: context,
-                barcode: barcode,
-                name: name,
-                brands: brands,
+                id: id,
+                productName: productName,
+                brand: brand,
+                category: category,
+                price: price,
+                currency: currency,
+                store: store,
+                location: location,
                 imageURL: imageURL,
-                nutritionGrade: nutritionGrade,
-                categories: categories,
-                ingredients: ingredients
+                barcode: barcode
             )
             
             try context.save()
@@ -80,17 +83,20 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         }
     }
     
-    func createProduct(name: String) async throws -> Product {
+    func createProduct(name: String) async throws -> GroceryItem {
         try await coreDataStack.performBackgroundTask { context in
-            let product = Product(
+            let product = GroceryItem(
                 context: context,
-                barcode: UUID().uuidString, // Generate a unique identifier
-                name: name,
-                brands: nil,
+                id: UUID().uuidString, // Generate a unique identifier
+                productName: name,
+                brand: nil,
+                category: nil,
+                price: 0.0,
+                currency: "USD",
+                store: nil,
+                location: nil,
                 imageURL: nil,
-                nutritionGrade: nil,
-                categories: nil,
-                ingredients: nil
+                barcode: nil
             )
             
             try context.save()
@@ -98,59 +104,59 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         }
     }
     
-    func updateProduct(_ product: Product) async throws {
+    func updateProduct(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
-            let productInContext = try context.existingObject(with: objectID) as! Product
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
             productInContext.updatedAt = Date()
             try context.save()
         }
     }
     
-    func deleteProduct(_ product: Product) async throws {
+    func deleteProduct(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
-            let productInContext = try context.existingObject(with: objectID) as! Product
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
             context.delete(productInContext)
             try context.save()
         }
     }
     
-    func removeProductFromShoppingList(_ product: Product) async throws {
+    func removeProductFromShoppingList(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
-            let productInContext = try context.existingObject(with: objectID) as! Product
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
             productInContext.isInShoppingList = false
             try context.save()
         }
     }
     
-    func toggleProductCompletion(_ product: Product) async throws {
+    func toggleProductCompletion(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
-            let productInContext = try context.existingObject(with: objectID) as! Product
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
             productInContext.isCompleted.toggle()
             try context.save()
         }
     }
     
-    func addProductToShoppingList(_ product: Product) async throws {
+    func addProductToShoppingList(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
-            let productInContext = try context.existingObject(with: objectID) as! Product
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
             productInContext.isInShoppingList = true
             productInContext.isCompleted = false // Reset completion status when adding to list
             try context.save()
         }
     }
     
-    func searchProducts(by name: String) async throws -> [Product] {
+    func searchProducts(by name: String) async throws -> [GroceryItem] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
         return try await context.perform {
-            let request: NSFetchRequest<Product> = Product.fetchRequest()
-            request.predicate = NSPredicate(format: "name CONTAINS[cd] %@", name)
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \Product.name, ascending: true)]
+            let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            request.predicate = NSPredicate(format: "productName CONTAINS[cd] %@", name)
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.productName, ascending: true)]
             return try context.fetch(request)
         }
     }

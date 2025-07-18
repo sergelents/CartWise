@@ -16,8 +16,11 @@ actor CoreDataStack {
     
     lazy var persistentContainer: NSPersistentContainer = {
         let container = NSPersistentContainer(name: "ProductModel")
+        
+        // Load persistent stores
         container.loadPersistentStores { _, error in
             if let error = error {
+                print("Core Data failed to load: \(error.localizedDescription)")
                 fatalError("Core Data failed to load: \(error.localizedDescription)")
             }
         }

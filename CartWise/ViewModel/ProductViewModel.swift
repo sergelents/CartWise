@@ -9,8 +9,8 @@ import Combine
 
 @MainActor
 final class ProductViewModel: ObservableObject {
-    @Published var products: [Product] = []
-    @Published var recentProducts: [Product] = []
+    @Published var products: [GroceryItem] = []
+    @Published var recentProducts: [GroceryItem] = []
     var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
@@ -51,7 +51,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func updateProduct(_ product: Product) async {
+    func updateProduct(_ product: GroceryItem) async {
         do {
             try await repository.updateProduct(product)
             await loadAllProducts() // Refresh the list
@@ -61,37 +61,37 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func deleteProduct(_ product: Product) async {
+    func deleteProduct(_ product: GroceryItem) async {
         do {
             try await repository.deleteProduct(product)
-            products.removeAll { $0.barcode == product.barcode }
+            products.removeAll { $0.id == product.id }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
     }
     
-    func removeProduct(_ product: Product) async {
+    func removeProduct(_ product: GroceryItem) async {
         do {
             try await repository.removeProductFromShoppingList(product)
-            products.removeAll { $0.barcode == product.barcode }
+            products.removeAll { $0.id == product.id }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
     }
     
-    func permanentlyDeleteProduct(_ product: Product) async {
+    func permanentlyDeleteProduct(_ product: GroceryItem) async {
         do {
             try await repository.deleteProduct(product)
-            products.removeAll { $0.barcode == product.barcode }
+            products.removeAll { $0.id == product.id }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
     }
     
-    func toggleProductCompletion(_ product: Product) async {
+    func toggleProductCompletion(_ product: GroceryItem) async {
         do {
             try await repository.toggleProductCompletion(product)
             await loadAllProducts() // Refresh the list to show updated completion status
@@ -114,7 +114,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func addExistingProductToShoppingList(_ product: Product) async {
+    func addExistingProductToShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.addProductToShoppingList(product)
             await loadAllProducts()
@@ -142,15 +142,18 @@ final class ProductViewModel: ObservableObject {
                 return
             }
             
-            let barcode = UUID().uuidString
+            let id = UUID().uuidString
             _ = try await repository.createProduct(
-                barcode: barcode,
-                name: name,
-                brands: brand,
+                id: id,
+                productName: name,
+                brand: brand,
+                category: category,
+                price: 0.0,
+                currency: "USD",
+                store: nil,
+                location: nil,
                 imageURL: nil,
-                nutritionGrade: nil,
-                categories: category,
-                ingredients: nil
+                barcode: nil
             )
             await loadAllProducts()
             errorMessage = nil
@@ -163,7 +166,7 @@ final class ProductViewModel: ObservableObject {
         do {
             let existingProducts = try await repository.searchProducts(by: name)
             return existingProducts.contains { product in
-                product.name?.lowercased() == name.lowercased()
+                product.productName?.lowercased() == name.lowercased()
             }
         } catch {
             return false // If search fails, allow creation
