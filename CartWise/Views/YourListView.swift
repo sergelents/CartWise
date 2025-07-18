@@ -157,8 +157,8 @@ struct ShoppingListCard: View {
                     HStack(spacing: 16) {
                         Button(action: {
                             // Remove selected items from shopping list
-                            for barcode in selectedItemsForDeletion {
-                                if let product = productViewModel.products.first(where: { $0.barcode == barcode }) {
+                            for id in selectedItemsForDeletion {
+                                if let product = productViewModel.products.first(where: { $0.id == id }) {
                                     Task {
                                         await productViewModel.removeProduct(product)
                                     }
@@ -176,7 +176,7 @@ struct ShoppingListCard: View {
                             if selectedItemsForDeletion.count == productViewModel.products.count {
                                 selectedItemsForDeletion.removeAll()
                             } else {
-                                selectedItemsForDeletion = Set(productViewModel.products.compactMap { $0.barcode })
+                                selectedItemsForDeletion = Set(productViewModel.products.compactMap { $0.id })
                             }
                         }) {
                             Text(selectedItemsForDeletion.count == productViewModel.products.count ? "Deselect All" : "Select All")
@@ -245,14 +245,14 @@ struct ShoppingListCard: View {
                             ShoppingListItemRow(
                                 product: product,
                                 isEditing: isEditing,
-                                isSelected: selectedItemsForDeletion.contains(product.barcode ?? ""),
+                                isSelected: selectedItemsForDeletion.contains(product.id ?? ""),
                                 onToggle: {
                                     if isEditing {
-                                        if let barcode = product.barcode {
-                                            if selectedItemsForDeletion.contains(barcode) {
-                                                selectedItemsForDeletion.remove(barcode)
+                                        if let id = product.id {
+                                            if selectedItemsForDeletion.contains(id) {
+                                                selectedItemsForDeletion.remove(id)
                                             } else {
-                                                selectedItemsForDeletion.insert(barcode)
+                                                selectedItemsForDeletion.insert(id)
                                             }
                                         }
                                     } else {
@@ -537,7 +537,7 @@ struct SearchResultsSection: View {
     let onCreateNew: () -> Void
     @ObservedObject var productViewModel: ProductViewModel
     let dismiss: DismissAction
-    @State private var searchResults: [Product] = []
+    @State private var searchResults: [GroceryItem] = []
     @State private var isSearching = false
     
     var body: some View {
@@ -639,25 +639,25 @@ struct SearchResultsSection: View {
 }
 
 struct SearchResultRow: View {
-    let product: Product
+    let product: GroceryItem
     let onAdd: () -> Void
     
     var body: some View {
         Button(action: onAdd) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(product.name ?? "Unknown Product")
+                    Text(product.productName ?? "Unknown Product")
                         .font(.poppins(size: 16, weight: .medium))
                         .foregroundColor(.primary)
                     
-                    if let brands = product.brands, !brands.isEmpty {
-                        Text(brands)
+                    if let brand = product.brand, !brand.isEmpty {
+                        Text(brand)
                             .font(.poppins(size: 14, weight: .regular))
                             .foregroundColor(.gray)
                     }
                     
-                    if let categories = product.categories, !categories.isEmpty {
-                        Text(categories)
+                    if let category = product.category, !category.isEmpty {
+                        Text(category)
                             .font(.poppins(size: 12, weight: .regular))
                             .foregroundColor(.gray.opacity(0.7))
                     }
@@ -800,7 +800,7 @@ struct CategoryPickerView: View {
 
 // Shopping List circle logic
 struct ShoppingListItemRow: View {
-    let product: Product
+    let product: GroceryItem
     let isEditing: Bool
     let isSelected: Bool
     let onToggle: () -> Void
@@ -836,18 +836,18 @@ struct ShoppingListItemRow: View {
             .frame(width: 20, height: 20)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(product.name ?? "Unknown Product")
+                Text(product.productName ?? "Unknown Product")
                     .font(.poppins(size:15, weight: .regular))
                     .foregroundColor(product.isCompleted ? .gray : .primary)
                     .strikethrough(product.isCompleted)
 
-                if let brands = product.brands, !brands.isEmpty {
-                    Text(brands)
+                if let brand = product.brand, !brand.isEmpty {
+                    Text(brand)
                         .font(.poppins(size:12, weight: .regular))
                         .foregroundColor(.gray)
                 }
-                if let categories = product.categories, !categories.isEmpty {
-                    Text(categories)
+                if let category = product.category, !category.isEmpty {
+                    Text(category)
                         .font(.poppins(size:10, weight: .regular))
                         .foregroundColor(.gray.opacity(0.7))
                 }
@@ -1047,25 +1047,25 @@ struct StarRatingView: View {
 }
 
 struct RecentProductRow: View {
-    let product: Product
+    let product: GroceryItem
     let onAdd: () -> Void
     
     var body: some View {
         Button(action: onAdd) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(product.name ?? "Unknown Product")
+                    Text(product.productName ?? "Unknown Product")
                         .font(.poppins(size: 16, weight: .medium))
                         .foregroundColor(.primary)
                     
-                    if let brands = product.brands, !brands.isEmpty {
-                        Text(brands)
+                    if let brand = product.brand, !brand.isEmpty {
+                        Text(brand)
                             .font(.poppins(size: 14, weight: .regular))
                             .foregroundColor(.gray)
                     }
                     
-                    if let categories = product.categories, !categories.isEmpty {
-                        Text(categories)
+                    if let category = product.category, !category.isEmpty {
+                        Text(category)
                             .font(.poppins(size: 12, weight: .regular))
                             .foregroundColor(.gray.opacity(0.7))
                     }

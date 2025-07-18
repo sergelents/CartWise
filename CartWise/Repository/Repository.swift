@@ -9,18 +9,18 @@ import Foundation
 import CoreData
 
 protocol ProductRepositoryProtocol: Sendable {
-    func fetchAllProducts() async throws -> [Product]
-    func fetchListProducts() async throws -> [Product]
-    func fetchRecentProducts(limit: Int) async throws -> [Product]
-    func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product
-    func createProduct(name: String) async throws -> Product
-    func updateProduct(_ product: Product) async throws
-    func deleteProduct(_ product: Product) async throws
-    func removeProductFromShoppingList(_ product: Product) async throws
-    func toggleProductCompletion(_ product: Product) async throws
-    func addProductToShoppingList(_ product: Product) async throws
-    func searchProducts(by name: String) async throws -> [Product]
-    func fetchProductFromNetwork(by name: String) async throws -> Product?
+    func fetchAllProducts() async throws -> [GroceryItem]
+    func fetchListProducts() async throws -> [GroceryItem]
+    func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
+    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem
+    func createProduct(name: String) async throws -> GroceryItem
+    func updateProduct(_ product: GroceryItem) async throws
+    func deleteProduct(_ product: GroceryItem) async throws
+    func removeProductFromShoppingList(_ product: GroceryItem) async throws
+    func toggleProductCompletion(_ product: GroceryItem) async throws
+    func addProductToShoppingList(_ product: GroceryItem) async throws
+    func searchProducts(by name: String) async throws -> [GroceryItem]
+    func fetchProductFromNetwork(by name: String) async throws -> GroceryItem?
 }
 
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
@@ -35,65 +35,68 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     
     // MARK: - Cache-First Operations
     
-    func fetchAllProducts() async throws -> [Product] {
+    func fetchAllProducts() async throws -> [GroceryItem] {
         // Cache-first: return all local data immediately
         return try await coreDataContainer.fetchAllProducts()
     }
     
-    func fetchListProducts() async throws -> [Product] {
+    func fetchListProducts() async throws -> [GroceryItem] {
         // Cache-first: return shopping list data immediately
         return try await coreDataContainer.fetchListProducts()
     }
     
-    func fetchRecentProducts(limit: Int) async throws -> [Product] {
+    func fetchRecentProducts(limit: Int) async throws -> [GroceryItem] {
         // Cache-first: return local data immediately
         return try await coreDataContainer.fetchRecentProducts(limit: limit)
     }
     
-    func createProduct(barcode: String, name: String, brands: String?, imageURL: String?, nutritionGrade: String?, categories: String?, ingredients: String?) async throws -> Product {
+    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem {
         // Create locally first
         return try await coreDataContainer.createProduct(
-            barcode: barcode,
-            name: name,
-            brands: brands,
+            id: id,
+            productName: productName,
+            brand: brand,
+            category: category,
+            price: price,
+            currency: currency,
+            store: store,
+            location: location,
             imageURL: imageURL,
-            nutritionGrade: nutritionGrade,
-            categories: categories,
-            ingredients: ingredients
+            barcode: barcode
         )
     }
     
-    func createProduct(name: String) async throws -> Product {
+    func createProduct(name: String) async throws -> GroceryItem {
         // Create locally with generated barcode
         return try await coreDataContainer.createProduct(name: name)
     }
     
-    func updateProduct(_ product: Product) async throws {
+    func updateProduct(_ product: GroceryItem) async throws {
         // Update local cache
         try await coreDataContainer.updateProduct(product)
     }
     
-    func deleteProduct(_ product: Product) async throws {
+    func deleteProduct(_ product: GroceryItem) async throws {
         // Permanently delete from local cache
         try await coreDataContainer.deleteProduct(product)
     }
     
-    func removeProductFromShoppingList(_ product: Product) async throws {
+    func removeProductFromShoppingList(_ product: GroceryItem) async throws {
         // Soft delete: remove from shopping list only
         try await coreDataContainer.removeProductFromShoppingList(product)
     }
     
-    func toggleProductCompletion(_ product: Product) async throws {
+    func toggleProductCompletion(_ product: GroceryItem) async throws {
         // Toggle completion status
         try await coreDataContainer.toggleProductCompletion(product)
     }
     
-    func addProductToShoppingList(_ product: Product) async throws {
+    func addProductToShoppingList(_ product: GroceryItem) async throws {
         // Add existing product to shopping list
         try await coreDataContainer.addProductToShoppingList(product)
     }
     
-    func searchProducts(by name: String) async throws -> [Product] {
+    func searchProducts(by name: String) async throws -> [GroceryItem] {
         // Local-only search for now
         // Cache-first: search local data first
         let localResults = try await coreDataContainer.searchProducts(by: name)
@@ -110,13 +113,16 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             // Save network results to local cache
             for networkProduct in networkProducts.prefix(10) { // Limit to first 10
                 _ = try await createProduct(
-                    barcode: networkProduct.barcode ?? networkProduct.id,
-                    name: networkProduct.productName,
-                    brands: networkProduct.brand,
+                    id: networkProduct.id,
+                    productName: networkProduct.productName,
+                    brand: networkProduct.brand,
+                    category: networkProduct.category,
+                    price: networkProduct.price,
+                    currency: networkProduct.currency,
+                    store: networkProduct.store,
+                    location: networkProduct.location,
                     imageURL: networkProduct.imageURL,
-                    nutritionGrade: nil, // Not available in grocery prices API
-                    categories: networkProduct.category,
-                    ingredients: nil // Not available in grocery prices API
+                    barcode: networkProduct.barcode
                 )
             }
 
@@ -130,10 +136,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     
     // MARK: - Network Operations
     
-    func fetchProductFromNetwork(by name: String) async throws -> Product? {
+    func fetchProductFromNetwork(by name: String) async throws -> GroceryItem? {
         // Check cache first
         let existingProducts = try await coreDataContainer.fetchAllProducts()
-        if let existingProduct = existingProducts.first(where: { $0.name?.lowercased() == name.lowercased() }) {
+        if let existingProduct = existingProducts.first(where: { $0.productName?.lowercased() == name.lowercased() }) {
             return existingProduct
         }
         
@@ -147,13 +153,16 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             
             // Save to local cache
             let savedProduct = try await createProduct(
-                barcode: networkProduct.barcode ?? networkProduct.id,
-                name: networkProduct.productName,
-                brands: networkProduct.brand,
+                id: networkProduct.id,
+                productName: networkProduct.productName,
+                brand: networkProduct.brand,
+                category: networkProduct.category,
+                price: networkProduct.price,
+                currency: networkProduct.currency,
+                store: networkProduct.store,
+                location: networkProduct.location,
                 imageURL: networkProduct.imageURL,
-                nutritionGrade: nil, // Not available in grocery prices API
-                categories: networkProduct.category,
-                ingredients: nil // Not available in grocery prices API
+                barcode: networkProduct.barcode
             )
             
             return savedProduct
