@@ -51,7 +51,7 @@ struct YourListView: View {
             }
             .onAppear {
                 Task {
-                    await productViewModel.loadAllProducts()
+                    await productViewModel.loadShoppingListProducts()
                 }
             }
         }
@@ -68,9 +68,9 @@ struct YourListView: View {
             
             // Proceed with creation if no duplicate
             if let brand = brand, !brand.isEmpty {
-                await productViewModel.createProduct(byName: name, brand: brand, category: category)
+                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category)
             } else {
-                await productViewModel.createProduct(byName: name, brand: nil, category: category)
+                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
             }
         }
     }
@@ -160,7 +160,7 @@ struct ShoppingListCard: View {
                             for id in selectedItemsForDeletion {
                                 if let product = productViewModel.products.first(where: { $0.id == id }) {
                                     Task {
-                                        await productViewModel.removeProduct(product)
+                                        await productViewModel.removeProductFromShoppingList(product)
                                     }
                                 }
                             }
@@ -268,7 +268,7 @@ struct ShoppingListCard: View {
                                 },
                                 onDelete: {
                                     Task {
-                                        await productViewModel.removeProduct(product)
+                                        await productViewModel.removeProductFromShoppingList(product)
                                     }
                                 }
                             )
@@ -683,7 +683,7 @@ struct RecentProductsSection: View {
                         RecentProductRow(product: product) {
                             Task {
                                 await productViewModel.addExistingProductToShoppingList(product)
-                                await productViewModel.loadAllProducts()
+                                await productViewModel.loadShoppingListProducts()
                             }
                             dismiss()
                         }
