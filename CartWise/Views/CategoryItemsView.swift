@@ -319,7 +319,7 @@ struct ProductDetailView: View {
         } message: {
             Text("\(product.productName ?? "Product") has been added to your shopping list.")
         }
-        .alert("Already in List", isPresented: $showingDuplicateMessage) {
+        .alert("Already in Shopping List", isPresented: $showingDuplicateMessage) {
             Button("OK") { }
         } message: {
             Text("\(product.productName ?? "Product") is already in your shopping list.")
@@ -337,7 +337,7 @@ struct ProductDetailView: View {
                 }
             } else {
                 // Product doesn't exist, create it (this automatically adds to shopping list)
-                await productViewModel.createProduct(
+                await productViewModel.createProductForShoppingList(
                     byName: product.productName ?? "",
                     brand: product.brand,
                     category: product.category

@@ -1,5 +1,5 @@
 GoogleService-Info.plist
 
-# Build scripts
-rebuild_cartwise.sh
+# Xcode user-specific files
 *.xcuserstate
+UserInterfaceState.xcuserstate
