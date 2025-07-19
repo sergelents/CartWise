@@ -63,7 +63,10 @@ struct SearchItemsView: View {
                 if !searchText.isEmpty && !searchResults.isEmpty {
                     // Search results
                     List(searchResults, id: \.id) { product in
-                        SearchResultRowView(product: product)
+                        NavigationLink(destination: ProductDetailView(product: product)) {
+                            SearchResultRowView(product: product)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                     .listStyle(PlainListStyle())
                 } else {
