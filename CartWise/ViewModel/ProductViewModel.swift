@@ -135,6 +135,15 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
+    func searchProductsByBarcode(_ barcode: String) async {
+        do {
+            products = try await repository.searchProducts(by: barcode)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
     func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil) async {
         do {
             if await isDuplicateProduct(name: name) {
@@ -172,9 +181,55 @@ final class ProductViewModel: ObservableObject {
             return false // If search fails, allow creation
         }
     }
-
     
+    // MARK: - Barcode-specific methods for future implementation
+    
+    func createProductByBarcode(_ barcode: String) async {
+        do {
+            // Check if product already exists with this barcode
+            if await isDuplicateBarcode(barcode) {
+                errorMessage = "Product with barcode '\(barcode)' already exists in your list"
+                return
+            }
+            
+            // Try to fetch product from API using barcode
+            if let apiProduct = try await repository.fetchProductFromNetwork(by: barcode) {
+                // Product found in API, add to shopping list
+                await addExistingProductToShoppingList(apiProduct)
+                errorMessage = nil
+            } else {
+                // Product not found in API, create basic entry
+                let id = UUID().uuidString
+                _ = try await repository.createProduct(
+                    id: id,
+                    productName: "Product (Barcode: \(barcode))",
+                    brand: nil,
+                    category: nil,
+                    price: 0.0,
+                    currency: "USD",
+                    store: nil,
+                    location: nil,
+                    imageURL: nil,
+                    barcode: barcode
+                )
+                await loadShoppingListProducts()
+                errorMessage = nil
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func isDuplicateBarcode(_ barcode: String) async -> Bool {
+        do {
+            let existingProducts = try await repository.searchProducts(by: barcode)
+            return existingProducts.contains { product in
+                product.barcode?.lowercased() == barcode.lowercased()
+            }
+        } catch {
+            return false // If search fails, allow creation
+        }
+    }
 }
 
 // This code was generated with the help of Claude, saving me 1 hour of research and development.
-
