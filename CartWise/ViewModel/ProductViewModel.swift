@@ -24,7 +24,7 @@ final class ProductViewModel: ObservableObject {
             self.repository = repository
         }
     
-    func loadAllProducts() async {
+    func loadShoppingListProducts() async {
         do {
             products = try await repository.fetchListProducts()
             errorMessage = nil
@@ -54,7 +54,7 @@ final class ProductViewModel: ObservableObject {
     func updateProduct(_ product: GroceryItem) async {
         do {
             try await repository.updateProduct(product)
-            await loadAllProducts() // Refresh the list
+            await loadProducts() 
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -71,7 +71,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func removeProduct(_ product: GroceryItem) async {
+    func removeProductFromShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.removeProductFromShoppingList(product)
             products.removeAll { $0.id == product.id }
@@ -94,7 +94,7 @@ final class ProductViewModel: ObservableObject {
     func toggleProductCompletion(_ product: GroceryItem) async {
         do {
             try await repository.toggleProductCompletion(product)
-            await loadAllProducts() // Refresh the list to show updated completion status
+            await loadShoppingListProducts() // Refresh the list to show updated completion status
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -107,7 +107,7 @@ final class ProductViewModel: ObservableObject {
             for product in products {
                 try await repository.toggleProductCompletion(product)
             }
-            await loadAllProducts() // Refresh the list
+            await loadShoppingListProducts() // Refresh the list
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -117,7 +117,7 @@ final class ProductViewModel: ObservableObject {
     func addExistingProductToShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.addProductToShoppingList(product)
-            await loadAllProducts()
+            await loadShoppingListProducts()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -135,7 +135,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func createProduct(byName name: String, brand: String? = nil, category: String? = nil) async {
+    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil) async {
         do {
             if await isDuplicateProduct(name: name) {
                 errorMessage = "Product '\(name)' already exists in your list"
@@ -155,7 +155,7 @@ final class ProductViewModel: ObservableObject {
                 imageURL: nil,
                 barcode: nil
             )
-            await loadAllProducts()
+            await loadShoppingListProducts()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
