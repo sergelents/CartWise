@@ -56,6 +56,17 @@ struct SearchItemsView: View {
                         ProgressView()
                             .scaleEffect(0.8)
                     }
+                    
+                    if !searchText.isEmpty {
+                        Button(action: {
+                            searchText = ""
+                            searchResults = []
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.gray)
+                                .font(.system(size: 18))
+                        }
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.top)
