@@ -286,6 +286,7 @@ struct ProductDetailView: View {
                                 addToShoppingList()
                             }, 
                             onAddToFavorites: {
+                                // TODO: Add to favorites functionality
                                 isAddingToFavorites.toggle()
                             }
                         )
