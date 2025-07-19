@@ -64,7 +64,7 @@ final class ProductViewModel: ObservableObject {
     func deleteProduct(_ product: GroceryItem) async {
         do {
             try await repository.deleteProduct(product)
-            products.removeAll { $0.id == product.id }
+            products.removeAll { $0.barcode == product.barcode }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -74,7 +74,7 @@ final class ProductViewModel: ObservableObject {
     func removeProduct(_ product: GroceryItem) async {
         do {
             try await repository.removeProductFromShoppingList(product)
-            products.removeAll { $0.id == product.id }
+            products.removeAll { $0.barcode == product.barcode }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -84,7 +84,7 @@ final class ProductViewModel: ObservableObject {
     func permanentlyDeleteProduct(_ product: GroceryItem) async {
         do {
             try await repository.deleteProduct(product)
-            products.removeAll { $0.id == product.id }
+            products.removeAll { $0.barcode == product.barcode }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -135,7 +135,16 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func createProduct(byName name: String, brand: String? = nil, category: String? = nil) async {
+    func searchProductsByBarcode(_ barcode: String) async {
+        do {
+            products = try await repository.searchProducts(by: barcode)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func createProduct(byName name: String, brand: String? = nil, category: String? = nil, barcode: String? = nil) async {
         do {
             if await isDuplicateProduct(name: name) {
                 errorMessage = "Product '\(name)' already exists in your list"
@@ -143,6 +152,8 @@ final class ProductViewModel: ObservableObject {
             }
             
             let id = UUID().uuidString
+            let productBarcode = barcode ?? id // Use provided barcode or generate UUID
+            
             _ = try await repository.createProduct(
                 id: id,
                 productName: name,
@@ -153,12 +164,61 @@ final class ProductViewModel: ObservableObject {
                 store: nil,
                 location: nil,
                 imageURL: nil,
-                barcode: nil
+                barcode: productBarcode
             )
             await loadAllProducts()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+    
+    // MARK: - Barcode-specific methods for future implementation
+    
+    func createProductByBarcode(_ barcode: String) async {
+        do {
+            // Check if product already exists with this barcode
+            if await isDuplicateBarcode(barcode) {
+                errorMessage = "Product with barcode '\(barcode)' already exists in your list"
+                return
+            }
+            
+            // Try to fetch product from API using barcode
+            if let apiProduct = try await repository.fetchProductFromNetwork(by: barcode) {
+                // Product found in API, add to shopping list
+                await addExistingProductToShoppingList(apiProduct)
+                errorMessage = nil
+            } else {
+                // Product not found in API, create basic entry
+                let id = UUID().uuidString
+                _ = try await repository.createProduct(
+                    id: id,
+                    productName: "Product (Barcode: \(barcode))",
+                    brand: nil,
+                    category: nil,
+                    price: 0.0,
+                    currency: "USD",
+                    store: nil,
+                    location: nil,
+                    imageURL: nil,
+                    barcode: barcode
+                )
+                await loadAllProducts()
+                errorMessage = nil
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func isDuplicateBarcode(_ barcode: String) async -> Bool {
+        do {
+            let existingProducts = try await repository.searchProducts(by: barcode)
+            return existingProducts.contains { product in
+                product.barcode?.lowercased() == barcode.lowercased()
+            }
+        } catch {
+            return false // If search fails, allow creation
         }
     }
     
@@ -170,6 +230,17 @@ final class ProductViewModel: ObservableObject {
             }
         } catch {
             return false // If search fails, allow creation
+        }
+    }
+    
+    // MARK: - API Integration for Categories
+    
+    func fetchProductFromAPI(by name: String) async -> GroceryItem? {
+        do {
+            return try await repository.fetchProductFromNetwork(by: name)
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
         }
     }
 
