@@ -13,6 +13,7 @@ import SwiftUI
 struct SearchItemsView: View {
     // State variable for search bar input
     @State private var searchText = ""
+    @State private var showingOpenFoodFacts = false
 
     // Returns categories matching search text, or all if search is empty
     // TODO: Add search functionality to find products by name instead
@@ -34,6 +35,27 @@ struct SearchItemsView: View {
                     .padding(.horizontal)
                     .padding(.top)
 
+                // Open Food Facts Button
+                Button(action: {
+                    showingOpenFoodFacts = true
+                }) {
+                    HStack {
+                        Image(systemName: "leaf.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Search Open Food Facts")
+                            .fontWeight(.medium)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+
                 // Category grid
                 ScrollView {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
@@ -48,6 +70,9 @@ struct SearchItemsView: View {
                 }
             }
             .navigationTitle("Categories")
+            .sheet(isPresented: $showingOpenFoodFacts) {
+                OpenFoodFactsView(viewModel: ProductViewModel(repository: ProductRepository()))
+            }
         }
     }
 }

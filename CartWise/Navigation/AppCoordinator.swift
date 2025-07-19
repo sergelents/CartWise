@@ -24,6 +24,7 @@ enum TabItem: String, CaseIterable {
     case yourList = "Your List"
     case searchItems = "Search Items"
     case addItems = "Add Items"
+    case openFoodFacts = "Food Facts"
     case myProfile = "My Profile"
     
     var iconName: String {
@@ -31,6 +32,7 @@ enum TabItem: String, CaseIterable {
         case .yourList: return "list.bullet"
         case .searchItems: return "magnifyingglass"
         case .addItems: return "plus.circle"
+        case .openFoodFacts: return "leaf.circle"
         case .myProfile: return "person.circle"
         }
     }
@@ -40,6 +42,7 @@ enum TabItem: String, CaseIterable {
         case .yourList: return "list.bullet"
         case .searchItems: return "magnifyingglass"
         case .addItems: return "plus.circle.fill"
+        case .openFoodFacts: return "leaf.circle.fill"
         case .myProfile: return "person.circle.fill"
         }
     }
@@ -77,6 +80,14 @@ struct AppCoordinatorView: View {
                             Text(TabItem.addItems.rawValue)
                         }
                         .tag(TabItem.addItems)
+                    
+                    OpenFoodFactsView(viewModel: ProductViewModel(repository: ProductRepository()))
+                        .tabItem {
+                            Image(systemName: coordinator.selectedTab == .openFoodFacts ?
+                                  TabItem.openFoodFacts.selectedIconName : TabItem.openFoodFacts.iconName)
+                            Text(TabItem.openFoodFacts.rawValue)
+                        }
+                        .tag(TabItem.openFoodFacts)
                     
                     MyProfileView()
                         .tabItem {

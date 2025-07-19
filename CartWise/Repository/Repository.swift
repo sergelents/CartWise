@@ -21,16 +21,21 @@ protocol ProductRepositoryProtocol: Sendable {
     func addProductToShoppingList(_ product: GroceryItem) async throws
     func searchProducts(by name: String) async throws -> [GroceryItem]
     func fetchProductFromNetwork(by name: String) async throws -> GroceryItem?
+    func searchProductByBarcode(_ barcode: String) async throws -> OpenFoodFactsProduct?
+    func searchProductsFromOpenFoodFacts(by query: String) async throws -> [OpenFoodFactsProduct]
 }
 
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     private let coreDataContainer: CoreDataContainerProtocol
     private let networkService: NetworkServiceProtocol
+    private let openFoodFactsService: OpenFoodFactsServiceProtocol
     
     init(coreDataContainer: CoreDataContainerProtocol = CoreDataContainer(),
-         networkService: NetworkServiceProtocol = NetworkService()) {
+         networkService: NetworkServiceProtocol = NetworkService(),
+         openFoodFactsService: OpenFoodFactsServiceProtocol = OpenFoodFactsService()) {
         self.coreDataContainer = coreDataContainer
         self.networkService = networkService
+        self.openFoodFactsService = openFoodFactsService
     }
     
     // MARK: - Cache-First Operations
@@ -176,6 +181,16 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             // Other network errors, re-throw
             throw error
         }
+    }
+    
+    // MARK: - Open Food Facts Operations
+    
+    func searchProductByBarcode(_ barcode: String) async throws -> OpenFoodFactsProduct? {
+        return try await openFoodFactsService.searchProduct(by: barcode)
+    }
+    
+    func searchProductsFromOpenFoodFacts(by query: String) async throws -> [OpenFoodFactsProduct] {
+        return try await openFoodFactsService.searchProducts(by: query)
     }
 }
 

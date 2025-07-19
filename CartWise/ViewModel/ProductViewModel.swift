@@ -11,6 +11,9 @@ import Combine
 final class ProductViewModel: ObservableObject {
     @Published var products: [GroceryItem] = []
     @Published var recentProducts: [GroceryItem] = []
+    @Published var openFoodFactsProducts: [OpenFoodFactsProduct] = []
+    @Published var selectedOpenFoodFactsProduct: OpenFoodFactsProduct?
+    @Published var isLoadingOpenFoodFacts: Bool = false
     var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
@@ -172,8 +175,81 @@ final class ProductViewModel: ObservableObject {
             return false // If search fails, allow creation
         }
     }
-
     
+    // MARK: - Open Food Facts Operations
+    
+    func searchProductByBarcode(_ barcode: String) async {
+        isLoadingOpenFoodFacts = true
+        errorMessage = nil
+        
+        do {
+            selectedOpenFoodFactsProduct = try await repository.searchProductByBarcode(barcode)
+            if selectedOpenFoodFactsProduct == nil {
+                errorMessage = "Product not found in Open Food Facts database"
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        
+        isLoadingOpenFoodFacts = false
+    }
+    
+    func searchProductsFromOpenFoodFacts(by query: String) async {
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            openFoodFactsProducts = []
+            return
+        }
+        
+        isLoadingOpenFoodFacts = true
+        errorMessage = nil
+        
+        do {
+            openFoodFactsProducts = try await repository.searchProductsFromOpenFoodFacts(by: query)
+        } catch {
+            errorMessage = error.localizedDescription
+            openFoodFactsProducts = []
+        }
+        
+        isLoadingOpenFoodFacts = false
+    }
+    
+    func addOpenFoodFactsProductToCart(_ product: OpenFoodFactsProduct) async {
+        guard let productName = product.productName else {
+            errorMessage = "Product name is required"
+            return
+        }
+        
+        do {
+            if await isDuplicateProduct(name: productName) {
+                errorMessage = "Product '\(productName)' already exists in your list"
+                return
+            }
+            
+            let id = UUID().uuidString
+            _ = try await repository.createProduct(
+                id: id,
+                productName: productName,
+                brand: product.brands,
+                category: product.categories,
+                price: 0.0,
+                currency: "USD",
+                store: nil,
+                location: nil,
+                imageURL: product.imageFrontURL ?? product.imageURL,
+                barcode: product.code
+            )
+            await loadAllProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func clearOpenFoodFactsSearch() {
+        openFoodFactsProducts = []
+        selectedOpenFoodFactsProduct = nil
+        errorMessage = nil
+    }
 }
 
 // This code was generated with the help of Claude, saving me 1 hour of research and development.
