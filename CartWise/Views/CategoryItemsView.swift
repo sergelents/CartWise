@@ -529,14 +529,14 @@ struct AddToShoppingListAndFavoritesView: View {
             // Add to Favorite Button
             CustomButtonView(
                 title: "Add to Favorite",
-                imageName: "heart.circle",
+                imageName: "plus.circle.fill",
                 fontSize: 13,
                 weight: .bold,
-                buttonColor: Color.accentColorCoral,
+                buttonColor: Color.accentColorPink,
                 textColor: .white,
                 action: onAddToFavorites,
                 isAddedImageName: "heart.fill",
-                isAddedColor: Color.accentColorRed
+                isAddedColor: Color.accentColorCoral
             )
         }
         .padding(.horizontal, 10)
