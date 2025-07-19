@@ -100,12 +100,7 @@ struct CategoryItemsView: View {
         .navigationBarTitleDisplayMode(.large)
         .onAppear {
             Task {
-                await viewModel.loadProducts()
-                
-                // If category is empty, try to fetch from API
-                if categoryProducts.isEmpty {
-                    await loadProductsFromAPI()
-                }
+                await loadCategoryProducts()
             }
         }    
 
@@ -113,53 +108,9 @@ struct CategoryItemsView: View {
     
     // MARK: - Helper Functions
     
-
-    private func loadProductsFromAPI() async {
-        let searchTerms = getAPISearchTermsForCategory(category)
-        
-        for searchTerm in searchTerms {
-            print("🔍 Attempting to fetch: \(searchTerm)")
-            // Try to fetch from API and cache locally
-            do {
-                if let product = await viewModel.fetchProductFromAPI(by: searchTerm) {
-                    print("Successfully fetched and cached: \(product.productName ?? searchTerm)")
-                    print("   - Brand: \(product.brand ?? "No brand")")
-                    print("   - Price: $\(product.price)")
-                    print("   - Store: \(product.store ?? "No store")")
-                    print("   - Category: \(product.category ?? "No category")")
-                } else {
-                    print("Failed to fetch \(searchTerm) - API returned nil")
-                }
-            } catch {
-                print("Failed to fetch \(searchTerm) - Error: \(error.localizedDescription)")
-            }
-        }
-        
-        // Reload products after API calls
+    private func loadCategoryProducts() async {
+        // Load all products from Core Data, then filter by category
         await viewModel.loadProducts()
-    }
-    
-    private func getAPISearchTermsForCategory(_ category: ProductCategory) -> [String] {
-        switch category {
-        case .produce:
-            return ["banana", "apple", "spinach", "broccoli"]
-        case .dairy:
-            return ["milk", "cheese", "yogurt", "eggs"]
-        case .bakery:
-            return ["bread", "croissant", "muffin"]
-        case .meat:
-            return ["chicken", "beef", "salmon"]
-        case .frozen:
-            return ["pizza", "ice cream", "frozen vegetables"]
-        case .beverages:
-            return ["coffee", "tea", "juice"]
-        case .pantry:
-            return ["pasta", "rice", "olive oil"]
-        case .household:
-            return ["toothpaste", "paper towels", "dish soap"]
-        case .none:
-            return []
-        }
     }
     
     // private func clearDatabase() async {

@@ -230,19 +230,6 @@ final class ProductViewModel: ObservableObject {
             return false // If search fails, allow creation
         }
     }
-    
-    // MARK: - API Integration for Categories
-    
-    func fetchProductFromAPI(by name: String) async -> GroceryItem? {
-        do {
-            return try await repository.fetchProductFromNetwork(by: name)
-        } catch {
-            errorMessage = error.localizedDescription
-            return nil
-        }
-    }
-
-    
 }
 
 // This code was generated with the help of Claude, saving me 1 hour of research and development.
