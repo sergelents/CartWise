@@ -205,9 +205,14 @@ final class ProductViewModel: ObservableObject {
         
         do {
             openFoodFactsProducts = try await repository.searchProductsFromOpenFoodFacts(by: query)
+            print("📱 ViewModel received \(openFoodFactsProducts.count) products")
+            for (index, product) in openFoodFactsProducts.enumerated() {
+                print("📦 Product \(index): \(product.productName ?? "nil") - \(product.code ?? "nil")")
+            }
         } catch {
             errorMessage = error.localizedDescription
             openFoodFactsProducts = []
+            print("❌ ViewModel error: \(error)")
         }
         
         isLoadingOpenFoodFacts = false
@@ -249,6 +254,10 @@ final class ProductViewModel: ObservableObject {
         openFoodFactsProducts = []
         selectedOpenFoodFactsProduct = nil
         errorMessage = nil
+    }
+    
+    func testOpenFoodFactsAPI() async {
+        await repository.testOpenFoodFactsAPI()
     }
 }
 

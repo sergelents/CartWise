@@ -54,6 +54,16 @@ struct OpenFoodFactsView: View {
             }
             .navigationTitle("Open Food Facts")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Test API") {
+                        Task {
+                            await viewModel.testOpenFoodFactsAPI()
+                        }
+                    }
+                    .font(.caption)
+                }
+            }
         }
     }
     
@@ -251,6 +261,9 @@ struct OpenFoodFactsProductRow: View {
                 Text(product.productName ?? "Unknown Product")
                     .font(.headline)
                     .lineLimit(2)
+                    .onAppear {
+                        print("🔍 Product row - Name: \(product.productName ?? "nil"), Code: \(product.code ?? "nil")")
+                    }
                 
                 if let brand = product.brands {
                     Text(brand)

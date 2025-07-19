@@ -23,6 +23,7 @@ protocol ProductRepositoryProtocol: Sendable {
     func fetchProductFromNetwork(by name: String) async throws -> GroceryItem?
     func searchProductByBarcode(_ barcode: String) async throws -> OpenFoodFactsProduct?
     func searchProductsFromOpenFoodFacts(by query: String) async throws -> [OpenFoodFactsProduct]
+    func testOpenFoodFactsAPI() async
 }
 
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
@@ -191,6 +192,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     
     func searchProductsFromOpenFoodFacts(by query: String) async throws -> [OpenFoodFactsProduct] {
         return try await openFoodFactsService.searchProducts(by: query)
+    }
+    
+    func testOpenFoodFactsAPI() async {
+        await openFoodFactsService.testAPI()
     }
 }
 
