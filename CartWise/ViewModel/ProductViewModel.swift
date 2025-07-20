@@ -135,6 +135,15 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
+    func searchProductsOnAmazon(by query: String) async {
+        do {
+            products = try await repository.searchProductsOnAmazon(by: query)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
     func searchProductsByBarcode(_ barcode: String) async {
         do {
             products = try await repository.searchProducts(by: barcode)
