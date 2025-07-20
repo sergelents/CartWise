@@ -19,6 +19,7 @@ protocol ProductRepositoryProtocol: Sendable {
     func toggleProductCompletion(_ product: GroceryItem) async throws
     func addProductToShoppingList(_ product: GroceryItem) async throws
     func searchProducts(by name: String) async throws -> [GroceryItem]
+    func searchProductsOnAmazon(by query: String) async throws -> [GroceryItem]
     func fetchProductFromNetwork(by name: String) async throws -> GroceryItem?
 }
 
@@ -125,6 +126,36 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             return try await coreDataContainer.searchProducts(by: name)
         } catch {
             // If network fails, return empty array (cache-first approach)
+            return []
+        }
+    }
+    
+    func searchProductsOnAmazon(by query: String) async throws -> [GroceryItem] {
+        // Network-first: search Amazon directly
+        do {
+            let amazonProducts = try await networkService.searchProductsOnAmazon(by: query)
+            
+            // Convert Amazon products to GroceryItems and save to local cache
+            var groceryItems: [GroceryItem] = []
+            for amazonProduct in amazonProducts.prefix(10) { // Limit to first 10
+                let groceryItem = try await createProduct(
+                    id: amazonProduct.id,
+                    productName: amazonProduct.productName,
+                    brand: amazonProduct.brand,
+                    category: amazonProduct.category,
+                    price: amazonProduct.price,
+                    currency: amazonProduct.currency,
+                    store: amazonProduct.store,
+                    location: amazonProduct.location,
+                    imageURL: amazonProduct.imageURL,
+                    barcode: amazonProduct.barcode
+                )
+                groceryItems.append(groceryItem)
+            }
+            
+            return groceryItems
+        } catch {
+            // If Amazon search fails, return empty array
             return []
         }
     }

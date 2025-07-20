@@ -7,10 +7,12 @@
 
 
 import Foundation
+import CoreData
 
 protocol NetworkServiceProtocol: Sendable {
     func fetchProduct(by name: String) async throws -> GroceryPriceData?
     func searchProducts(by name: String) async throws -> [GroceryPriceData]
+    func searchProductsOnAmazon(by query: String) async throws -> [GroceryPriceData]
     func fetchProductWithRetry(by name: String, retries: Int) async throws -> GroceryPriceData?
 }
 
@@ -25,6 +27,12 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     
     func searchProducts(by name: String) async throws -> [GroceryPriceData] {
         let url = try buildSearchURL(for: name)
+        let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
+        return response.data ?? []
+    }
+    
+    func searchProductsOnAmazon(by query: String) async throws -> [GroceryPriceData] {
+        let url = try buildAmazonSearchURL(for: query)
         let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
         return response.data ?? []
     }
@@ -58,6 +66,18 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         var components = URLComponents(string: "\(baseURL)/search")!
         components.queryItems = [
             URLQueryItem(name: "query", value: name)
+        ]
+        
+        guard let url = components.url else {
+            throw NetworkError.invalidURL
+        }
+        return url
+    }
+    
+    private func buildAmazonSearchURL(for query: String) throws -> URL {
+        var components = URLComponents(string: "\(baseURL)/amazon")!
+        components.queryItems = [
+            URLQueryItem(name: "query", value: query)
         ]
         
         guard let url = components.url else {
