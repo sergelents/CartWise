@@ -14,6 +14,7 @@ protocol NetworkServiceProtocol: Sendable {
     func searchProducts(by name: String) async throws -> [GroceryPriceData]
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryPriceData]
     func fetchProductWithRetry(by name: String, retries: Int) async throws -> GroceryPriceData?
+    func fetchProductFromOpenFoodFacts(barcode: String) async throws -> GroceryPriceData?
 }
 
 final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
@@ -60,6 +61,12 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         throw lastError ?? NetworkError.maxRetriesExceeded
     }
     
+    func fetchProductFromOpenFoodFacts(barcode: String) async throws -> GroceryPriceData? {
+        let url = try buildOpenFoodFactsURL(for: barcode)
+        let response = try await performOpenFoodFactsRequest(url: url)
+        return response
+    }
+    
     // MARK: - Private Methods
     
     private func buildSearchURL(for name: String) throws -> URL {
@@ -81,6 +88,15 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         ]
         
         guard let url = components.url else {
+            throw NetworkError.invalidURL
+        }
+        return url
+    }
+    
+    private func buildOpenFoodFactsURL(for barcode: String) throws -> URL {
+        let openFoodFactsURL = "https://world.openfoodfacts.org/api/v0/product/\(barcode).json"
+        
+        guard let url = URL(string: openFoodFactsURL) else {
             throw NetworkError.invalidURL
         }
         return url
@@ -118,6 +134,77 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         default:
             throw NetworkError.httpError(httpResponse.statusCode)
         }
+    }
+    
+    private func performOpenFoodFactsRequest(url: URL) async throws -> GroceryPriceData? {
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        
+        switch httpResponse.statusCode {
+        case 200:
+            do {
+                let decoder = JSONDecoder()
+                let openFoodFactsResponse = try decoder.decode(OpenFoodFactsResponse.self, from: data)
+                
+                guard openFoodFactsResponse.status == 1, let product = openFoodFactsResponse.product else {
+                    return nil
+                }
+                
+                // Convert Open Food Facts product to GroceryPriceData
+                return GroceryPriceData(
+                    id: product.code ?? UUID().uuidString,
+                    productName: product.productName ?? "Unknown Product",
+                    brand: product.brands,
+                    category: product.categories,
+                    price: 0.0, // Open Food Facts doesn't provide pricing
+                    currency: "USD",
+                    store: nil,
+                    location: nil,
+                    lastUpdated: product.lastUpdated ?? "",
+                    imageURL: product.imageURL,
+                    barcode: product.code
+                )
+            } catch {
+                throw NetworkError.decodingError(error)
+            }
+        case 404:
+            throw NetworkError.productNotFound
+        case 500...599:
+            throw NetworkError.serverError(httpResponse.statusCode)
+        default:
+            throw NetworkError.httpError(httpResponse.statusCode)
+        }
+    }
+}
+
+// MARK: - Open Food Facts Response Models
+
+struct OpenFoodFactsResponse: Codable {
+    let status: Int
+    let product: OpenFoodFactsProduct?
+}
+
+struct OpenFoodFactsProduct: Codable {
+    let code: String?
+    let productName: String?
+    let brands: String?
+    let categories: String?
+    let imageURL: String?
+    let lastUpdated: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case code
+        case productName = "product_name"
+        case brands
+        case categories
+        case imageURL = "image_url"
+        case lastUpdated = "last_updated"
     }
 }
 

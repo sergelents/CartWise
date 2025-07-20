@@ -21,6 +21,7 @@ protocol ProductRepositoryProtocol: Sendable {
     func searchProducts(by name: String) async throws -> [GroceryItem]
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryItem]
     func fetchProductFromNetwork(by name: String) async throws -> GroceryItem?
+    func fetchProductFromOpenFoodFacts(barcode: String) async throws -> GroceryItem?
 }
 
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
@@ -194,6 +195,48 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             return savedProduct
         } catch NetworkError.productNotFound {
             // Product not found in API, return nil
+            return nil
+        } catch NetworkError.rateLimitExceeded {
+            // Rate limited, return nil but could implement queue for later retry
+            return nil
+        } catch {
+            // Other network errors, re-throw
+            throw error
+        }
+    }
+    
+    func fetchProductFromOpenFoodFacts(barcode: String) async throws -> GroceryItem? {
+        // Check cache first for existing product with this barcode
+        let existingProducts = try await coreDataContainer.fetchAllProducts()
+        if let existingProduct = existingProducts.first(where: { $0.barcode?.lowercased() == barcode.lowercased() }) {
+            return existingProduct
+        }
+        
+        // Network-second: fetch from Open Food Facts API
+        do {
+            let networkProduct = try await networkService.fetchProductFromOpenFoodFacts(barcode: barcode)
+            
+            guard let networkProduct = networkProduct else {
+                return nil
+            }
+            
+            // Save to local cache
+            let savedProduct = try await createProduct(
+                id: networkProduct.id,
+                productName: networkProduct.productName,
+                brand: networkProduct.brand,
+                category: networkProduct.category,
+                price: networkProduct.price,
+                currency: networkProduct.currency,
+                store: networkProduct.store,
+                location: networkProduct.location,
+                imageURL: networkProduct.imageURL,
+                barcode: networkProduct.barcode
+            )
+            
+            return savedProduct
+        } catch NetworkError.productNotFound {
+            // Product not found in Open Food Facts API, return nil
             return nil
         } catch NetworkError.rateLimitExceeded {
             // Rate limited, return nil but could implement queue for later retry
