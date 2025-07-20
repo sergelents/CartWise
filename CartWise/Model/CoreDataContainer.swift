@@ -12,8 +12,8 @@ protocol CoreDataContainerProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
     func fetchListProducts() async throws -> [GroceryItem]
     func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem
-    func createProduct(name: String) async throws -> GroceryItem
+    func createDetailedProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem
+    func createSimpleProduct(name: String) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
     func deleteProduct(_ product: GroceryItem) async throws
     func toggleProductCompletion(_ product: GroceryItem) async throws
@@ -62,7 +62,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         }
     }
     
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem {
+    // For API/search results (detailed products)
+    func createDetailedProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem {
         try await coreDataStack.performBackgroundTask { context in
             let product = GroceryItem(
                 context: context,
@@ -78,12 +79,16 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 barcode: barcode
             )
             
+            // Don't add to shopping list by default - only when user explicitly adds
+            product.isInShoppingList = false
+            
             try context.save()
             return product
         }
     }
     
-    func createProduct(name: String) async throws -> GroceryItem {
+    // For manual user input (simple products)
+    func createSimpleProduct(name: String) async throws -> GroceryItem {
         try await coreDataStack.performBackgroundTask { context in
             let product = GroceryItem(
                 context: context,
@@ -98,6 +103,9 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 imageURL: nil,
                 barcode: nil
             )
+            
+            // Don't add to shopping list by default - only when user explicitly adds
+            product.isInShoppingList = false
             
             try context.save()
             return product

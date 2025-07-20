@@ -28,13 +28,13 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     func searchProducts(by name: String) async throws -> [GroceryPriceData] {
         let url = try buildSearchURL(for: name)
         let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
-        return response.data ?? []
+        return response.products ?? []
     }
     
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryPriceData] {
         let url = try buildAmazonSearchURL(for: query)
         let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
-        return response.data ?? []
+        return response.products ?? []
     }
     
     func fetchProduct(by name: String) async throws -> GroceryPriceData? {
@@ -62,10 +62,10 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     
     // MARK: - Private Methods
     
-    private func buildSearchURL(for name: String) throws -> URL {
+    private func buildSearchURL(for query: String) throws -> URL {
         var components = URLComponents(string: "\(baseURL)/search")!
         components.queryItems = [
-            URLQueryItem(name: "query", value: name)
+            URLQueryItem(name: "query", value: query)
         ]
         
         guard let url = components.url else {

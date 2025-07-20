@@ -37,8 +37,39 @@ final class ProductViewModel: ObservableObject {
         do {
             products = try await repository.fetchAllProducts()
             errorMessage = nil
+            
+            // If no products exist, load some initial data for each category
+            if products.isEmpty {
+                await loadInitialCategoryData()
+            }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+    
+    // Load initial products for each category
+    private func loadInitialCategoryData() async {
+        let initialSearches = [
+            "beer",           // Beverages
+            "milk",           // Dairy
+            "bread",          // Bakery
+            "chicken",        // Meat
+            "apple",          // Produce
+            "pasta",          // Pantry
+            "ice cream",      // Frozen
+            "soap"            // Household
+        ]
+        
+        for searchTerm in initialSearches {
+            do {
+                await searchProductsOnAmazon(by: searchTerm)
+                // Only keep a few products per category to avoid overwhelming
+                if products.count > 20 {
+                    break
+                }
+            } catch {
+                print("Error loading initial data for \(searchTerm): \(error)")
+            }
         }
     }
     
@@ -239,6 +270,4 @@ final class ProductViewModel: ObservableObject {
             return false // If search fails, allow creation
         }
     }
-}
-
-// This code was generated with the help of Claude, saving me 1 hour of research and development.
+}// This code was generated with the help of Claude, saving me 1 hour of research and development.

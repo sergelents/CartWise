@@ -15,6 +15,7 @@ struct SearchItemsView: View {
     @State private var searchText = ""
     @State private var searchResults: [GroceryItem] = []
     @State private var isSearching = false
+    @State private var selectedCategory: ProductCategory? = nil
 
     @StateObject private var viewModel = ProductViewModel(repository: ProductRepository())
 
@@ -42,57 +43,12 @@ struct SearchItemsView: View {
     var body: some View {
         NavigationStack {
             VStack {
-                // Search bar
-                HStack {
-                    TextField("Search products...", text: $searchText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .onSubmit {
-                            Task {
-                                await performSearch()
-                            }
-                        }
-                    
-                    if isSearching {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                    }
-                    
-                    if !searchText.isEmpty {
-                        Button(action: {
-                            searchText = ""
-                            searchResults = []
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.gray)
-                                .font(.system(size: 18))
-                        }
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.top)
-
+                searchBarView
+                
                 if !searchText.isEmpty && !searchResults.isEmpty {
-                    // Search results
-                    List(searchResults, id: \.id) { product in
-                        NavigationLink(destination: ProductDetailView(product: product)) {
-                            SearchResultRowView(product: product)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    .listStyle(PlainListStyle())
+                    searchResultsView
                 } else {
-                    // Category grid
-                    ScrollView {
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 2), spacing: 16) {
-                            ForEach(filteredCategories, id: \.self) { category in
-                                NavigationLink(destination: CategoryItemsView(category: category)) {
-                                    CategoryCard(category: category, productCount: getProductCount(for: category))
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                            }
-                        }
-                        .padding()
-                    }
+                    categoryGridView
                 }
             }
             .navigationTitle("Search & Browse")
@@ -102,6 +58,94 @@ struct SearchItemsView: View {
                 }
             }
         }
+    }
+    
+    // MARK: - View Components
+    
+    private var searchBarView: some View {
+        VStack(spacing: 8) {
+            HStack {
+                TextField("Search products...", text: $searchText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .onSubmit {
+                        Task {
+                            await performSearch()
+                        }
+                    }
+                
+                if isSearching {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                }
+                
+                if !searchText.isEmpty || selectedCategory != nil {
+                    Button(action: {
+                        searchText = ""
+                        clearCategorySelection()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 18))
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top)
+            
+            // Show selected category if any
+            if let selectedCategory = selectedCategory {
+                HStack {
+                    Text("Category: \(selectedCategory.rawValue)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.blue)
+                    
+                    Spacer()
+                    
+                    Button("Clear Category") {
+                        clearCategorySelection()
+                    }
+                    .font(.system(size: 12))
+                    .foregroundColor(.red)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            }
+        }
+    }
+    
+    private var searchResultsView: some View {
+        List(searchResults, id: \.id) { product in
+            NavigationLink(destination: ProductDetailView(product: product)) {
+                SearchResultRowView(product: product)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .listStyle(PlainListStyle())
+    }
+    
+    private var categoryGridView: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                categoryGrid
+            }
+        }
+    }
+    
+    private var categoryGrid: some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
+        
+        return LazyVGrid(columns: columns, spacing: 16) {
+            ForEach(filteredCategories, id: \.self) { category in
+                NavigationLink(destination: CategoryItemsView(category: category)) {
+                    CategoryCard(
+                        category: category, 
+                        productCount: getProductCount(for: category)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding()
     }
 
 
@@ -116,12 +160,55 @@ struct SearchItemsView: View {
         defer { isSearching = false }
         
         do {
-            await viewModel.searchProducts(by: searchText)
+            // Create enhanced query with category keywords if category is selected
+            let enhancedQuery = createEnhancedQuery(searchText: searchText, category: selectedCategory)
+            await viewModel.searchProductsOnAmazon(by: enhancedQuery)
             searchResults = viewModel.products
         } catch {
             print("Search error: \(error)")
             searchResults = []
         }
+    }
+    
+    // Helper function to enhance search query with category keywords
+    private func createEnhancedQuery(searchText: String, category: ProductCategory?) -> String {
+        guard let category = category else {
+            return searchText
+        }
+        
+        switch category {
+        case .none:
+            return searchText
+        case .meat:
+            return "\(searchText) meat seafood"
+        case .dairy:
+            return "\(searchText) dairy eggs milk cheese"
+        case .bakery:
+            return "\(searchText) bakery bread pastry"
+        case .produce:
+            return "\(searchText) fresh produce vegetables fruits"
+        case .pantry:
+            return "\(searchText) pantry staples canned goods"
+        case .beverages:
+            return "\(searchText) beverages drinks"
+        case .frozen:
+            return "\(searchText) frozen foods"
+        case .household:
+            return "\(searchText) household personal care"
+        }
+    }
+    
+    private func selectCategory(_ category: ProductCategory) {
+        selectedCategory = category
+        // Automatically perform search with selected category
+        Task {
+            await performSearch()
+        }
+    }
+    
+    private func clearCategorySelection() {
+        selectedCategory = nil
+        searchResults = []
     }
     
     private func getProductCount(for category: ProductCategory) -> Int {

@@ -8,6 +8,14 @@
 import CoreData
 import Foundation
 
+// Date extension for ISO8601 formatting
+extension Date {
+    var ISO8601String: String {
+        let formatter = ISO8601DateFormatter()
+        return formatter.string(from: self)
+    }
+}
+
 // Product categories enum
 enum ProductCategory: String, CaseIterable {
     case none = "Select Category"
@@ -23,35 +31,55 @@ enum ProductCategory: String, CaseIterable {
 
 // Grocery Price API Models
 struct GroceryPriceResponse: Codable, Sendable {
-    let status: Int
-    let message: String
-    let data: [GroceryPriceData]?
+    let success: Bool
+    let pagination: PaginationInfo?
+    let products: [GroceryPriceData]?
+    
+    // Legacy support - map to old format
+    var status: Int { success ? 200 : 400 }
+    var message: String { success ? "Success" : "Error" }
+    var data: [GroceryPriceData]? { products }
+}
+
+struct PaginationInfo: Codable, Sendable {
+    let currentPage: Int
+    let nextPage: Int?
+    let totalPages: Int
 }
 
 struct GroceryPriceData: Codable, Sendable {
-    let id: String
-    let productName: String
-    let brand: String?
-    let category: String?
-    let price: Double
+    let name: String
+    let price: String
     let currency: String
-    let store: String
-    let location: String?
-    let lastUpdated: String
-    let imageURL: String?
-    let barcode: String?
+    let customerReview: String?
+    let customerReviewCount: String?
+    let shippingMessage: String?
+    let amazonLink: String?
+    let image: String?
+    let boughtInfo: String?
+    
+    // Map to your existing model format
+    var id: String { amazonLink?.components(separatedBy: "/dp/").last?.components(separatedBy: "?").first ?? UUID().uuidString }
+    var productName: String { name }
+    var brand: String? { 
+        // Extract brand from product name (first part before comma or dash)
+        let components = name.components(separatedBy: CharacterSet(charactersIn: ", -"))
+        return components.first?.trimmingCharacters(in: .whitespaces)
+    }
+    var category: String? { nil } // Will be set based on search context
+    var priceValue: Double { 
+        // Extract numeric price from string like "$7.29"
+        let cleanPrice = price.replacingOccurrences(of: "$", with: "").replacingOccurrences(of: ",", with: "")
+        return Double(cleanPrice) ?? 0.0
+    }
+    var store: String { "Amazon" }
+    var location: String? { nil }
+    var lastUpdated: String { Date().ISO8601String }
+    var imageURL: String? { image }
+    var barcode: String? { nil }
     
     enum CodingKeys: String, CodingKey {
-        case id
-        case productName = "product_name"
-        case brand
-        case category
-        case price
-        case currency
-        case store
-        case location
-        case lastUpdated = "last_updated"
-        case imageURL = "image_url"
-        case barcode
+        case name, price, currency, customerReview, customerReviewCount
+        case shippingMessage, amazonLink, image, boughtInfo
     }
 }
