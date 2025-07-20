@@ -79,6 +79,7 @@ struct CategoryItemsView: View {
                         ForEach(categoryProducts, id: \.id) { product in
                             ProductCard(
                                 product: product,
+                                productViewModel: viewModel,
                                 isSelected: product.id != nil && selectedItemsToAdd.contains(product.id!),
                                 onToggle: {
                                     if let productId = product.id {
@@ -127,6 +128,7 @@ struct CategoryItemsView: View {
 // Product Card View
 struct ProductCard: View {
     let product: GroceryItem
+    let productViewModel: ProductViewModel
     let isSelected: Bool
     let onToggle: () -> Void
 
@@ -157,25 +159,27 @@ struct ProductCard: View {
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
                     }
-
+                    
                     if let store = product.store {
                         Text(store)
                             .font(.system(size: 12))
                             .foregroundColor(.blue)
                     }
                 }
+                
                 Spacer()
-                // Add to list button
-                Button(action: onToggle) {
-                    // TODO: Add to shopping list functionality
-                    if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(Color.accentColorGreen)
-                        .font(.system(size: 24))
-                    } else {
-                        Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(Color.accentColorBlue)
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    if product.price > 0 {
+                        Text("$\(String(format: "%.2f", product.price))")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
+                    
+                    if let category = product.category {
+                        Text(category)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -186,74 +190,71 @@ struct ProductCard: View {
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
-            ProductDetailView(product: product)
+            ProductDetailView(product: product, productViewModel: productViewModel)
         }
     }
 }
 
 // Product Detail View
 struct ProductDetailView: View {
-        let product: GroceryItem
-        
-        // ProductViewModel for adding to shopping list
-        @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    let product: GroceryItem
+    let productViewModel: ProductViewModel  // Use shared instance
+    
+    // Adding to shopping list and to favorites
+    @State private var isAddingToFavorites = false
+    @State private var isAddingToShoppingList = false
+    @State private var showingSuccessMessage = false
+    @State private var showingDuplicateMessage = false
 
-        // Adding to shopping list and to favorites
-        @State private var isAddingToFavorites = false
-        @State private var isAddingToShoppingList = false
-        @State private var showingSuccessMessage = false
-        @State private var showingDuplicateMessage = false
+    // Dismissing the view
+    @Environment(\.dismiss) private var dismiss
 
-        // Dismissing the view
-        @Environment(\.dismiss) private var dismiss
-
-        var body: some View {
+    var body: some View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .center, spacing: 18) {
                     
-                        // Store View
-                        if let store = product.store {
-                            StoreView(store: store, storeAddress: product.location ?? "Address not available")
+                    // Store View
+                    if let store = product.store {
+                        StoreView(store: store, storeAddress: product.location ?? "Address not available")
+                    }
+
+                    // Product Name View
+                    ProductNameView(product: product)
+
+                    // Product Image View
+                    ProductImageView(product: product)
+
+                    // Product Price View
+                    // TODO: Need to update data model to include last updated info?
+                    ProductPriceView(
+                        product: product,
+                        lastUpdated: "7/17/2025",
+                        lastUpdatedBy: "Kelly Yong"
+                    )
+
+                    // Add to Shopping List and Add to Favorites View
+                    AddToShoppingListAndFavoritesView(
+                        onAddToShoppingList: {
+                            addToShoppingList()
+                        }, 
+                        onAddToFavorites: {
+                            // TODO: Add to favorites functionality
+                            isAddingToFavorites.toggle()
                         }
+                    )
 
-                        // Product Name View
-                        ProductNameView(product: product)
-
-                        // Product Image View
-                        ProductImageView(product: product)
-
-                        // Product Price View
-                        // TODO: Need to update data model to include last updated info?
-                        ProductPriceView(
-                            product: product,
-                            lastUpdated: "7/17/2025",
-                            lastUpdatedBy: "Kelly Yong"
-                        )
-
-                        // Add to Shopping List and Add to Favorites View
-                        AddToShoppingListAndFavoritesView(
-                            onAddToShoppingList: {
-                                addToShoppingList()
-                            }, 
-                            onAddToFavorites: {
-                                // TODO: Add to favorites functionality
-                                isAddingToFavorites.toggle()
-                            }
-                        )
-
-                        // Update Price View
-                        UpdatePriceView(
+                    // Update Price View
+                    UpdatePriceView(
                         product: product,
                         onUpdatePrice: {
                             // TODO: Update price functionality
                         },
                         lastUpdated: "7/17/2025",
                         lastUpdatedBy: "Kelly Yong"
-                        )
-                    }
-                    .padding(.horizontal, 24)
-
+                    )
+                }
+                .padding(.horizontal, 24)
             }
             .navigationTitle("Product Details")
             .navigationBarTitleDisplayMode(.inline)
@@ -276,8 +277,9 @@ struct ProductDetailView: View {
             Text("\(product.productName ?? "Product") is already in your shopping list.")
         }
     }
-        private func addToShoppingList() {
-            Task {
+    
+    private func addToShoppingList() {
+        Task {
             // Check if product already exists in shopping list
             let isDuplicate = await productViewModel.isDuplicateProduct(name: product.productName ?? "")
             
@@ -287,12 +289,11 @@ struct ProductDetailView: View {
                     showingDuplicateMessage = true
                 }
             } else {
-                // Product doesn't exist, create it (this automatically adds to shopping list)
-                await productViewModel.createProductForShoppingList(
-                    byName: product.productName ?? "",
-                    brand: product.brand,
-                    category: product.category
-                )
+                // Add the existing product to shopping list
+                await productViewModel.addExistingProductToShoppingList(product)
+                
+                // Refresh the shopping list to show the new item
+                await productViewModel.loadShoppingListProducts()
                 
                 // Show success message
                 await MainActor.run {

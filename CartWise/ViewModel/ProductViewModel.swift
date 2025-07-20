@@ -213,8 +213,9 @@ final class ProductViewModel: ObservableObject {
     
     func isDuplicateProduct(name: String) async -> Bool {
         do {
-            let existingProducts = try await repository.searchProducts(by: name)
-            return existingProducts.contains { product in
+            // Only check shopping list products, not all products
+            let shoppingListProducts = try await repository.fetchListProducts()
+            return shoppingListProducts.contains { product in
                 product.productName?.lowercased() == name.lowercased()
             }
         } catch {
