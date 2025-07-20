@@ -73,6 +73,23 @@ struct SearchItemsView: View {
                         }
                     }
                 
+                // Category selection button
+                Menu {
+                    ForEach(filteredCategories, id: \.self) { category in
+                        Button(category.rawValue) {
+                            selectCategory(category)
+                        }
+                    }
+                    Divider()
+                    Button("Clear Category") {
+                        clearCategorySelection()
+                    }
+                } label: {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .foregroundColor(.blue)
+                        .font(.system(size: 20))
+                }
+                
                 if isSearching {
                     ProgressView()
                         .scaleEffect(0.8)
