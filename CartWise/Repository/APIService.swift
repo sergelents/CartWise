@@ -164,7 +164,7 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
                     category: product.categories,
                     price: 0.0, // Open Food Facts doesn't provide pricing
                     currency: "USD",
-                    store: nil,
+                    store: "Unknown Store", // Provide a default value since store is not optional
                     location: nil,
                     lastUpdated: product.lastUpdated ?? "",
                     imageURL: product.imageURL,

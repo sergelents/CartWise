@@ -92,7 +92,7 @@ struct BarcodeScannerView: View {
         }
         .sheet(isPresented: $showingProductDetail) {
             if let product = scannedProduct {
-                ProductDetailView(product: product)
+                ScannedProductDetailView(product: product)
             }
         }
     }
@@ -128,7 +128,7 @@ struct CameraView: UIViewRepresentable {
 
 // Barcode Scanner View Model
 @MainActor
-class BarcodeScannerViewModel: ObservableObject {
+class BarcodeScannerViewModel: NSObject, ObservableObject {
     @Published var scannedBarcode: String?
     @Published var scannedProduct: GroceryItem?
     @Published var isLoading = false
@@ -138,8 +138,8 @@ class BarcodeScannerViewModel: ObservableObject {
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private let repository: ProductRepositoryProtocol
     
-    init() {
-        self.repository = Repository(coreDataContainer: CoreDataContainer())
+    override init() {
+        self.repository = ProductRepository(coreDataContainer: CoreDataContainer())
     }
     
     func startScanning() {
@@ -287,7 +287,7 @@ extension BarcodeScannerViewModel: AVCaptureMetadataOutputObjectsDelegate {
 }
 
 // Product Detail View for scanned items
-struct ProductDetailView: View {
+struct ScannedProductDetailView: View {
     let product: GroceryItem
     @Environment(\.dismiss) private var dismiss
     @StateObject private var productViewModel: ProductViewModel
@@ -296,7 +296,7 @@ struct ProductDetailView: View {
     
     init(product: GroceryItem) {
         self.product = product
-        self._productViewModel = StateObject(wrappedValue: ProductViewModel(repository: Repository(coreDataContainer: CoreDataContainer())))
+        self._productViewModel = StateObject(wrappedValue: ProductViewModel(repository: ProductRepository(coreDataContainer: CoreDataContainer())))
     }
     
     var body: some View {

@@ -104,7 +104,7 @@ struct AddItemsView: View {
 // Manual Entry View
 struct ManualEntryView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var productViewModel = ProductViewModel(repository: Repository(coreDataContainer: CoreDataContainer()))
+    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository(coreDataContainer: CoreDataContainer()))
     @State private var productName = ""
     @State private var brand = ""
     @State private var category = "Select Category"
