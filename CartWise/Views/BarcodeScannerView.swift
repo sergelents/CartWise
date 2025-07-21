@@ -14,6 +14,7 @@ struct BarcodeScannerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingProductDetail = false
     @State private var scannedProduct: GroceryItem?
+    @State private var manualBarcode: String = ""
     
     var body: some View {
         ZStack {
@@ -54,7 +55,33 @@ struct BarcodeScannerView: View {
                     .stroke(Color.white, lineWidth: 3)
                     .frame(width: 250, height: 150)
                     .background(Color.clear)
-                
+
+                // Manual barcode entry UI
+                VStack(spacing: 8) {
+                    Text("Or type barcode manually:")
+                        .foregroundColor(.white)
+                        .font(.subheadline)
+                    HStack {
+                        TextField("Enter barcode", text: $manualBarcode)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .frame(width: 180)
+                        Button(action: {
+                            let trimmed = manualBarcode.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !trimmed.isEmpty else { return }
+                            handleScannedBarcode(trimmed)
+                        }) {
+                            Text("Submit")
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.blue)
+                                .cornerRadius(8)
+                        }
+                    }
+                }
+                .padding(.top, 12)
+
                 Spacer()
                 
                 // Bottom info

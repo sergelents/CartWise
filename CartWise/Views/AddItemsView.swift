@@ -44,7 +44,7 @@ struct AddItemsView: View {
                         HStack {
                             Image(systemName: "barcode.viewfinder")
                                 .font(.title2)
-                            Text("Scan Barcode")
+                            Text("Type Barcode")
                                 .font(.headline)
                         }
                         .foregroundColor(.white)
