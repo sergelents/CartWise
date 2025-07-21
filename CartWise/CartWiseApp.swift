@@ -6,15 +6,19 @@
 //
 
 import SwiftUI
+import CoreData
 
 @main
 struct CartWiseApp: App {
     @StateObject private var appCoordinator = AppCoordinator()
+    
+    // Create a CoreDataStack instance for the app
+    private let coreDataStack = CoreDataStack.shared
 
     var body: some Scene {
         WindowGroup {
             AppCoordinatorView(coordinator: appCoordinator)
-                .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
+                .environment(\.managedObjectContext, coreDataStack.persistentContainer.viewContext)
         }
     }
 }

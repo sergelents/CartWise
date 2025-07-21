@@ -10,6 +10,7 @@ import Foundation
 
 // Product categories enum
 enum ProductCategory: String, CaseIterable {
+    case none = "Select Category"
     case meat = "Meat & Seafood"
     case dairy = "Dairy & Eggs"
     case bakery = "Bakery"
@@ -20,31 +21,37 @@ enum ProductCategory: String, CaseIterable {
     case household = "Household & Personal Care"
 }
 
-struct OpenFoodFactsResponse: Codable, Sendable {
+// Grocery Price API Models
+struct GroceryPriceResponse: Codable, Sendable {
     let status: Int
-    let product: OpenFoodFactsProduct?
+    let message: String
+    let data: [GroceryPriceData]?
 }
 
-struct OpenFoodFactsProduct: Codable, Sendable {
-    let code: String
-    let productName: String?
-    let brands: String?
+struct GroceryPriceData: Codable, Sendable {
+    let id: String
+    let productName: String
+    let brand: String?
+    let category: String?
+    let price: Double
+    let currency: String
+    let store: String
+    let location: String?
+    let lastUpdated: String
     let imageURL: String?
-    let nutritionGrades: String?
-    let categories: String?
-    let ingredients: [Ingredient]?
+    let barcode: String?
     
     enum CodingKeys: String, CodingKey {
-        case code
+        case id
         case productName = "product_name"
-        case brands
+        case brand
+        case category
+        case price
+        case currency
+        case store
+        case location
+        case lastUpdated = "last_updated"
         case imageURL = "image_url"
-        case nutritionGrades = "nutrition_grades"
-        case categories
-        case ingredients
+        case barcode
     }
-}
-
-struct Ingredient: Codable, Sendable {
-    let text: String
 }

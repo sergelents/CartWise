@@ -1,1 +1,5 @@
 GoogleService-Info.plist
+
+# Xcode user-specific files
+*.xcuserstate
+UserInterfaceState.xcuserstate
