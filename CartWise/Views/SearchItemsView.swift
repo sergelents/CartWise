@@ -51,7 +51,7 @@ struct SearchItemsView: View {
                     categoryGridView
                 }
             }
-            .navigationTitle("Search & Browse")
+            .navigationTitle("Search")
             .onAppear {
                 Task {
                     await viewModel.loadProducts()
@@ -73,7 +73,7 @@ struct SearchItemsView: View {
                         }
                     }
                 
-                // Category selection button
+                // Category selection button - filtering
                 Menu {
                     ForEach(filteredCategories, id: \.self) { category in
                         Button(category.rawValue) {

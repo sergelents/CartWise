@@ -387,8 +387,9 @@ struct ProductImageView: View {
             )
             .overlay(
                 VStack {
+                    // Need to have a price check to see if item is on sale
                     if product.price > 0 {
-                        Text("$\(String(format: "%.2f", product.price))")
+                        Text("Sale")
                             .font(.system(size: 14, weight: .bold))
                             .frame(width: 100, height: 24)
                             .foregroundColor(.white)
