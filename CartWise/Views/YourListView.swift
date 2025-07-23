@@ -22,6 +22,7 @@ struct YourListView: View {
     @State private var showingRatingPrompt: Bool = false
     @State private var showingDuplicateAlert = false
     @State private var duplicateProductName = ""
+    @State private var showingCheckAllConfirmation = false
     
     var body: some View {
         NavigationStack {
@@ -34,7 +35,8 @@ struct YourListView: View {
                 storeAddress: storeAddress,
                 total: total,
                 showingRatingPrompt: $showingRatingPrompt,
-                showingAddProductModal: $showingAddProductModal
+                showingAddProductModal: $showingAddProductModal,
+                showingCheckAllConfirmation: $showingCheckAllConfirmation
             )
             .sheet(isPresented: $showingRatingPrompt) {
                 RatingPromptView()
@@ -50,6 +52,22 @@ struct YourListView: View {
                 }
             } message: {
                 Text("A product named \"\(duplicateProductName)\" already exists in your list.")
+            }
+            .alert("Complete All Items", isPresented: $showingCheckAllConfirmation) {
+                Button("Cancel", role: .cancel) {
+                    // Do nothing, just dismiss the alert
+                }
+                Button("Complete All") {
+                    Task {
+                        await productViewModel.toggleAllProductsCompletion()
+                        // Only show rating prompt if all items are actually completed
+                        if productViewModel.allProductsCompleted {
+                            showingRatingPrompt = true
+                        }
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to mark all items as completed?")
             }
             .onAppear {
                 Task {
@@ -89,6 +107,7 @@ struct MainContentView: View {
     let total: Double
     @Binding var showingRatingPrompt: Bool
     @Binding var showingAddProductModal: Bool
+    @Binding var showingCheckAllConfirmation: Bool
     
     var body: some View {
         ZStack {
@@ -125,7 +144,8 @@ struct MainContentView: View {
                     allItemsChecked: $allItemsChecked,
                     selectedItemsForDeletion: $selectedItemsForDeletion,
                     showingRatingPrompt: $showingRatingPrompt,
-                    showingAddProductModal: $showingAddProductModal
+                    showingAddProductModal: $showingAddProductModal,
+                    showingCheckAllConfirmation: $showingCheckAllConfirmation
                 )
 
                 // Store Card
@@ -150,6 +170,7 @@ struct ShoppingListCard: View {
     @Binding var selectedItemsForDeletion: Set<String>
     @Binding var showingRatingPrompt: Bool
     @Binding var showingAddProductModal: Bool
+    @Binding var showingCheckAllConfirmation: Bool
     
     var body: some View {
         VStack(spacing: 12) {
@@ -298,10 +319,16 @@ struct ShoppingListCard: View {
                 )
                 
                 Button(action: {
-                    Task {
-                        await productViewModel.toggleAllProductsCompletion()
-                        // Show rating prompt after completing all items
-                        showingRatingPrompt = true
+                    // Check if we're about to complete all items (not uncheck them)
+                    let allCompleted = productViewModel.products.allSatisfy { $0.isCompleted }
+                    if allCompleted {
+                        // If all are completed, directly uncheck them all (no confirmation needed)
+                        Task {
+                            await productViewModel.toggleAllProductsCompletion()
+                        }
+                    } else {
+                        // If not all are completed, show confirmation before completing all
+                        showingCheckAllConfirmation = true
                     }
                 }) {
                     Image(systemName: "checkmark.circle")

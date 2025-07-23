@@ -103,9 +103,22 @@ final class ProductViewModel: ObservableObject {
     
     func toggleAllProductsCompletion() async {
         do {
-            // Toggle all products completion status
+            // Check if all products are completed
+            let allCompleted = products.allSatisfy { $0.isCompleted }
+            
+            // If all are completed, uncheck them all. Otherwise, check them all.
             for product in products {
-                try await repository.toggleProductCompletion(product)
+                if allCompleted {
+                    // Uncheck all if all are completed
+                    if product.isCompleted {
+                        try await repository.toggleProductCompletion(product)
+                    }
+                } else {
+                    // Check all if not all are completed
+                    if !product.isCompleted {
+                        try await repository.toggleProductCompletion(product)
+                    }
+                }
             }
             await loadShoppingListProducts() // Refresh the list
             errorMessage = nil
