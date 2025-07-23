@@ -46,7 +46,7 @@ extension GroceryItem {
         self.imageURL = imageURL
         self.barcode = barcode
         self.isCompleted = false
-        self.isInShoppingList = true
+        self.isInShoppingList = false
         self.createdAt = Date()
         self.updatedAt = Date()
         self.lastUpdated = Date()

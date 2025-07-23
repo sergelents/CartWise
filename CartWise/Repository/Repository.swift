@@ -66,7 +66,6 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
         )
     }
     
-    
     func updateProduct(_ product: GroceryItem) async throws {
         // Update local cache
         try await coreDataContainer.updateProduct(product)
@@ -131,9 +130,11 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     }
     
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryItem] {
+        print("Repository: Starting Amazon search for query: \(query)")
         // Network-first: search Amazon directly
         do {
             let amazonProducts = try await networkService.searchProductsOnAmazon(by: query)
+            print("Repository: Got \(amazonProducts.count) products from network service")
             
             // Convert Amazon products to GroceryItems and save to local cache
             var groceryItems: [GroceryItem] = []
@@ -150,11 +151,14 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     imageURL: amazonProduct.imageURL,
                     barcode: amazonProduct.barcode
                 )
+                print("Repository: Created GroceryItem: '\(groceryItem.productName ?? "Unknown")'")
                 groceryItems.append(groceryItem)
             }
             
+            print("Repository: Returning \(groceryItems.count) GroceryItems")
             return groceryItems
         } catch {
+            print("Repository: Error in Amazon search: \(error)")
             // If Amazon search fails, return empty array
             return []
         }

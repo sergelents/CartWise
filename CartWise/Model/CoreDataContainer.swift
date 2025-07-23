@@ -13,7 +13,6 @@ protocol CoreDataContainerProtocol: Sendable {
     func fetchListProducts() async throws -> [GroceryItem]
     func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem
-    func createProduct(name: String) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
     func deleteProduct(_ product: GroceryItem) async throws
     func toggleProductCompletion(_ product: GroceryItem) async throws
@@ -62,8 +61,10 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         }
     }
     
+    // createProduct was creating GroceryItem objects in background Core Data context, but ViewModel expecting objects from main context.
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem {
-        try await coreDataStack.performBackgroundTask { context in
+        // Create in background context first
+        let objectID = try await coreDataStack.performBackgroundTask { context in
             let product = GroceryItem(
                 context: context,
                 id: id,
@@ -78,29 +79,17 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 barcode: barcode
             )
             
-            try context.save()
-            return product
-        }
-    }
-    
-    func createProduct(name: String) async throws -> GroceryItem {
-        try await coreDataStack.performBackgroundTask { context in
-            let product = GroceryItem(
-                context: context,
-                id: UUID().uuidString, // Generate a unique identifier
-                productName: name,
-                brand: nil,
-                category: nil,
-                price: 0.0,
-                currency: "USD",
-                store: nil,
-                location: nil,
-                imageURL: nil,
-                barcode: nil
-            )
+            // Don't add to shopping list by default - only when user explicitly adds
+            product.isInShoppingList = false
             
             try context.save()
-            return product
+            return product.objectID
+        }
+        
+        // Then fetch from main context to ensure proper access
+        let viewContext = await coreDataStack.viewContext
+        return try await viewContext.perform {
+            return try viewContext.existingObject(with: objectID) as! GroceryItem
         }
     }
     

@@ -13,19 +13,66 @@ import SwiftUI
 
 struct CategoryItemsView: View { 
     let category: ProductCategory
+    let viewModel: ProductViewModel  // Receive ViewModel from parent
     @State private var selectedItemsToAdd: Set<String> = []
-    @StateObject private var viewModel = ProductViewModel(repository: ProductRepository())
+    @State private var isLoading = false
+
     
     private var categoryProducts: [GroceryItem] {
-        // Filter GroceryItems by category and exclude items with no category
-        return viewModel.products.filter { 
-            $0.category == category.rawValue && $0.category != nil
+        // First, load all existing products from Core Data
+        let allProducts = viewModel.products
+        
+        // Filter products by looking at their names to see if they match the category
+        let filtered = allProducts.filter { groceryItem in
+            if let productName = groceryItem.productName {
+                let categoryKeywords = getCategoryKeywords(for: category)
+                let matches = categoryKeywords.contains { keyword in
+                    productName.lowercased().contains(keyword.lowercased())
+                }
+                print("CategoryItemsView: Filtering by name: \(productName) - Keywords: \(categoryKeywords) - Matches: \(matches)")
+                return matches
+            }
+            return false
+        }
+        print("CategoryItemsView: Total products: \(allProducts.count), Filtered products: \(filtered.count)")
+        return filtered
+    }
+    
+    private func getCategoryKeywords(for category: ProductCategory) -> [String] {
+        switch category {
+        case .none:
+            return ["grocery", "food"]
+        case .meat:
+            return ["meat", "seafood", "chicken", "beef", "pork", "fish", "salmon", "turkey"]
+        case .dairy:
+            return ["dairy", "eggs", "milk", "cheese", "yogurt", "butter", "cream"]
+        case .bakery:
+            return ["bakery", "bread", "pastry", "cake", "cookie", "muffin", "donut"]
+        case .produce:
+            return ["produce", "vegetable", "fruit", "fresh", "organic", "apple", "banana", "tomato"]
+        case .pantry:
+            return ["pantry", "canned", "staple", "rice", "pasta", "sauce", "condiment"]
+        case .beverages:
+            return ["beverage", "drink", "juice", "soda", "water", "coffee", "tea"]
+        case .frozen:
+            return ["frozen", "ice cream", "frozen food"]
+        case .household:
+            return ["household", "personal care", "cleaning", "hygiene", "soap", "shampoo"]
         }
     }
     
     var body: some View {
         VStack {
-            if categoryProducts.isEmpty {
+            if isLoading {
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    Text("Loading products...")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if categoryProducts.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "basket")
                         .resizable()
@@ -38,50 +85,18 @@ struct CategoryItemsView: View {
                     Text("Products will appear here when available")
                         .font(.system(size: 14))
                         .foregroundColor(.gray.opacity(0.7))
-                    
-                    // // Debug info
-                    // VStack(spacing: 8) {
-                    //     Text("Total products: \(viewModel.products.count)")
-                    //         .font(.system(size: 12))
-                    //     Text("Category: \(category.rawValue)")
-                    //         .font(.system(size: 12))
-                    // }
-                    // .padding()
-                    // .background(Color(.systemGray6))
-                    // .cornerRadius(8)
-                    
-                    // // Load from API button
-                    // Button("Load from API") {
-                    //     Task {
-                    //         await loadProductsFromAPI()
-                    //     }
-                    // }
-                    // .padding()
-                    // .background(Color.green)
-                    // .foregroundColor(.white)
-                    // .cornerRadius(8)
-                    
-                    // // Clear database button (for testing)
-                    // Button("Clear Database") {
-                    //     Task {
-                    //         await clearDatabase()
-                    //     }
-                    // }
-                    // .padding()
-                    // .background(Color.red)
-                    // .foregroundColor(.white)
-                    // .cornerRadius(8)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 12) {
-                        ForEach(categoryProducts, id: \.id) { product in
+                        ForEach(categoryProducts, id: \.id) { groceryItem in
                             ProductCard(
-                                product: product,
-                                isSelected: product.id != nil && selectedItemsToAdd.contains(product.id!),
+                                product: groceryItem,
+                                productViewModel: viewModel,
+                                isSelected: groceryItem.id != nil && selectedItemsToAdd.contains(groceryItem.id!),
                                 onToggle: {
-                                    if let productId = product.id {
+                                    if let productId = groceryItem.id {
                                         if selectedItemsToAdd.contains(productId) {
                                             selectedItemsToAdd.remove(productId)
                                         } else {
@@ -97,17 +112,66 @@ struct CategoryItemsView: View {
             }
         }
         .navigationTitle(category.rawValue)
-        .navigationBarTitleDisplayMode(.large)
         .onAppear {
+            // Load existing products and search for new ones in this category when view appears
             Task {
+                isLoading = true
                 await loadCategoryProducts()
+                await searchProductsForCategory()
+                isLoading = false
             }
-        }    
-
+        }
     }
     
-    // MARK: - Helper Functions
+    private func searchProductsForCategory() async {
+        // Create a query based on the category
+        let categoryQuery = createCategoryQuery(for: category)
+        print("CategoryItemsView: Searching for category: \(category.rawValue) with query: \(categoryQuery)")
+        
+        // Check initial state
+        print("CategoryItemsView: Initial products count: \(viewModel.products.count)")
+        
+        await viewModel.searchProductsOnAmazon(by: categoryQuery)
+        print("CategoryItemsView: After search - Found \(viewModel.products.count) products for category: \(category.rawValue)")
+        
+        // Print details of each product found
+        for (index, product) in viewModel.products.enumerated() {
+            print("  Product \(index + 1): \(product.productName ?? "Unknown") - Category: \(product.category ?? "None")")
+        }
+        
+        // Check filtered results
+        print("CategoryItemsView: Filtered products count: \(categoryProducts.count)")
+        for (index, product) in categoryProducts.enumerated() {
+            print("  Filtered Product \(index + 1): \(product.productName ?? "Unknown") - Category: \(product.category ?? "None")")
+        }
+    }
     
+    private func createCategoryQuery(for category: ProductCategory) -> String {
+        // Use more specific search terms for better results
+        switch category {
+        case .none:
+            return "grocery food"
+        case .meat:
+            return "meat seafood"
+        case .dairy:
+            return "dairy milk cheese"
+        case .bakery:
+            return "bread bakery"
+        case .produce:
+            return "fresh vegetables fruits"
+        case .pantry:
+            return "canned food rice pasta beans"
+        case .beverages:
+            return "drinks beverages"
+        case .frozen:
+            return "frozen food"
+        case .household:
+            return "cleaning supplies"
+        }
+    }
+    
+    
+    // MARK: - Helper Functions
     private func loadCategoryProducts() async {
         // Load all products from Core Data, then filter by category
         await viewModel.loadProducts()
@@ -120,13 +184,13 @@ struct CategoryItemsView: View {
     //     }
     //     print("Database cleared")
     // }
-
 }
 
 
 // Product Card View
 struct ProductCard: View {
     let product: GroceryItem
+    let productViewModel: ProductViewModel
     let isSelected: Bool
     let onToggle: () -> Void
 
@@ -151,109 +215,113 @@ struct ProductCard: View {
                     Text(product.productName ?? "Unknown Product")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
                     
                     if let brand = product.brand {
                         Text(brand)
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
+                            .lineLimit(1)
                     }
-
+                    
                     if let store = product.store {
                         Text(store)
                             .font(.system(size: 12))
                             .foregroundColor(.blue)
+                            .lineLimit(1)
                     }
                 }
+                
                 Spacer()
-                // Add to list button
-                Button(action: onToggle) {
-                    // TODO: Add to shopping list functionality
-                    if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(Color.accentColorGreen)
-                        .font(.system(size: 24))
-                    } else {
-                        Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(Color.accentColorBlue)
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    if product.price > 0 {
+                        Text("$\(String(format: "%.2f", product.price))")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
+                    
+                    if let category = product.category {
+                        Text(category)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
                     }
                 }
             }
             .padding()
+            .frame(height: 100) // Increased height for bigger cards
             .background(Color(.systemBackground))
             .cornerRadius(12)
             .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
-            ProductDetailView(product: product)
+            ProductDetailView(product: product, productViewModel: productViewModel)
         }
     }
 }
 
 // Product Detail View
 struct ProductDetailView: View {
-        let product: GroceryItem
-        
-        // ProductViewModel for adding to shopping list
-        @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    let product: GroceryItem
+    let productViewModel: ProductViewModel  // Use shared instance
+    
+    // Adding to shopping list and to favorites
+    @State private var isAddingToFavorites = false
+    @State private var isAddingToShoppingList = false
+    @State private var showingSuccessMessage = false
+    @State private var showingDuplicateMessage = false
 
-        // Adding to shopping list and to favorites
-        @State private var isAddingToFavorites = false
-        @State private var isAddingToShoppingList = false
-        @State private var showingSuccessMessage = false
-        @State private var showingDuplicateMessage = false
+    // Dismissing the view
+    @Environment(\.dismiss) private var dismiss
 
-        // Dismissing the view
-        @Environment(\.dismiss) private var dismiss
-
-        var body: some View {
+    var body: some View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .center, spacing: 18) {
                     
-                        // Store View
-                        if let store = product.store {
-                            StoreView(store: store, storeAddress: product.location ?? "Address not available")
+                    // Store View
+                    if let store = product.store {
+                        StoreView(store: store, storeAddress: product.location ?? "Address not available")
+                    }
+
+                    // Product Name View
+                    ProductNameView(product: product)
+
+                    // Product Image View
+                    ProductImageView(product: product)
+
+                    // Product Price View
+                    // TODO: Need to update data model to include last updated info?
+                    ProductPriceView(
+                        product: product,
+                        lastUpdated: "7/17/2025",
+                        lastUpdatedBy: "Kelly Yong"
+                    )
+
+                    // Add to Shopping List and Add to Favorites View
+                    AddToShoppingListAndFavoritesView(
+                        onAddToShoppingList: {
+                            addToShoppingList()
+                        }, 
+                        onAddToFavorites: {
+                            // TODO: Add to favorites functionality
+                            isAddingToFavorites.toggle()
                         }
+                    )
 
-                        // Product Name View
-                        ProductNameView(product: product)
-
-                        // Product Image View
-                        ProductImageView(product: product)
-
-                        // Product Price View
-                        // TODO: Need to update data model to include last updated info?
-                        ProductPriceView(
-                            product: product,
-                            lastUpdated: "7/17/2025",
-                            lastUpdatedBy: "Kelly Yong"
-                        )
-
-                        // Add to Shopping List and Add to Favorites View
-                        AddToShoppingListAndFavoritesView(
-                            onAddToShoppingList: {
-                                addToShoppingList()
-                            }, 
-                            onAddToFavorites: {
-                                // TODO: Add to favorites functionality
-                                isAddingToFavorites.toggle()
-                            }
-                        )
-
-                        // Update Price View
-                        UpdatePriceView(
+                    // Update Price View
+                    UpdatePriceView(
                         product: product,
                         onUpdatePrice: {
                             // TODO: Update price functionality
                         },
                         lastUpdated: "7/17/2025",
                         lastUpdatedBy: "Kelly Yong"
-                        )
-                    }
-                    .padding(.horizontal, 24)
-
+                    )
+                }
+                .padding(.horizontal, 24)
             }
             .navigationTitle("Product Details")
             .navigationBarTitleDisplayMode(.inline)
@@ -276,10 +344,11 @@ struct ProductDetailView: View {
             Text("\(product.productName ?? "Product") is already in your shopping list.")
         }
     }
-        private func addToShoppingList() {
-            Task {
+    
+    private func addToShoppingList() {
+        Task {
             // Check if product already exists in shopping list
-            let isDuplicate = await productViewModel.isDuplicateProduct(name: product.productName ?? "")
+            let isDuplicate = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
             
             if isDuplicate {
                 // Product already exists, show error message
@@ -287,12 +356,11 @@ struct ProductDetailView: View {
                     showingDuplicateMessage = true
                 }
             } else {
-                // Product doesn't exist, create it (this automatically adds to shopping list)
-                await productViewModel.createProductForShoppingList(
-                    byName: product.productName ?? "",
-                    brand: product.brand,
-                    category: product.category
-                )
+                // Add the existing product to shopping list
+                await productViewModel.addExistingProductToShoppingList(product)
+                
+                // Refresh the shopping list to show the new item
+                await productViewModel.loadShoppingListProducts()
                 
                 // Show success message
                 await MainActor.run {
@@ -386,8 +454,9 @@ struct ProductImageView: View {
             )
             .overlay(
                 VStack {
+                    // Need to have a price check to see if item is on sale
                     if product.price > 0 {
-                        Text("$\(String(format: "%.2f", product.price))")
+                        Text("Sale")
                             .font(.system(size: 14, weight: .bold))
                             .frame(width: 100, height: 24)
                             .foregroundColor(.white)
@@ -514,17 +583,6 @@ struct UpdatePriceView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(Color.accentColorGreen)
                     .padding(.bottom, 6)
-            }
-        }
-        .padding()
-    }
-}
-
-#Preview {
-    ScrollView {
-        LazyVStack(spacing: 20) {
-            ForEach(ProductCategory.allCases, id: \.self) { category in
-                CategoryItemsView(category: category)
             }
         }
         .padding()

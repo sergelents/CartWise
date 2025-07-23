@@ -136,10 +136,28 @@ final class ProductViewModel: ObservableObject {
     }
     
     func searchProductsOnAmazon(by query: String) async {
+        print("ViewModel: Searching Amazon for query: \(query)")
         do {
             products = try await repository.searchProductsOnAmazon(by: query)
+            print("ViewModel: Received \(products.count) products from API")
+            
+            // Print details of each product
+            for (index, product) in products.enumerated() {
+                print("  Product \(index + 1):")
+                print("    Name: \(product.productName ?? "Unknown")")
+                print("    Brand: \(product.brand ?? "Unknown")")
+                print("    Category: \(product.category ?? "Unknown")")
+                print("    Price: $\(product.price)")
+                print("    Store: \(product.store ?? "Unknown")")
+                print("    Location: \(product.location ?? "Unknown")")
+                print("    Image URL: \(product.imageURL ?? "None")")
+                print("    Barcode: \(product.barcode ?? "None")")
+                print("    ---")
+            }
+            
             errorMessage = nil
         } catch {
+            print("ViewModel: Error searching Amazon: \(error)")
             errorMessage = error.localizedDescription
         }
     }
@@ -180,6 +198,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
+    // For creating products to database
     func isDuplicateProduct(name: String) async -> Bool {
         do {
             let existingProducts = try await repository.searchProducts(by: name)
@@ -188,6 +207,19 @@ final class ProductViewModel: ObservableObject {
             }
         } catch {
             return false // If search fails, allow creation
+        }
+    }
+    
+    // For checking if existing product is already in shopping list
+    func isProductInShoppingList(name: String) async -> Bool {
+        do {
+            // Only check shopping list products, not all products
+            let shoppingListProducts = try await repository.fetchListProducts()
+            return shoppingListProducts.contains { product in
+                product.productName?.lowercased() == name.lowercased()
+            }
+        } catch {
+            return false // If search fails, allow adding
         }
     }
     
