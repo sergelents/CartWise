@@ -13,13 +13,53 @@ import SwiftUI
 
 struct CategoryItemsView: View { 
     let category: ProductCategory
+    let viewModel: ProductViewModel  // Receive ViewModel from parent
     @State private var selectedItemsToAdd: Set<String> = []
-    @StateObject private var viewModel = ProductViewModel(repository: ProductRepository())
+
     
     private var categoryProducts: [GroceryItem] {
-        // Filter GroceryItems by category and exclude items with no category
-        return viewModel.products.filter { 
-            $0.category == category.rawValue && $0.category != nil
+        // Filter products by the current category
+        let filtered = viewModel.products.filter { groceryItem in
+            // Check if the grocery item's category matches the current category
+            if let itemCategory = groceryItem.category {
+                let matches = itemCategory.lowercased().contains(category.rawValue.lowercased()) ||
+                       category.rawValue.lowercased().contains(itemCategory.lowercased())
+                print("CategoryItemsView: Filtering: \(groceryItem.productName ?? "Unknown") - Category: \(itemCategory) - Matches \(category.rawValue): \(matches)")
+                return matches
+            }
+            // If no category is set, check if the product name contains category keywords
+            // if let productName = groceryItem.productName {
+            //     let categoryKeywords = getCategoryKeywords(for: category)
+            //     return categoryKeywords.contains { keyword in
+            //         productName.lowercased().contains(keyword.lowercased())
+            //     }
+            // }
+            return false
+        }
+        print("CategoryItemsView: Total products: \(viewModel.products.count), Filtered products: \(filtered.count)")
+        return filtered
+    }
+    
+    private func getCategoryKeywords(for category: ProductCategory) -> [String] {
+        switch category {
+        case .none:
+            return ["grocery", "food"]
+        case .meat:
+            return ["meat", "seafood", "chicken", "beef", "pork", "fish", "salmon", "turkey"]
+        case .dairy:
+            return ["dairy", "eggs", "milk", "cheese", "yogurt", "butter", "cream"]
+        case .bakery:
+            return ["bakery", "bread", "pastry", "cake", "cookie", "muffin", "donut"]
+        case .produce:
+            return ["produce", "vegetable", "fruit", "fresh", "organic", "apple", "banana", "tomato"]
+        case .pantry:
+            return ["pantry", "canned", "staple", "rice", "pasta", "sauce", "condiment"]
+        case .beverages:
+            return ["beverage", "drink", "juice", "soda", "water", "coffee", "tea"]
+        case .frozen:
+            return ["frozen", "ice cream", "frozen food"]
+        case .household:
+            return ["household", "personal care", "cleaning", "hygiene", "soap", "shampoo"]
         }
     }
     
@@ -38,51 +78,18 @@ struct CategoryItemsView: View {
                     Text("Products will appear here when available")
                         .font(.system(size: 14))
                         .foregroundColor(.gray.opacity(0.7))
-                    
-                    // // Debug info
-                    // VStack(spacing: 8) {
-                    //     Text("Total products: \(viewModel.products.count)")
-                    //         .font(.system(size: 12))
-                    //     Text("Category: \(category.rawValue)")
-                    //         .font(.system(size: 12))
-                    // }
-                    // .padding()
-                    // .background(Color(.systemGray6))
-                    // .cornerRadius(8)
-                    
-                    // // Load from API button
-                    // Button("Load from API") {
-                    //     Task {
-                    //         await loadProductsFromAPI()
-                    //     }
-                    // }
-                    // .padding()
-                    // .background(Color.green)
-                    // .foregroundColor(.white)
-                    // .cornerRadius(8)
-                    
-                    // // Clear database button (for testing)
-                    // Button("Clear Database") {
-                    //     Task {
-                    //         await clearDatabase()
-                    //     }
-                    // }
-                    // .padding()
-                    // .background(Color.red)
-                    // .foregroundColor(.white)
-                    // .cornerRadius(8)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 12) {
-                        ForEach(categoryProducts, id: \.id) { product in
+                        ForEach(categoryProducts, id: \.id) { groceryItem in
                             ProductCard(
-                                product: product,
+                                product: groceryItem,
                                 productViewModel: viewModel,
-                                isSelected: product.id != nil && selectedItemsToAdd.contains(product.id!),
+                                isSelected: groceryItem.id != nil && selectedItemsToAdd.contains(groceryItem.id!),
                                 onToggle: {
-                                    if let productId = product.id {
+                                    if let productId = groceryItem.id {
                                         if selectedItemsToAdd.contains(productId) {
                                             selectedItemsToAdd.remove(productId)
                                         } else {
@@ -98,17 +105,49 @@ struct CategoryItemsView: View {
             }
         }
         .navigationTitle(category.rawValue)
-        .navigationBarTitleDisplayMode(.large)
         .onAppear {
+            // Search for products in this category when view appears
             Task {
-                await loadCategoryProducts()
+                await searchProductsForCategory()
             }
-        }    
-
+        }
     }
     
-    // MARK: - Helper Functions
+    private func searchProductsForCategory() async {
+        // Create a query based on the category
+        let categoryQuery = createCategoryQuery(for: category)
+        print("Searching for category: \(category.rawValue) with query: \(categoryQuery)")
+        await viewModel.searchProductsOnAmazon(by: categoryQuery)
+        print("Found \(viewModel.products.count) products for category: \(category.rawValue)")
+    }
     
+    private func createCategoryQuery(for category: ProductCategory) -> String {
+        // Simply return the category name as the query
+        //return category.rawValue
+        switch category {
+        case .none:
+            return "grocery food"
+        case .meat:
+            return "meat seafood chicken beef pork fish"
+        case .dairy:
+            return "dairy eggs milk cheese yogurt butter"
+        case .bakery:
+            return "bakery bread pastry cake cookie muffin"
+        case .produce:
+            return "fresh produce vegetables fruits organic"
+        case .pantry:
+            return "pantry canned food rice pasta sauce"
+        case .beverages:
+            return "beverages drinks juice soda water coffee tea"
+        case .frozen:
+            return "frozen food ice cream frozen vegetables"
+        case .household:
+            return "household personal care cleaning hygiene"
+        }
+    }
+    
+    
+    // MARK: - Helper Functions
     private func loadCategoryProducts() async {
         // Load all products from Core Data, then filter by category
         await viewModel.loadProducts()
@@ -281,7 +320,7 @@ struct ProductDetailView: View {
     private func addToShoppingList() {
         Task {
             // Check if product already exists in shopping list
-            let isDuplicate = await productViewModel.isDuplicateProduct(name: product.productName ?? "")
+            let isDuplicate = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
             
             if isDuplicate {
                 // Product already exists, show error message
@@ -516,17 +555,6 @@ struct UpdatePriceView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(Color.accentColorGreen)
                     .padding(.bottom, 6)
-            }
-        }
-        .padding()
-    }
-}
-
-#Preview {
-    ScrollView {
-        LazyVStack(spacing: 20) {
-            ForEach(ProductCategory.allCases, id: \.self) { category in
-                CategoryItemsView(category: category)
             }
         }
         .padding()

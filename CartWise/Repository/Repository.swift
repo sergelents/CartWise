@@ -13,7 +13,6 @@ protocol ProductRepositoryProtocol: Sendable {
     func fetchListProducts() async throws -> [GroceryItem]
     func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem
-    func createSimpleProduct(name: String) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
     func deleteProduct(_ product: GroceryItem) async throws
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
@@ -53,7 +52,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem {
         // Create locally first
-        return try await coreDataContainer.createDetailedProduct(
+        return try await coreDataContainer.createProduct(
             id: id,
             productName: productName,
             brand: brand,
@@ -65,11 +64,6 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             imageURL: imageURL,
             barcode: barcode
         )
-    }
-    
-    func createSimpleProduct(name: String) async throws -> GroceryItem {
-        // Create simple product locally
-        return try await coreDataContainer.createSimpleProduct(name: name)
     }
     
     func updateProduct(_ product: GroceryItem) async throws {
@@ -115,10 +109,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             for networkProduct in networkProducts.prefix(10) { // Limit to first 10
                 _ = try await createProduct(
                     id: networkProduct.id,
-                    productName: networkProduct.name,
+                    productName: networkProduct.productName,
                     brand: networkProduct.brand,
                     category: networkProduct.category,
-                    price: networkProduct.priceValue,
+                    price: networkProduct.price,
                     currency: networkProduct.currency,
                     store: networkProduct.store,
                     location: networkProduct.location,
@@ -136,99 +130,38 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     }
     
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryItem] {
+        print("Repository: Starting Amazon search for query: \(query)")
         // Network-first: search Amazon directly
         do {
             let amazonProducts = try await networkService.searchProductsOnAmazon(by: query)
+            print("Repository: Got \(amazonProducts.count) products from network service")
             
             // Convert Amazon products to GroceryItems and save to local cache
-            var createdIds: [String] = []
+            var groceryItems: [GroceryItem] = []
             for amazonProduct in amazonProducts.prefix(10) { // Limit to first 10
-                // Detect category based on product name and search query
-                let detectedCategory = detectCategory(from: amazonProduct.name, searchQuery: query)
-                
                 let groceryItem = try await createProduct(
                     id: amazonProduct.id,
-                    productName: amazonProduct.name,
+                    productName: amazonProduct.productName,
                     brand: amazonProduct.brand,
-                    category: detectedCategory,
-                    price: amazonProduct.priceValue,
+                    category: amazonProduct.category,
+                    price: amazonProduct.price,
                     currency: amazonProduct.currency,
                     store: amazonProduct.store,
                     location: amazonProduct.location,
                     imageURL: amazonProduct.imageURL,
                     barcode: amazonProduct.barcode
                 )
-                createdIds.append(groceryItem.id ?? "")
+                print("Repository: Created GroceryItem: '\(groceryItem.productName ?? "Unknown")'")
+                groceryItems.append(groceryItem)
             }
             
-            // Fetch the created products from the main context
-            let allProducts = try await coreDataContainer.fetchAllProducts()
-            let groceryItems = allProducts.filter { product in
-                createdIds.contains(product.id ?? "")
-            }
-            
+            print("Repository: Returning \(groceryItems.count) GroceryItems")
             return groceryItems
         } catch {
-            print("Amazon search error: \(error)")
+            print("Repository: Error in Amazon search: \(error)")
+            // If Amazon search fails, return empty array
             return []
         }
-    }
-    
-    // Helper function to detect category from product name and search query
-    private func detectCategory(from productName: String, searchQuery: String) -> String {
-        let name = productName.lowercased()
-        let query = searchQuery.lowercased()
-        
-        // Check for meat/seafood
-        if name.contains("chicken") || name.contains("beef") || name.contains("pork") || 
-           name.contains("fish") || name.contains("salmon") || name.contains("shrimp") ||
-           query.contains("meat") || query.contains("seafood") {
-            return ProductCategory.meat.rawValue
-        }
-        
-        // Check for dairy
-        if name.contains("milk") || name.contains("cheese") || name.contains("yogurt") ||
-           name.contains("butter") || name.contains("cream") || name.contains("egg") ||
-           query.contains("dairy") || query.contains("milk") {
-            return ProductCategory.dairy.rawValue
-        }
-        
-        // Check for bakery
-        if name.contains("bread") || name.contains("cake") || name.contains("pastry") ||
-           name.contains("cookie") || name.contains("muffin") || name.contains("donut") ||
-           query.contains("bakery") || query.contains("bread") {
-            return ProductCategory.bakery.rawValue
-        }
-        
-        // Check for produce
-        if name.contains("apple") || name.contains("banana") || name.contains("tomato") ||
-           name.contains("lettuce") || name.contains("carrot") || name.contains("onion") ||
-           query.contains("produce") || query.contains("fruit") || query.contains("vegetable") {
-            return ProductCategory.produce.rawValue
-        }
-        
-        // Check for beverages
-        if name.contains("beer") || name.contains("wine") || name.contains("juice") ||
-           name.contains("soda") || name.contains("coffee") || name.contains("tea") ||
-           query.contains("beverage") || query.contains("drink") || query.contains("beer") {
-            return ProductCategory.beverages.rawValue
-        }
-        
-        // Check for frozen
-        if name.contains("frozen") || name.contains("ice cream") || name.contains("pizza") ||
-           query.contains("frozen") {
-            return ProductCategory.frozen.rawValue
-        }
-        
-        // Check for household
-        if name.contains("soap") || name.contains("shampoo") || name.contains("toothpaste") ||
-           name.contains("paper") || name.contains("cleaner") ||
-           query.contains("household") || query.contains("personal") {
-            return ProductCategory.household.rawValue
-        }
-        
-        // Default to pantry for everything else
-        return ProductCategory.pantry.rawValue
     }
     
     // MARK: - Network Operations
@@ -251,10 +184,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             // Save to local cache
             let savedProduct = try await createProduct(
                 id: networkProduct.id,
-                productName: networkProduct.name,
+                productName: networkProduct.productName,
                 brand: networkProduct.brand,
                 category: networkProduct.category,
-                price: networkProduct.priceValue,
+                price: networkProduct.price,
                 currency: networkProduct.currency,
                 store: networkProduct.store,
                 location: networkProduct.location,

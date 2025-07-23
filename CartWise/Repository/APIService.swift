@@ -28,13 +28,13 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     func searchProducts(by name: String) async throws -> [GroceryPriceData] {
         let url = try buildSearchURL(for: name)
         let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
-        return response.products ?? []
+        return response.data ?? []
     }
     
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryPriceData] {
         let url = try buildAmazonSearchURL(for: query)
         let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
-        return response.products ?? []
+        return response.allProducts
     }
     
     func fetchProduct(by name: String) async throws -> GroceryPriceData? {
@@ -62,10 +62,10 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     
     // MARK: - Private Methods
     
-    private func buildSearchURL(for query: String) throws -> URL {
+    private func buildSearchURL(for name: String) throws -> URL {
         var components = URLComponents(string: "\(baseURL)/search")!
         components.queryItems = [
-            URLQueryItem(name: "query", value: query)
+            URLQueryItem(name: "query", value: name)
         ]
         
         guard let url = components.url else {
@@ -100,6 +100,11 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
             throw NetworkError.invalidResponse
         }
         
+        // Debug: Print raw response
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("APIService: Raw JSON response: \(jsonString)")
+        }
+        
         switch httpResponse.statusCode {
         case 200:
             do {
@@ -107,6 +112,11 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
                 decoder.keyDecodingStrategy = .convertFromSnakeCase
                 return try decoder.decode(responseType, from: data)
             } catch {
+                print("APIService: Decoding error: \(error)")
+                // Try to decode as a different format if the first attempt fails
+                if responseType == GroceryPriceResponse.self {
+                    return try decodeGroceryPriceResponse(from: data) as! T
+                }
                 throw NetworkError.decodingError(error)
             }
         case 404:
@@ -117,6 +127,47 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
             throw NetworkError.serverError(httpResponse.statusCode)
         default:
             throw NetworkError.httpError(httpResponse.statusCode)
+        }
+    }
+    
+    private func decodeGroceryPriceResponse(from data: Data) throws -> GroceryPriceResponse {
+        // Try different response formats
+        do {
+            // First try: standard format with status
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            return try decoder.decode(GroceryPriceResponse.self, from: data)
+        } catch {
+            print("APIService: First decode attempt failed: \(error)")
+            
+            do {
+                // Second try: Amazon format with products array
+                let amazonResponse = try JSONDecoder().decode(AmazonResponse.self, from: data)
+                return GroceryPriceResponse(
+                    status: nil,
+                    message: nil,
+                    data: nil,
+                    success: true,
+                    products: amazonResponse.products
+                )
+            } catch {
+                print("APIService: Second decode attempt failed: \(error)")
+                
+                do {
+                    // Third try: simple array format
+                    let products = try JSONDecoder().decode([GroceryPriceData].self, from: data)
+                    return GroceryPriceResponse(
+                        status: nil,
+                        message: nil,
+                        data: products,
+                        success: true,
+                        products: nil
+                    )
+                } catch {
+                    print("APIService: Third decode attempt failed: \(error)")
+                    throw NetworkError.decodingError(error)
+                }
+            }
         }
     }
 }

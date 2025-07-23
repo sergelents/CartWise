@@ -73,32 +73,14 @@ struct SearchItemsView: View {
                         }
                     }
                 
-                // Category selection button - filtering
-                Menu {
-                    ForEach(filteredCategories, id: \.self) { category in
-                        Button(category.rawValue) {
-                            selectCategory(category)
-                        }
-                    }
-                    Divider()
-                    Button("Clear Category") {
-                        clearCategorySelection()
-                    }
-                } label: {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                        .foregroundColor(.blue)
-                        .font(.system(size: 20))
-                }
-                
                 if isSearching {
                     ProgressView()
                         .scaleEffect(0.8)
                 }
                 
-                if !searchText.isEmpty || selectedCategory != nil {
+                if !searchText.isEmpty {
                     Button(action: {
                         searchText = ""
-                        clearCategorySelection()
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.gray)
@@ -117,10 +99,7 @@ struct SearchItemsView: View {
                         .foregroundColor(.blue)
                     
                     Spacer()
-                    
-                    Button("Clear Category") {
-                        clearCategorySelection()
-                    }
+
                     .font(.system(size: 12))
                     .foregroundColor(.red)
                 }
@@ -153,7 +132,7 @@ struct SearchItemsView: View {
         
         return LazyVGrid(columns: columns, spacing: 16) {
             ForEach(filteredCategories, id: \.self) { category in
-                NavigationLink(destination: CategoryItemsView(category: category)) {
+                NavigationLink(destination: CategoryItemsView(category: category, viewModel: viewModel)) {
                     CategoryCard(
                         category: category, 
                         productCount: getProductCount(for: category)
@@ -177,9 +156,7 @@ struct SearchItemsView: View {
         defer { isSearching = false }
         
         do {
-            // Create enhanced query with category keywords if category is selected
-            let enhancedQuery = createEnhancedQuery(searchText: searchText, category: selectedCategory)
-            await viewModel.searchProductsOnAmazon(by: enhancedQuery)
+            await viewModel.searchProductsOnAmazon(by: searchText)
             searchResults = viewModel.products
         } catch {
             print("Search error: \(error)")
@@ -227,7 +204,7 @@ struct SearchItemsView: View {
         selectedCategory = nil
         searchResults = []
     }
-    
+
     private func getProductCount(for category: ProductCategory) -> Int {
         return viewModel.products.filter { $0.category == category.rawValue }.count
     }
