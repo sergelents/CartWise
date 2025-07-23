@@ -41,6 +41,8 @@ struct YourListView: View {
             }
             .sheet(isPresented: $showingAddProductModal) {
                 SmartAddProductModal(productViewModel: productViewModel, onAdd: addProductToSystem)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
             }
             .alert("Duplicate Product", isPresented: $showingDuplicateAlert) {
                 Button("OK") {
@@ -741,19 +743,22 @@ struct SearchResultsSection: View {
                     .padding(.horizontal)
                 }
             } else {
-                // Show search results
-                LazyVStack(spacing: 8) {
-                    ForEach(searchResults, id: \.objectID) { product in
-                        SearchResultRow(product: product) {
-                            // Add existing product to shopping list
-                            Task {
-                                await productViewModel.addExistingProductToShoppingList(product)
+                // Show search results in a scrollable container
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(searchResults, id: \.objectID) { product in
+                            SearchResultRow(product: product) {
+                                // Add existing product to shopping list
+                                Task {
+                                    await productViewModel.addExistingProductToShoppingList(product)
+                                }
+                                dismiss()
                             }
-                            dismiss()
                         }
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
+                .frame(maxHeight: UIScreen.main.bounds.height * 0.6) // Larger scroll area for full-screen modal
                 
                 // Divider and create new option
                 Divider()
