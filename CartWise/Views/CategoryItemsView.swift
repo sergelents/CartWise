@@ -15,28 +15,26 @@ struct CategoryItemsView: View {
     let category: ProductCategory
     let viewModel: ProductViewModel  // Receive ViewModel from parent
     @State private var selectedItemsToAdd: Set<String> = []
+    @State private var isLoading = false
 
     
     private var categoryProducts: [GroceryItem] {
-        // Filter products by the current category
-        let filtered = viewModel.products.filter { groceryItem in
-            // Check if the grocery item's category matches the current category
-            if let itemCategory = groceryItem.category {
-                let matches = itemCategory.lowercased().contains(category.rawValue.lowercased()) ||
-                       category.rawValue.lowercased().contains(itemCategory.lowercased())
-                print("CategoryItemsView: Filtering: \(groceryItem.productName ?? "Unknown") - Category: \(itemCategory) - Matches \(category.rawValue): \(matches)")
+        // First, load all existing products from Core Data
+        let allProducts = viewModel.products
+        
+        // Filter products by looking at their names to see if they match the category
+        let filtered = allProducts.filter { groceryItem in
+            if let productName = groceryItem.productName {
+                let categoryKeywords = getCategoryKeywords(for: category)
+                let matches = categoryKeywords.contains { keyword in
+                    productName.lowercased().contains(keyword.lowercased())
+                }
+                print("CategoryItemsView: Filtering by name: \(productName) - Keywords: \(categoryKeywords) - Matches: \(matches)")
                 return matches
             }
-            // If no category is set, check if the product name contains category keywords
-            // if let productName = groceryItem.productName {
-            //     let categoryKeywords = getCategoryKeywords(for: category)
-            //     return categoryKeywords.contains { keyword in
-            //         productName.lowercased().contains(keyword.lowercased())
-            //     }
-            // }
             return false
         }
-        print("CategoryItemsView: Total products: \(viewModel.products.count), Filtered products: \(filtered.count)")
+        print("CategoryItemsView: Total products: \(allProducts.count), Filtered products: \(filtered.count)")
         return filtered
     }
     
@@ -65,7 +63,16 @@ struct CategoryItemsView: View {
     
     var body: some View {
         VStack {
-            if categoryProducts.isEmpty {
+            if isLoading {
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    Text("Loading products...")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if categoryProducts.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "basket")
                         .resizable()
@@ -106,9 +113,12 @@ struct CategoryItemsView: View {
         }
         .navigationTitle(category.rawValue)
         .onAppear {
-            // Search for products in this category when view appears
+            // Load existing products and search for new ones in this category when view appears
             Task {
+                isLoading = true
+                await loadCategoryProducts()
                 await searchProductsForCategory()
+                isLoading = false
             }
         }
     }
@@ -116,33 +126,47 @@ struct CategoryItemsView: View {
     private func searchProductsForCategory() async {
         // Create a query based on the category
         let categoryQuery = createCategoryQuery(for: category)
-        print("Searching for category: \(category.rawValue) with query: \(categoryQuery)")
+        print("CategoryItemsView: Searching for category: \(category.rawValue) with query: \(categoryQuery)")
+        
+        // Check initial state
+        print("CategoryItemsView: Initial products count: \(viewModel.products.count)")
+        
         await viewModel.searchProductsOnAmazon(by: categoryQuery)
-        print("Found \(viewModel.products.count) products for category: \(category.rawValue)")
+        print("CategoryItemsView: After search - Found \(viewModel.products.count) products for category: \(category.rawValue)")
+        
+        // Print details of each product found
+        for (index, product) in viewModel.products.enumerated() {
+            print("  Product \(index + 1): \(product.productName ?? "Unknown") - Category: \(product.category ?? "None")")
+        }
+        
+        // Check filtered results
+        print("CategoryItemsView: Filtered products count: \(categoryProducts.count)")
+        for (index, product) in categoryProducts.enumerated() {
+            print("  Filtered Product \(index + 1): \(product.productName ?? "Unknown") - Category: \(product.category ?? "None")")
+        }
     }
     
     private func createCategoryQuery(for category: ProductCategory) -> String {
-        // Simply return the category name as the query
-        //return category.rawValue
+        // Use more specific search terms for better results
         switch category {
         case .none:
             return "grocery food"
         case .meat:
-            return "meat seafood chicken beef pork fish"
+            return "meat seafood"
         case .dairy:
-            return "dairy eggs milk cheese yogurt butter"
+            return "dairy milk cheese"
         case .bakery:
-            return "bakery bread pastry cake cookie muffin"
+            return "bread bakery"
         case .produce:
-            return "fresh produce vegetables fruits organic"
+            return "fresh vegetables fruits"
         case .pantry:
-            return "pantry canned food rice pasta sauce"
+            return "canned food rice pasta beans"
         case .beverages:
-            return "beverages drinks juice soda water coffee tea"
+            return "drinks beverages"
         case .frozen:
-            return "frozen food ice cream frozen vegetables"
+            return "frozen food"
         case .household:
-            return "household personal care cleaning hygiene"
+            return "cleaning supplies"
         }
     }
     
@@ -160,7 +184,6 @@ struct CategoryItemsView: View {
     //     }
     //     print("Database cleared")
     // }
-
 }
 
 
@@ -192,17 +215,21 @@ struct ProductCard: View {
                     Text(product.productName ?? "Unknown Product")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
                     
                     if let brand = product.brand {
                         Text(brand)
                             .font(.system(size: 14))
                             .foregroundColor(.secondary)
+                            .lineLimit(1)
                     }
                     
                     if let store = product.store {
                         Text(store)
                             .font(.system(size: 12))
                             .foregroundColor(.blue)
+                            .lineLimit(1)
                     }
                 }
                 
@@ -223,6 +250,7 @@ struct ProductCard: View {
                 }
             }
             .padding()
+            .frame(height: 100) // Increased height for bigger cards
             .background(Color(.systemBackground))
             .cornerRadius(12)
             .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
