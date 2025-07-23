@@ -52,6 +52,7 @@ struct YourListView: View {
             .onAppear {
                 Task {
                     await productViewModel.loadShoppingListProducts()
+                    await productViewModel.loadPriceComparison()
                 }
             }
         }
@@ -132,6 +133,16 @@ struct MainContentView: View {
                     storeAddress: storeAddress,
                     total: 0.0 // Core Data products don't have price yet
                 )
+
+                // Price Comparison Card
+                PriceComparisonView(
+                    priceComparison: productViewModel.priceComparison,
+                    isLoading: productViewModel.isLoadingPriceComparison,
+                    onRefresh: {
+                        await productViewModel.refreshPriceComparison()
+                    }
+                )
+                .padding(.horizontal)
 
                 Spacer()
             }

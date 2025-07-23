@@ -13,7 +13,23 @@ protocol NetworkServiceProtocol: Sendable {
     func fetchProduct(by name: String) async throws -> GroceryPriceData?
     func searchProducts(by name: String) async throws -> [GroceryPriceData]
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryPriceData]
+    func searchProductsOnWalmart(by query: String) async throws -> [GroceryPriceData]
     func fetchProductWithRetry(by name: String, retries: Int) async throws -> GroceryPriceData?
+    func searchGroceryPrice(productName: String, store: Store) async throws -> GroceryPriceData?
+}
+
+enum Store: String, CaseIterable, Codable {
+    case amazon = "Amazon"
+    case walmart = "Walmart"
+    
+    var endpoint: String {
+        switch self {
+        case .amazon:
+            return "amazon"
+        case .walmart:
+            return "walmart"
+        }
+    }
 }
 
 final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
@@ -32,9 +48,23 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     }
     
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryPriceData] {
-        let url = try buildAmazonSearchURL(for: query)
+        let url = try buildStoreSearchURL(for: query, store: .amazon)
         let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
         return response.allProducts
+    }
+    
+    func searchProductsOnWalmart(by query: String) async throws -> [GroceryPriceData] {
+        let url = try buildStoreSearchURL(for: query, store: .walmart)
+        let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
+        return response.allProducts
+    }
+    
+    func searchGroceryPrice(productName: String, store: Store) async throws -> GroceryPriceData? {
+        let url = try buildStoreSearchURL(for: productName, store: store)
+        let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
+        
+        // Return the first product from the API response
+        return response.allProducts.first
     }
     
     func fetchProduct(by name: String) async throws -> GroceryPriceData? {
@@ -60,6 +90,8 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         throw lastError ?? NetworkError.maxRetriesExceeded
     }
     
+
+    
     // MARK: - Private Methods
     
     private func buildSearchURL(for name: String) throws -> URL {
@@ -74,8 +106,8 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         return url
     }
     
-    private func buildAmazonSearchURL(for query: String) throws -> URL {
-        var components = URLComponents(string: "\(baseURL)/amazon")!
+    private func buildStoreSearchURL(for query: String, store: Store) throws -> URL {
+        var components = URLComponents(string: "\(baseURL)/\(store.endpoint)")!
         components.queryItems = [
             URLQueryItem(name: "query", value: query)
         ]
@@ -141,15 +173,54 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
             print("APIService: First decode attempt failed: \(error)")
             
             do {
-                // Second try: Amazon format with products array
-                let amazonResponse = try JSONDecoder().decode(AmazonResponse.self, from: data)
-                return GroceryPriceResponse(
-                    status: nil,
-                    message: nil,
-                    data: nil,
-                    success: true,
-                    products: amazonResponse.products
-                )
+                // Second try: API wrapper format with raw_body_sample
+                let apiWrapper = try JSONDecoder().decode(APIWrapperResponse.self, from: data)
+                
+                // Parse the raw_body_sample string as JSON
+                if let rawBodyData = apiWrapper.rawBodySample.data(using: .utf8) {
+                    do {
+                        let products = try JSONDecoder().decode([APIProduct].self, from: rawBodyData)
+                        let groceryProducts = products.map { apiProduct in
+                            return GroceryPriceData(
+                                id: UUID().uuidString,
+                                productName: apiProduct.title,
+                                brand: nil,
+                                category: nil,
+                                price: 0.0, // API doesn't provide price data
+                                currency: "USD",
+                                store: "Unknown",
+                                location: nil,
+                                lastUpdated: "",
+                                imageURL: apiProduct.image,
+                                barcode: nil
+                            )
+                        }
+                        return GroceryPriceResponse(
+                            status: nil,
+                            message: apiWrapper.message,
+                            data: groceryProducts,
+                            success: apiWrapper.success,
+                            products: nil
+                        )
+                    } catch {
+                        print("APIService: Failed to parse raw_body_sample: \(error)")
+                        return GroceryPriceResponse(
+                            status: nil,
+                            message: apiWrapper.message,
+                            data: [],
+                            success: apiWrapper.success,
+                            products: nil
+                        )
+                    }
+                } else {
+                    return GroceryPriceResponse(
+                        status: nil,
+                        message: apiWrapper.message,
+                        data: [],
+                        success: apiWrapper.success,
+                        products: nil
+                    )
+                }
             } catch {
                 print("APIService: Second decode attempt failed: \(error)")
                 
@@ -174,7 +245,33 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
 
 // MARK: - Response Models
 
-// Using GroceryPriceResponse and GroceryPriceData from Product.swift
+struct AmazonResponse: Codable, Sendable {
+    let products: [GroceryPriceData]
+}
+
+// API Wrapper Response Models
+struct APIWrapperResponse: Codable, Sendable {
+    let success: Bool
+    let rawBodyType: String
+    let rawBodySample: String
+    let fullResponseStructure: [String]
+    let message: String
+    
+    enum CodingKeys: String, CodingKey {
+        case success
+        case rawBodyType = "raw_body_type"
+        case rawBodySample = "raw_body_sample"
+        case fullResponseStructure = "full_response_structure"
+        case message
+    }
+}
+
+struct APIProduct: Codable, Sendable {
+    let position: Int
+    let title: String
+    let image: String
+    let link: String
+}
 
 // MARK: - Enhanced Error Handling
 

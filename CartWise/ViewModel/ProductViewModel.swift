@@ -11,6 +11,8 @@ import Combine
 final class ProductViewModel: ObservableObject {
     @Published var products: [GroceryItem] = []
     @Published var recentProducts: [GroceryItem] = []
+    @Published var priceComparison: PriceComparison?
+    @Published var isLoadingPriceComparison = false
     var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
@@ -160,6 +162,44 @@ final class ProductViewModel: ObservableObject {
             print("ViewModel: Error searching Amazon: \(error)")
             errorMessage = error.localizedDescription
         }
+    }
+    
+    func searchProductsOnWalmart(by query: String) async {
+        print("ViewModel: Searching Walmart for query: \(query)")
+        do {
+            products = try await repository.searchProductsOnWalmart(by: query)
+            print("ViewModel: Received \(products.count) products from API")
+            errorMessage = nil
+        } catch {
+            print("ViewModel: Error searching Walmart: \(error)")
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func loadPriceComparison() async {
+        guard !products.isEmpty else {
+            priceComparison = nil
+            return
+        }
+        
+        isLoadingPriceComparison = true
+        errorMessage = nil
+        
+        do {
+            print("ViewModel: Starting price comparison for shopping list")
+            let comparison = try await repository.getPriceComparison(for: products)
+            priceComparison = comparison
+            print("ViewModel: Price comparison loaded successfully")
+        } catch {
+            print("ViewModel: Error loading price comparison: \(error)")
+            errorMessage = "Failed to load price comparison: \(error.localizedDescription)"
+        }
+        
+        isLoadingPriceComparison = false
+    }
+    
+    func refreshPriceComparison() async {
+        await loadPriceComparison()
     }
     
     func searchProductsByBarcode(_ barcode: String) async {
