@@ -22,24 +22,6 @@ struct AddItemsView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Header
-                VStack(spacing: 8) {
-                    Image(systemName: "barcode.viewfinder")
-                        .font(.system(size: 60))
-                        .foregroundColor(AppColors.accentGreen)
-                    
-                    Text("Scan Barcode")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(AppColors.textPrimary)
-                    
-                    Text("Point your camera at a barcode to scan")
-                        .font(.body)
-                        .foregroundColor(AppColors.textPrimary.opacity(0.7))
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.top, 20)
-                
                 Spacer()
                 
                 // Camera View
@@ -69,18 +51,18 @@ struct AddItemsView: View {
                                 .padding(.bottom, 40)
                         }
                     }
-                    .frame(height: 300)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     // Placeholder when camera is not showing
                     RoundedRectangle(cornerRadius: 12)
                         .fill(AppColors.backgroundSecondary)
-                        .frame(height: 300)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .overlay(
                             VStack(spacing: 12) {
-                                Image(systemName: "camera.fill")
+                                Image(systemName: "barcode.viewfinder")
                                     .font(.system(size: 40))
                                     .foregroundColor(AppColors.accentGreen)
-                                Text("Tap to start scanning")
+                                Text("Scan barcode")
                                     .font(.headline)
                                     .foregroundColor(AppColors.textPrimary)
                             }
