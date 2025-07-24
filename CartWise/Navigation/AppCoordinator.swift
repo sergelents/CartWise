@@ -78,7 +78,7 @@ struct AppCoordinatorView: View {
                         }
                         .tag(TabItem.addItems)
                     
-                    MyProfileView()
+                    ProfileView()
                         .tabItem {
                             Image(systemName: coordinator.selectedTab == .myProfile ?
                                   TabItem.myProfile.selectedIconName : TabItem.myProfile.iconName)
