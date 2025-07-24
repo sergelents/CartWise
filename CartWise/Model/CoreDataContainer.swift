@@ -11,7 +11,7 @@ import CoreData
 protocol CoreDataContainerProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
     func fetchListProducts() async throws -> [GroceryItem]
-    func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
+    // func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
     func deleteProduct(_ product: GroceryItem) async throws
@@ -49,17 +49,17 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         }
     }
     
-    func fetchRecentProducts(limit: Int) async throws -> [GroceryItem] {
-        // Use viewContext through the actor
-        let context = await coreDataStack.viewContext
-        return try await context.perform {
-            let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
-            // Get all products (not just shopping list) sorted by creation date
-            request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.createdAt, ascending: false)]
-            request.fetchLimit = limit
-            return try context.fetch(request)
-        }
-    }
+    // func fetchRecentProducts(limit: Int) async throws -> [GroceryItem] {
+    //     // Use viewContext through the actor
+    //     let context = await coreDataStack.viewContext
+    //     return try await context.perform {
+    //         let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+    //     // Get all products (not just shopping list) sorted by creation date
+    //         request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.createdAt, ascending: false)]
+    //         request.fetchLimit = limit
+    //         return try context.fetch(request)
+    //     }
+    // }
     
     // createProduct was creating GroceryItem objects in background Core Data context, but ViewModel expecting objects from main context.
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false) async throws -> GroceryItem {

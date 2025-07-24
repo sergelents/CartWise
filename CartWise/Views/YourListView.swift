@@ -77,7 +77,7 @@ struct YourListView: View {
         }
     }
     
-    private func addProductToSystem(name: String, brand: String?, category: String?) {
+    private func addProductToSystem(name: String, brand: String?, category: String?, price: Double? = nil) {
         Task {
             // Check for duplicate first
             if await productViewModel.isDuplicateProduct(name: name) {
@@ -88,9 +88,9 @@ struct YourListView: View {
             
             // Proceed with creation if no duplicate
             if let brand = brand, !brand.isEmpty {
-                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category)
+                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category, price: price ?? 0.0)
             } else {
-                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
+                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category, price: price ?? 0.0)
             }
         }
     }
@@ -109,6 +109,12 @@ struct MainContentView: View {
     @Binding var showingAddProductModal: Bool
     @Binding var showingCheckAllConfirmation: Bool
     
+    private func calculateTotal() -> Double {
+        return productViewModel.products.reduce(0.0) { total, product in
+            total + product.price
+        }
+    }
+    
     var body: some View {
         ZStack {
             // Background
@@ -125,7 +131,7 @@ struct MainContentView: View {
                                 .font(.poppins(size:32, weight: .bold))
                                 .foregroundColor(.primary)
                             
-                            Text("\(productViewModel.products.count) items | $0.00")
+                                                                        Text("\(productViewModel.products.count) items | $\(String(format: "%.2f", calculateTotal()))")
                                 .font(.poppins(size:15, weight: .regular))
                                 .foregroundColor(.gray)
                         }
@@ -152,7 +158,7 @@ struct MainContentView: View {
                 StoreCard(
                     suggestedStore: suggestedStore,
                     storeAddress: storeAddress,
-                    total: 0.0 // Core Data products don't have price yet
+                    total: calculateTotal()
                 )
 
                 Spacer()
@@ -367,7 +373,7 @@ struct StoreCard: View {
                 .foregroundColor(.gray)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Divider()
-            Text("$\(Int(total))")
+            Text("$\(String(format: "%.2f", total))")
                 .font(.poppins(size:35, weight: .bold))
 
             Text(suggestedStore)
@@ -574,7 +580,7 @@ struct SmartAddProductModal: View {
     @State private var isCancelPressed = false
     @FocusState private var isSearchFocused: Bool
     @ObservedObject var productViewModel: ProductViewModel
-    let onAdd: (String, String?, String?) -> Void
+    let onAdd: (String, String?, String?, Double?) -> Void
     
     var body: some View {
         NavigationView {
@@ -632,13 +638,24 @@ struct SmartAddProductModal: View {
                 // Results Section
                 if searchText.isEmpty {
                     // Show recent products when search is empty
-                    RecentProductsSection(productViewModel: productViewModel, onAdd: onAdd, dismiss: dismiss)
+                    // RecentProductsSection(productViewModel: productViewModel, onAdd: onAdd, dismiss: dismiss)
+                    
+                    // Show empty state when search is empty
+                    VStack(spacing: 16) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
+                        Text("Search for products to add to your list")
+                            .font(.poppins(size: 18, weight: .semibold))
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     // Show search results
                     SearchResultsSection(
                         searchText: searchText,
-                        onAdd: { name, brand, category in
-                            onAdd(name, brand, category)
+                        onAdd: { name, brand, category, price in
+                            onAdd(name, brand, category, price)
                             dismiss()
                         },
                         onCreateNew: {
@@ -656,8 +673,9 @@ struct SmartAddProductModal: View {
                         productBrand: $productBrand,
                         selectedCategory: $selectedCategory,
                         showCategoryPicker: $showCategoryPicker,
-                        onAdd: { name, brand, category in
-                            onAdd(name, brand, category)
+                        productViewModel: productViewModel,
+                        onAdd: { name, brand, category, price in
+                            onAdd(name, brand, category, price)
                             dismiss()
                         }
                     )
@@ -690,48 +708,48 @@ struct SmartAddProductModal: View {
     }
 }
 
-struct RecentProductsSection: View {
-    @ObservedObject var productViewModel: ProductViewModel
-    let onAdd: (String, String?, String?) -> Void
-    let dismiss: DismissAction
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Recent Products")
-                .font(.poppins(size: 18, weight: .semibold))
-                .padding(.horizontal)
-            
-            if productViewModel.recentProducts.isEmpty {
-                Text("No recent products yet")
-                    .font(.poppins(size: 14, weight: .regular))
-                    .foregroundColor(.gray)
-                    .padding(.horizontal)
-            } else {
-                LazyVStack(spacing: 8) {
-                    ForEach(productViewModel.recentProducts.prefix(5), id: \.objectID) { product in
-                        RecentProductRow(product: product) {
-                            Task {
-                                await productViewModel.addExistingProductToShoppingList(product)
-                                await productViewModel.loadShoppingListProducts()
-                            }
-                            dismiss()
-                        }
-                    }
-                }
-                .padding(.horizontal)
-            }
-        }
-        .onAppear {
-            Task {
-                await productViewModel.loadRecentProducts(limit: 10)
-            }
-        }
-    }
-}
+// struct RecentProductsSection: View {
+//     @ObservedObject var productViewModel: ProductViewModel
+//     let onAdd: (String, String?, String?, Double?) -> Void
+//     let dismiss: DismissAction
+//     
+//     var body: some View {
+//         VStack(alignment: .leading, spacing: 12) {
+//             Text("Recent Products")
+//                 .font(.poppins(size: 18, weight: .semibold))
+//                 .padding(.horizontal)
+//             
+//             if productViewModel.recentProducts.isEmpty {
+//                 Text("No recent products yet")
+//                     .font(.poppins(size: 14, weight: .regular))
+//                     .foregroundColor(.gray)
+//                     .padding(.horizontal)
+//             } else {
+//                 LazyVStack(spacing: 8) {
+//                     ForEach(productViewModel.recentProducts.prefix(5), id: \.objectID) { product in
+//                         RecentProductRow(product: product) {
+//                             Task {
+//                                 await productViewModel.addExistingProductToShoppingList(product)
+//                                 await productViewModel.loadShoppingListProducts()
+//                             }
+//                             dismiss()
+//                         }
+//                     }
+//                 }
+//                 .padding(.horizontal)
+//             }
+//         }
+//         .onAppear {
+//             Task {
+//                 await productViewModel.loadRecentProducts(limit: 10)
+//             }
+//         }
+//     }
+// }
 
 struct SearchResultsSection: View {
     let searchText: String
-    let onAdd: (String, String?, String?) -> Void
+    let onAdd: (String, String?, String?, Double?) -> Void
     let onCreateNew: () -> Void
     @ObservedObject var productViewModel: ProductViewModel
     let dismiss: DismissAction
@@ -866,9 +884,26 @@ struct SearchResultRow: View {
                 
                 Spacer()
                 
-                Image(systemName: "plus.circle.fill")
-                    .foregroundColor(AppColors.accentGreen)
-                    .font(.system(size: 20))
+                Spacer()
+                
+                // Price display - always on the right
+                HStack(spacing: 8) {
+                    if product.price > 0 {
+                        Text("$\(String(format: "%.2f", product.price))")
+                            .font(.poppins(size: 14, weight: .semibold))
+                            .foregroundColor(AppColors.accentGreen)
+                            .frame(minWidth: 50, alignment: .trailing)
+                    } else {
+                        // Empty space to maintain alignment
+                        Text("")
+                            .font(.poppins(size: 14, weight: .semibold))
+                            .frame(minWidth: 50, alignment: .trailing)
+                    }
+                    
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundColor(AppColors.accentGreen)
+                        .font(.system(size: 20))
+                }
             }
             .padding()
             .background(Color(.systemGray6))
@@ -883,7 +918,13 @@ struct CreateNewProductSection: View {
     @Binding var productBrand: String
     @Binding var selectedCategory: ProductCategory
     @Binding var showCategoryPicker: Bool
-    let onAdd: (String, String?, String?) -> Void
+    @State private var productPrice: String = ""
+    // @State private var showPriceField: Bool = false
+    // @State private var isSearchingPrice = false
+    // @State private var amazonSearchResults: [GroceryItem] = []
+    // @State private var showAmazonResults = false
+    @ObservedObject var productViewModel: ProductViewModel
+    let onAdd: (String, String?, String?, Double?) -> Void
     
     var body: some View {
         VStack(spacing: 16) {
@@ -943,6 +984,43 @@ struct CreateNewProductSection: View {
                         .cornerRadius(8)
                     }
                 }
+                
+                // Price
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Price (Optional)")
+                        .font(.poppins(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    HStack {
+                        Text("$")
+                            .font(.poppins(size: 16, weight: .regular))
+                            .foregroundColor(.gray)
+                        
+                        TextField("0.00", text: $productPrice)
+                            .keyboardType(.decimalPad)
+                            .font(.poppins(size: 16, weight: .regular))
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    
+                    // Search for price on Amazon button - commented out
+                    // Button(action: {
+                    //     searchPriceOnAmazon()
+                    // }) {
+                    //     HStack {
+                    //         if isSearchingPrice {
+                    //             ProgressView()
+                    //                 .scaleEffect(0.8)
+                    //         } else {
+                    //             Image(systemName: "magnifyingglass")
+                    //             .font(.system(size: 14))
+                    //         }
+                    //         Text(isSearchingPrice ? "Searching..." : "Search for price on Amazon")
+                    //             .font(.poppins(size: 14, weight: .regular))
+                    //     }
+                    //     .foregroundColor(AppColors.accentGreen)
+                    // }
+                    // .disabled(productName.isEmpty || isSearchingPrice)
+                }
             }
             .padding(.horizontal)
             
@@ -950,7 +1028,8 @@ struct CreateNewProductSection: View {
             Button("Add to List") {
                 let brand = productBrand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : productBrand.trimmingCharacters(in: .whitespacesAndNewlines)
                 let category = selectedCategory == .none ? nil : selectedCategory.rawValue
-                onAdd(productName, brand, category)
+                let price = Double(productPrice.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0.0
+                onAdd(productName, brand, category, price)
             }
             .font(.poppins(size: 16, weight: .semibold))
             .foregroundColor(.white)
@@ -960,7 +1039,35 @@ struct CreateNewProductSection: View {
             .cornerRadius(12)
             .padding(.horizontal)
         }
+        // .sheet(isPresented: $showAmazonResults) {
+        //     AmazonPriceResultsView(
+        //         results: amazonSearchResults,
+        //         onSelectPrice: { price in
+        //             productPrice = String(format: "%.2f", price)
+        //             showAmazonResults = false
+        //         }
+        //     )
+        // }
     }
+    
+    // private func searchPriceOnAmazon() {
+    //     guard !productName.isEmpty else { return }
+    //     
+    //     isSearchingPrice = true
+    //     Task {
+    //         do {
+    //             let results = try await productViewModel.searchAmazonPrices(for: productName)
+    //             await MainActor.run {
+    //                 amazonSearchResults = results
+    //                 showAmazonResults = true
+    //                 isSearchingPrice = false
+    //             }
+    //         } catch {
+    //             await MainActor.run {
+    //                 isSearchingPrice = false
+    //             }
+    //         }
+    // }
 }
 
 struct CategoryPickerView: View {
@@ -1055,6 +1162,16 @@ struct ShoppingListItemRow: View {
             }
             
             Spacer()
+            
+            Spacer()
+            
+            // Price display - always on the right
+            if product.price > 0 {
+                Text("$\(String(format: "%.2f", product.price))")
+                    .font(.poppins(size:14, weight: .semibold))
+                    .foregroundColor(product.isCompleted ? .gray : AppColors.accentGreen)
+                    .frame(minWidth: 50, alignment: .trailing)
+            }
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
@@ -1247,12 +1364,119 @@ struct StarRatingView: View {
     }
 }
 
-struct RecentProductRow: View {
-    let product: GroceryItem
-    let onAdd: () -> Void
+// struct RecentProductRow: View {
+//     let product: GroceryItem
+//     let onAdd: () -> Void
+//     
+//     var body: some View {
+//         Button(action: onAdd) {
+//             HStack {
+//                 VStack(alignment: .leading, spacing: 4) {
+//                     Text(product.productName ?? "Unknown Product")
+//                         .font(.poppins(size: 16, weight: .medium))
+//                         .foregroundColor(.primary)
+//                     
+//                     if let brand = product.brand, !brand.isEmpty {
+//                         Text(brand)
+//                             .font(.poppins(size: 14, weight: .regular))
+//                             .foregroundColor(.gray)
+//                     }
+//                     
+//                     if let category = product.category, !category.isEmpty {
+//                         Text(category)
+//                             .font(.poppins(size: 12, weight: .regular))
+//                             .foregroundColor(.gray.opacity(0.7))
+//                     }
+//                 }
+//                 
+//                 Spacer()
+//                 
+//                 Image(systemName: "plus.circle.fill")
+//                     .foregroundColor(AppColors.accentGreen)
+//                     .font(.system(size: 20))
+//             }
+//             .padding()
+//             .background(Color(.systemGray6))
+//             .cornerRadius(12)
+//         }
+//         .buttonStyle(PlainButtonStyle())
+//     }
+// }
+
+
+
+
+// Amazon Price Results View
+struct AmazonPriceResultsView: View {
+    let results: [GroceryItem]
+    let onSelectPrice: (Double) -> Void
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        Button(action: onAdd) {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header
+                VStack(spacing: 16) {
+                    Text("Amazon Price Results")
+                        .font(.poppins(size: 24, weight: .bold))
+                        .padding(.top)
+                    
+                    Text("Select a price from Amazon")
+                        .font(.poppins(size: 16, weight: .regular))
+                        .foregroundColor(.gray)
+                }
+                .padding(.bottom)
+                
+                // Results List
+                if results.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
+                        Text("No price results found")
+                            .font(.poppins(size: 18, weight: .semibold))
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(results, id: \.objectID) { product in
+                                AmazonPriceResultRow(
+                                    product: product,
+                                    onSelect: {
+                                        onSelectPrice(product.price)
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+                
+                Spacer()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .font(.poppins(size: 16, weight: .regular))
+                    .foregroundColor(.gray)
+                }
+            }
+        }
+    }
+}
+
+// Amazon Price Result Row
+struct AmazonPriceResultRow: View {
+    let product: GroceryItem
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(product.productName ?? "Unknown Product")
@@ -1265,8 +1489,8 @@ struct RecentProductRow: View {
                             .foregroundColor(.gray)
                     }
                     
-                    if let category = product.category, !category.isEmpty {
-                        Text(category)
+                    if let store = product.store, !store.isEmpty {
+                        Text(store)
                             .font(.poppins(size: 12, weight: .regular))
                             .foregroundColor(.gray.opacity(0.7))
                     }
@@ -1274,9 +1498,24 @@ struct RecentProductRow: View {
                 
                 Spacer()
                 
-                Image(systemName: "plus.circle.fill")
-                    .foregroundColor(AppColors.accentGreen)
-                    .font(.system(size: 20))
+                // Price display - always on the right
+                HStack(spacing: 8) {
+                    if product.price > 0 {
+                        Text("$\(String(format: "%.2f", product.price))")
+                            .font(.poppins(size: 16, weight: .semibold))
+                            .foregroundColor(AppColors.accentGreen)
+                            .frame(minWidth: 60, alignment: .trailing)
+                    } else {
+                        // Empty space to maintain alignment
+                        Text("")
+                            .font(.poppins(size: 16, weight: .semibold))
+                            .frame(minWidth: 60, alignment: .trailing)
+                    }
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                }
             }
             .padding()
             .background(Color(.systemGray6))
@@ -1285,9 +1524,6 @@ struct RecentProductRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
-
-
-
 
 #Preview {
     YourListView()

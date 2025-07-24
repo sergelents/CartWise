@@ -11,7 +11,7 @@ import CoreData
 protocol ProductRepositoryProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
     func fetchListProducts() async throws -> [GroceryItem]
-    func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
+    // func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
     func deleteProduct(_ product: GroceryItem) async throws
@@ -45,10 +45,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
         return try await coreDataContainer.fetchListProducts()
     }
     
-    func fetchRecentProducts(limit: Int) async throws -> [GroceryItem] {
-        // Cache-first: return local data immediately
-        return try await coreDataContainer.fetchRecentProducts(limit: limit)
-    }
+    // func fetchRecentProducts(limit: Int) async throws -> [GroceryItem] {
+    //     // Cache-first: return local data immediately
+    //     return try await coreDataContainer.fetchRecentProducts(limit: limit)
+    // }
     
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false) async throws -> GroceryItem {
         // Create locally first

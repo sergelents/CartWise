@@ -10,7 +10,7 @@ import Combine
 @MainActor
 final class ProductViewModel: ObservableObject {
     @Published var products: [GroceryItem] = []
-    @Published var recentProducts: [GroceryItem] = []
+    // @Published var recentProducts: [GroceryItem] = []
     var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
@@ -42,14 +42,14 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func loadRecentProducts(limit: Int = 10) async {
-        do {
-            recentProducts = try await repository.fetchRecentProducts(limit: limit)
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
+    // func loadRecentProducts(limit: Int = 10) async {
+    //     do {
+    //         recentProducts = try await repository.fetchRecentProducts(limit: limit)
+    //         errorMessage = nil
+    //     } catch {
+    //         errorMessage = error.localizedDescription
+    //     }
+    // }
     
     func updateProduct(_ product: GroceryItem) async {
         do {
@@ -184,7 +184,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil) async {
+    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, price: Double = 0.0) async {
         do {
             if await isDuplicateProduct(name: name) {
                 errorMessage = "Product '\(name)' already exists in your list"
@@ -197,7 +197,7 @@ final class ProductViewModel: ObservableObject {
                 productName: name,
                 brand: brand,
                 category: category,
-                price: 0.0,
+                price: price,
                 currency: "USD",
                 store: nil,
                 location: nil,
@@ -286,6 +286,7 @@ final class ProductViewModel: ObservableObject {
             return false // If search fails, allow creation
         }
     }
+    
 }
 
 // This code was generated with the help of Claude, saving me 1 hour of research and development.

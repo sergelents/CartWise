@@ -54,8 +54,24 @@ struct GroceryPriceResponse: Codable, Sendable {
     }
     
     private func extractPrice(from priceString: String) -> Double {
+        // Remove currency symbols and clean the string
         let cleaned = priceString.replacingOccurrences(of: "[$€£¥]", with: "", options: .regularExpression)
-        return Double(cleaned) ?? 0.0
+            .replacingOccurrences(of: ",", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Try to extract price using various patterns
+        if let price = Double(cleaned) {
+            return price
+        }
+        
+        // Try to extract price from strings like "$12.99" or "12.99"
+        let pricePattern = #"(\d+\.?\d*)"#
+        if let range = cleaned.range(of: pricePattern, options: .regularExpression),
+           let price = Double(String(cleaned[range])) {
+            return price
+        }
+        
+        return 0.0
     }
 }
 
