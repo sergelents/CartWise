@@ -17,8 +17,8 @@ struct PriceComparisonView: View {
             // Header
             HStack {
                 Text("Price Comparison")
-                    .font(.headline)
-                    .fontWeight(.semibold)
+                    .font(.poppins(size:15, weight: .regular))
+                    .foregroundColor(.gray)
                 
                 Spacer()
                 
@@ -37,6 +37,10 @@ struct PriceComparisonView: View {
                 }
             }
             .padding(.horizontal)
+            .padding(.top, 8)
+
+            Divider()
+                .padding(.horizontal)
             
             if let comparison = priceComparison {
                 // Best store summary

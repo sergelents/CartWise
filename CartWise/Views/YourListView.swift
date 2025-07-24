@@ -38,6 +38,7 @@ struct YourListView: View {
                 showingAddProductModal: $showingAddProductModal,
                 showingCheckAllConfirmation: $showingCheckAllConfirmation
             )
+            .navigationTitle("Your Shopping List")
             .sheet(isPresented: $showingRatingPrompt) {
                 RatingPromptView()
             }
@@ -124,25 +125,6 @@ struct MainContentView: View {
             
             // Main Content
             VStack(alignment: .leading, spacing: 24) {
-                // Header
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Your Shopping List")
-                                .font(.poppins(size:32, weight: .bold))
-                                .foregroundColor(.primary)
-                            
-                                                                                        Text("\(productViewModel.products.count) items | $0.00")
-                    .font(.poppins(size:15, weight: .regular))
-                    .foregroundColor(.gray)
-                        }
-                        
-                        Spacer()
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal)
-                .padding(.top, 8)
 
                 // Item List Card
                 ShoppingListCard(
