@@ -189,7 +189,8 @@ final class ProductViewModel: ObservableObject {
                 store: nil,
                 location: nil,
                 imageURL: nil,
-                barcode: nil
+                barcode: nil,
+                isInShoppingList: true
             )
             await loadShoppingListProducts()
             errorMessage = nil
@@ -251,7 +252,8 @@ final class ProductViewModel: ObservableObject {
                     store: nil,
                     location: nil,
                     imageURL: nil,
-                    barcode: barcode
+                    barcode: barcode,
+                    isInShoppingList: false
                 )
                 await loadShoppingListProducts()
                 errorMessage = nil

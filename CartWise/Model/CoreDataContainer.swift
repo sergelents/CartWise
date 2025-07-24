@@ -12,7 +12,7 @@ protocol CoreDataContainerProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
     func fetchListProducts() async throws -> [GroceryItem]
     func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem
+    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
     func deleteProduct(_ product: GroceryItem) async throws
     func toggleProductCompletion(_ product: GroceryItem) async throws
@@ -62,7 +62,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     }
     
     // createProduct was creating GroceryItem objects in background Core Data context, but ViewModel expecting objects from main context.
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?) async throws -> GroceryItem {
+    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false) async throws -> GroceryItem {
         // Create in background context first
         let objectID = try await coreDataStack.performBackgroundTask { context in
             let product = GroceryItem(
@@ -79,8 +79,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 barcode: barcode
             )
             
-            // Don't add to shopping list by default - only when user explicitly adds
-            product.isInShoppingList = false
+            // Set shopping list status based on parameter
+            product.isInShoppingList = isInShoppingList
             
             try context.save()
             return product.objectID
