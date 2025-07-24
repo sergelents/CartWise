@@ -22,6 +22,7 @@ struct YourListView: View {
     @State private var showingRatingPrompt: Bool = false
     @State private var showingDuplicateAlert = false
     @State private var duplicateProductName = ""
+    @State private var showingCheckAllConfirmation = false
     
     var body: some View {
         NavigationStack {
@@ -34,8 +35,10 @@ struct YourListView: View {
                 storeAddress: storeAddress,
                 total: total,
                 showingRatingPrompt: $showingRatingPrompt,
-                showingAddProductModal: $showingAddProductModal
+                showingAddProductModal: $showingAddProductModal,
+                showingCheckAllConfirmation: $showingCheckAllConfirmation
             )
+            .navigationTitle("Your Shopping List")
             .sheet(isPresented: $showingRatingPrompt) {
                 RatingPromptView()
             }
@@ -51,15 +54,32 @@ struct YourListView: View {
             } message: {
                 Text("A product named \"\(duplicateProductName)\" already exists in your list.")
             }
+            .alert("Complete All Items", isPresented: $showingCheckAllConfirmation) {
+                Button("Cancel", role: .cancel) {
+                    // Do nothing, just dismiss the alert
+                }
+                Button("Complete All") {
+                    Task {
+                        await productViewModel.toggleAllProductsCompletion()
+                        // Only show rating prompt if all items are actually completed
+                        // if productViewModel.allProductsCompleted {
+                        //     showingRatingPrompt = true
+                        // }
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to mark all items as completed?")
+            }
             .onAppear {
                 Task {
                     await productViewModel.loadShoppingListProducts()
+                    await productViewModel.loadPriceComparison()
                 }
             }
         }
     }
     
-    private func addProductToSystem(name: String, brand: String?, category: String?) {
+    private func addProductToSystem(name: String, brand: String?, category: String?, price: Double? = nil) {
         Task {
             // Check for duplicate first
             if await productViewModel.isDuplicateProduct(name: name) {
@@ -70,9 +90,9 @@ struct YourListView: View {
             
             // Proceed with creation if no duplicate
             if let brand = brand, !brand.isEmpty {
-                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category)
+                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category, price: price ?? 0.0)
             } else {
-                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
+                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category, price: price ?? 0.0)
             }
         }
     }
@@ -89,6 +109,13 @@ struct MainContentView: View {
     let total: Double
     @Binding var showingRatingPrompt: Bool
     @Binding var showingAddProductModal: Bool
+    @Binding var showingCheckAllConfirmation: Bool
+    
+    // private func calculateTotal() -> Double {
+    //     return productViewModel.products.reduce(0.0) { total, product in
+    //         total + product.price
+    //     }
+    // }
     
     var body: some View {
         ZStack {
@@ -98,25 +125,6 @@ struct MainContentView: View {
             
             // Main Content
             VStack(alignment: .leading, spacing: 24) {
-                // Header
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Your Shopping List")
-                                .font(.poppins(size:32, weight: .bold))
-                                .foregroundColor(.primary)
-                            
-                            Text("\(productViewModel.products.count) items | $0.00")
-                                .font(.poppins(size:15, weight: .regular))
-                                .foregroundColor(.gray)
-                        }
-                        
-                        Spacer()
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal)
-                .padding(.top, 8)
 
                 // Item List Card
                 ShoppingListCard(
@@ -125,15 +133,19 @@ struct MainContentView: View {
                     allItemsChecked: $allItemsChecked,
                     selectedItemsForDeletion: $selectedItemsForDeletion,
                     showingRatingPrompt: $showingRatingPrompt,
-                    showingAddProductModal: $showingAddProductModal
+                    showingAddProductModal: $showingAddProductModal,
+                    showingCheckAllConfirmation: $showingCheckAllConfirmation
                 )
 
-                // Store Card
-                StoreCard(
-                    suggestedStore: suggestedStore,
-                    storeAddress: storeAddress,
-                    total: 0.0 // Core Data products don't have price yet
+                // Price Comparison Card
+                PriceComparisonView(
+                    priceComparison: productViewModel.priceComparison,
+                    isLoading: productViewModel.isLoadingPriceComparison,
+                    onRefresh: {
+                        await productViewModel.refreshPriceComparison()
+                    }
                 )
+                .padding(.horizontal)
 
                 Spacer()
             }
@@ -150,6 +162,7 @@ struct ShoppingListCard: View {
     @Binding var selectedItemsForDeletion: Set<String>
     @Binding var showingRatingPrompt: Bool
     @Binding var showingAddProductModal: Bool
+    @Binding var showingCheckAllConfirmation: Bool
     
     var body: some View {
         VStack(spacing: 12) {
@@ -262,9 +275,9 @@ struct ShoppingListCard: View {
                                         Task {
                                             await productViewModel.toggleProductCompletion(product)
                                             // Check if all products are completed after toggling
-                                            if productViewModel.allProductsCompleted {
-                                                showingRatingPrompt = true
-                                            }
+                                            // if productViewModel.allProductsCompleted {
+                                            //     showingRatingPrompt = true
+                                            // }
                                         }
                                     }
                                 },
@@ -298,10 +311,16 @@ struct ShoppingListCard: View {
                 )
                 
                 Button(action: {
-                    Task {
-                        await productViewModel.toggleAllProductsCompletion()
-                        // Show rating prompt after completing all items
-                        showingRatingPrompt = true
+                    // Check if we're about to complete all items (not uncheck them)
+                    let allCompleted = productViewModel.products.allSatisfy { $0.isCompleted }
+                    if allCompleted {
+                        // If all are completed, directly uncheck them all (no confirmation needed)
+                        Task {
+                            await productViewModel.toggleAllProductsCompletion()
+                        }
+                    } else {
+                        // If not all are completed, show confirmation before completing all
+                        showingCheckAllConfirmation = true
                     }
                 }) {
                     Image(systemName: "checkmark.circle")
@@ -326,215 +345,175 @@ struct ShoppingListCard: View {
     }
 }
 
-// Store Card
-struct StoreCard: View {
-    let suggestedStore: String
-    let storeAddress: String
-    let total: Double
-    @State private var showingLocationModal = false
-    
-    var body: some View {
-        VStack(spacing: 10) {
-            Text("Running Total at Suggested Store")
-                .font(.poppins(size:13, weight: .regular))
-                .foregroundColor(.gray)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Divider()
-            Text("$\(Int(total))")
-                .font(.poppins(size:35, weight: .bold))
 
-            Text(suggestedStore)
-                .font(.poppins(size:19, weight: .semibold))
 
-            Text(storeAddress)
-                .font(.poppins(size:15, weight: .regular))
-                .foregroundColor(.gray)
+// Store Location Modal - commented out
+// struct StoreLocationModal: View {
+//     @Environment(\.dismiss) private var dismiss
+//     @State private var searchText = ""
+//     @State private var selectedStore: StoreLocation?
+//     @State private var isSearchFocused = false
+//     @FocusState private var isSearchFocusedState: Bool
+//     
+//     // Sample store data - will be replaced with API data later
+//     let sampleStores = [
+//         StoreLocation(name: "Safeway", address: "123 Main St, Portland, OR", distance: "0.3 mi"),
+//         StoreLocation(name: "Fred Meyer", address: "456 Oak Ave, Portland, OR", distance: "0.8 mi"),
+//         StoreLocation(name: "Trader Joe's", address: "789 Pine St, Portland, OR", distance: "1.2 mi"),
+//         StoreLocation(name: "Whole Foods Market", address: "321 Elm St, Portland, OR", distance: "1.5 mi"),
+//         StoreLocation(name: "New Seasons Market", address: "654 Maple Dr, Portland, OR", distance: "2.1 mi")
+//     ]
+//     
+//     var filteredStores: [StoreLocation] {
+//         if searchText.isEmpty {
+//             return sampleStores
+//         } else {
+//             return sampleStores.filter { store in
+//                 store.name.localizedCaseInsensitiveContains(searchText) ||
+//                 store.address.localizedCaseInsensitiveContains(searchText)
+//             }
+//         }
+//     }
+//     
+//     var body: some View {
+//         NavigationView {
+//             VStack(spacing: 0) {
+//                 // Header
+//                 VStack(spacing: 16) {
+//                     Text("Change Store Location")
+//                         .font(.poppins(size: 24, weight: .bold))
+//                         .padding(.top)
+//                     
+//                     // Search Bar
+//                     HStack {
+//                         Image(systemName: "magnifyingglass")
+//                             .foregroundColor(.gray)
+//                             
+//                         TextField("Search stores...", text: $searchText)
+//                             .font(.poppins(size: 16, weight: .regular))
+//                             .focused($isSearchFocusedState)
+//                             .onChange(of: isSearchFocusedState) { _, focused in
+//                                 isSearchFocused = focused
+//                             }
+//                     }
+//                     .padding()
+//                     .background(Color(.systemGray6))
+//                     .cornerRadius(12)
+//                     .padding(.horizontal)
+//                 }
+//                 .padding(.bottom)
+//                 
+//                 // Store List
+//                 ScrollView {
+//                     LazyVStack(spacing: 12) {
+//                         ForEach(filteredStores, id: \.id) { store in
+//                             StoreLocationRow(
+//                                 store: store,
+//                                 isSelected: selectedStore?.id == store.id
+//                             ) {
+//                                 selectedStore = store
+//                             }
+//                         }
+//                     }
+//                     .padding(.horizontal)
+//                 }
+//                 
+//                 // Select Button
+//                 if let selectedStore = selectedStore {
+//                     Button("Select \(selectedStore.name)") {
+//                         // TODO: Update store location in app state
+//                         dismiss()
+//                     }
+//                     .font(.poppins(size: 16, weight: .semibold))
+//                     .foregroundColor(.white)
+//                     .frame(maxWidth: .infinity)
+//                     .padding()
+//                     .background(AppColors.accentGreen)
+//                     .frame(maxWidth: .infinity)
+//                     .padding()
+//                     .background(AppColors.accentGreen)
+//                     .cornerRadius(12)
+//                     .padding(.horizontal)
+//                     .padding(.bottom)
+//                 }
+//             }
+//             .navigationBarTitleDisplayMode(.inline)
+//             .toolbar {
+//                 ToolbarItem(placement: .navigationBarLeading) {
+//                     Button("Cancel") {
+//                         dismiss()
+//                     }
+//                     .font(.poppins(size: 16, weight: .regular))
+//                     .foregroundColor(.gray)
+//                 }
+//             }
+//         }
+//     }
+// }
 
-            Button("Change Store") {
-                showingLocationModal = true
-            }
-            .font(.poppins(size:15, weight: .bold))
-            .padding(.vertical, 4)
-            .padding(.horizontal, 30)
-            .background(.gray.opacity(0.15))
-            .foregroundColor(AppColors.accentGreen)
-            .cornerRadius(20)
-        }
-        .padding()
-        .background(Color.white)
-        .cornerRadius(20)
-        .shadow(color: Color.black.opacity(0.07), radius: 3, x: 0, y: 2)
-        .padding(.horizontal)
-        .sheet(isPresented: $showingLocationModal) {
-            StoreLocationModal()
-        }
-    }
-}
+// Store Location Row - commented out
+// struct StoreLocationRow: View {
+//     let store: StoreLocation
+//     let isSelected: Bool
+//     let onTap: () -> Void
+//     
+//     var body: some View {
+//         Button(action: onTap) {
+//             HStack(spacing: 12) {
+//                 // Store Icon
+//                 Image(systemName: "building.2")
+//                     .font(.system(size: 20))
+//                     .foregroundColor(AppColors.accentGreen)
+//                     .frame(width: 40, height: 40)
+//                     .background(AppColors.accentGreen.opacity(0.1))
+//                     .cornerRadius(8)
+//                 
+//                 // Store Info
+//                 VStack(alignment: .leading, spacing: 4) {
+//                     Text(store.name)
+//                         .font(.poppins(size: 16, weight: .semibold))
+//                         .foregroundColor(.primary)
+//                     
+//                     Text(store.address)
+//                         .font(.poppins(size: 14, weight: .regular))
+//                         .foregroundColor(.gray)
+//                     .lineLimit(1)
+//                     
+//                     Text(store.distance)
+//                         .font(.poppins(size: 12, weight: .regular))
+//                         .foregroundColor(AppColors.accentGreen)
+//                 }
+//                 
+//                 Spacer()
+//                 
+//                 // Selection Indicator
+//                 if isSelected {
+//                     Image(systemName: "checkmark.circle.fill")
+//                         .font(.system(size: 20))
+//                     .foregroundColor(AppColors.accentGreen)
+//                 }
+//             }
+//             .padding()
+//             .background(
+//                 RoundedRectangle(cornerRadius: 12)
+//                     .fill(isSelected ? AppColors.accentGreen.opacity(0.1) : Color(.systemGray6))
+//                     .overlay(
+//                         RoundedRectangle(cornerRadius: 12)
+//                             .stroke(isSelected ? AppColors.accentGreen : Color.clear, lineWidth: 2)
+//                     )
+//             )
+//         }
+//         .buttonStyle(PlainButtonStyle())
+//     }
+// }
 
-// Store Location Modal
-struct StoreLocationModal: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var searchText = ""
-    @State private var selectedStore: StoreLocation?
-    @State private var isSearchFocused = false
-    @FocusState private var isSearchFocusedState: Bool
-    
-    // Sample store data - will be replaced with API data later
-    let sampleStores = [
-        StoreLocation(name: "Safeway", address: "123 Main St, Portland, OR", distance: "0.3 mi"),
-        StoreLocation(name: "Fred Meyer", address: "456 Oak Ave, Portland, OR", distance: "0.8 mi"),
-        StoreLocation(name: "Trader Joe's", address: "789 Pine St, Portland, OR", distance: "1.2 mi"),
-        StoreLocation(name: "Whole Foods Market", address: "321 Elm St, Portland, OR", distance: "1.5 mi"),
-        StoreLocation(name: "New Seasons Market", address: "654 Maple Dr, Portland, OR", distance: "2.1 mi")
-    ]
-    
-    var filteredStores: [StoreLocation] {
-        if searchText.isEmpty {
-            return sampleStores
-        } else {
-            return sampleStores.filter { store in
-                store.name.localizedCaseInsensitiveContains(searchText) ||
-                store.address.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-    }
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                // Header
-                VStack(spacing: 16) {
-                    Text("Change Store Location")
-                        .font(.poppins(size: 24, weight: .bold))
-                        .padding(.top)
-                    
-                    // Search Bar
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
-                        
-                        TextField("Search stores...", text: $searchText)
-                            .font(.poppins(size: 16, weight: .regular))
-                            .focused($isSearchFocusedState)
-                            .onChange(of: isSearchFocusedState) { _, focused in
-                                isSearchFocused = focused
-                            }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                }
-                .padding(.bottom)
-                
-                // Store List
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(filteredStores, id: \.id) { store in
-                            StoreLocationRow(
-                                store: store,
-                                isSelected: selectedStore?.id == store.id
-                            ) {
-                                selectedStore = store
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                
-                // Select Button
-                if let selectedStore = selectedStore {
-                    Button("Select \(selectedStore.name)") {
-                        // TODO: Update store location in app state
-                        dismiss()
-                    }
-                    .font(.poppins(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(AppColors.accentGreen)
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                    .padding(.bottom)
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .font(.poppins(size: 16, weight: .regular))
-                    .foregroundColor(.gray)
-                }
-            }
-        }
-    }
-}
-
-// Store Location Row
-struct StoreLocationRow: View {
-    let store: StoreLocation
-    let isSelected: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                // Store Icon
-                Image(systemName: "building.2")
-                    .font(.system(size: 20))
-                    .foregroundColor(AppColors.accentGreen)
-                    .frame(width: 40, height: 40)
-                    .background(AppColors.accentGreen.opacity(0.1))
-                    .cornerRadius(8)
-                
-                // Store Info
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(store.name)
-                        .font(.poppins(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    Text(store.address)
-                        .font(.poppins(size: 14, weight: .regular))
-                        .foregroundColor(.gray)
-                        .lineLimit(1)
-                    
-                    Text(store.distance)
-                        .font(.poppins(size: 12, weight: .regular))
-                        .foregroundColor(AppColors.accentGreen)
-                }
-                
-                Spacer()
-                
-                // Selection Indicator
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(AppColors.accentGreen)
-                }
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? AppColors.accentGreen.opacity(0.1) : Color(.systemGray6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(isSelected ? AppColors.accentGreen : Color.clear, lineWidth: 2)
-                    )
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-// Store Location Model
-struct StoreLocation: Identifiable {
-    let id = UUID()
-    let name: String
-    let address: String
-    let distance: String
-}
+// Store Location Model - commented out
+// struct StoreLocation: Identifiable {
+//     let id = UUID()
+//     let name: String
+//     let address: String
+//     let distance: String
+// }
 
 struct SmartAddProductModal: View {
     @Environment(\.dismiss) private var dismiss
@@ -547,7 +526,7 @@ struct SmartAddProductModal: View {
     @State private var isCancelPressed = false
     @FocusState private var isSearchFocused: Bool
     @ObservedObject var productViewModel: ProductViewModel
-    let onAdd: (String, String?, String?) -> Void
+    let onAdd: (String, String?, String?, Double?) -> Void
     
     var body: some View {
         NavigationView {
@@ -605,13 +584,24 @@ struct SmartAddProductModal: View {
                 // Results Section
                 if searchText.isEmpty {
                     // Show recent products when search is empty
-                    RecentProductsSection(productViewModel: productViewModel, onAdd: onAdd, dismiss: dismiss)
+                    // RecentProductsSection(productViewModel: productViewModel, onAdd: onAdd, dismiss: dismiss)
+                    
+                    // Show empty state when search is empty
+                    VStack(spacing: 16) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
+                        Text("Search for products to add to your list")
+                            .font(.poppins(size: 18, weight: .semibold))
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     // Show search results
                     SearchResultsSection(
                         searchText: searchText,
-                        onAdd: { name, brand, category in
-                            onAdd(name, brand, category)
+                        onAdd: { name, brand, category, price in
+                            onAdd(name, brand, category, price)
                             dismiss()
                         },
                         onCreateNew: {
@@ -629,8 +619,9 @@ struct SmartAddProductModal: View {
                         productBrand: $productBrand,
                         selectedCategory: $selectedCategory,
                         showCategoryPicker: $showCategoryPicker,
-                        onAdd: { name, brand, category in
-                            onAdd(name, brand, category)
+                        productViewModel: productViewModel,
+                        onAdd: { name, brand, category, price in
+                            onAdd(name, brand, category, price)
                             dismiss()
                         }
                     )
@@ -663,48 +654,9 @@ struct SmartAddProductModal: View {
     }
 }
 
-struct RecentProductsSection: View {
-    @ObservedObject var productViewModel: ProductViewModel
-    let onAdd: (String, String?, String?) -> Void
-    let dismiss: DismissAction
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Recent Products")
-                .font(.poppins(size: 18, weight: .semibold))
-                .padding(.horizontal)
-            
-            if productViewModel.recentProducts.isEmpty {
-                Text("No recent products yet")
-                    .font(.poppins(size: 14, weight: .regular))
-                    .foregroundColor(.gray)
-                    .padding(.horizontal)
-            } else {
-                LazyVStack(spacing: 8) {
-                    ForEach(productViewModel.recentProducts.prefix(5), id: \.objectID) { product in
-                        RecentProductRow(product: product) {
-                            Task {
-                                await productViewModel.addExistingProductToShoppingList(product)
-                                await productViewModel.loadShoppingListProducts()
-                            }
-                            dismiss()
-                        }
-                    }
-                }
-                .padding(.horizontal)
-            }
-        }
-        .onAppear {
-            Task {
-                await productViewModel.loadRecentProducts(limit: 10)
-            }
-        }
-    }
-}
-
 struct SearchResultsSection: View {
     let searchText: String
-    let onAdd: (String, String?, String?) -> Void
+    let onAdd: (String, String?, String?, Double?) -> Void
     let onCreateNew: () -> Void
     @ObservedObject var productViewModel: ProductViewModel
     let dismiss: DismissAction
@@ -839,9 +791,26 @@ struct SearchResultRow: View {
                 
                 Spacer()
                 
-                Image(systemName: "plus.circle.fill")
-                    .foregroundColor(AppColors.accentGreen)
-                    .font(.system(size: 20))
+                Spacer()
+                
+                // Price display - always on the right
+                HStack(spacing: 8) {
+                    if product.price > 0 {
+                        Text("$\(String(format: "%.2f", product.price))")
+                            .font(.poppins(size: 14, weight: .semibold))
+                            .foregroundColor(AppColors.accentGreen)
+                            .frame(minWidth: 50, alignment: .trailing)
+                    } else {
+                        // Empty space to maintain alignment
+                        Text("")
+                            .font(.poppins(size: 14, weight: .semibold))
+                            .frame(minWidth: 50, alignment: .trailing)
+                    }
+                    
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundColor(AppColors.accentGreen)
+                        .font(.system(size: 20))
+                }
             }
             .padding()
             .background(Color(.systemGray6))
@@ -856,7 +825,13 @@ struct CreateNewProductSection: View {
     @Binding var productBrand: String
     @Binding var selectedCategory: ProductCategory
     @Binding var showCategoryPicker: Bool
-    let onAdd: (String, String?, String?) -> Void
+    @State private var productPrice: String = ""
+    // @State private var showPriceField: Bool = false
+    // @State private var isSearchingPrice = false
+    // @State private var amazonSearchResults: [GroceryItem] = []
+    // @State private var showAmazonResults = false
+    @ObservedObject var productViewModel: ProductViewModel
+    let onAdd: (String, String?, String?, Double?) -> Void
     
     var body: some View {
         VStack(spacing: 16) {
@@ -916,6 +891,43 @@ struct CreateNewProductSection: View {
                         .cornerRadius(8)
                     }
                 }
+                
+                // Price
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Price (Optional)")
+                        .font(.poppins(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    HStack {
+                        Text("$")
+                            .font(.poppins(size: 16, weight: .regular))
+                            .foregroundColor(.gray)
+                        
+                        TextField("0.00", text: $productPrice)
+                            .keyboardType(.decimalPad)
+                            .font(.poppins(size: 16, weight: .regular))
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    
+                    // Search for price on Amazon button - commented out
+                    // Button(action: {
+                    //     searchPriceOnAmazon()
+                    // }) {
+                    //     HStack {
+                    //         if isSearchingPrice {
+                    //             ProgressView()
+                    //                 .scaleEffect(0.8)
+                    //         } else {
+                    //             Image(systemName: "magnifyingglass")
+                    //             .font(.system(size: 14))
+                    //         }
+                    //         Text(isSearchingPrice ? "Searching..." : "Search for price on Amazon")
+                    //             .font(.poppins(size: 14, weight: .regular))
+                    //     }
+                    //     .foregroundColor(AppColors.accentGreen)
+                    // }
+                    // .disabled(productName.isEmpty || isSearchingPrice)
+                }
             }
             .padding(.horizontal)
             
@@ -923,7 +935,8 @@ struct CreateNewProductSection: View {
             Button("Add to List") {
                 let brand = productBrand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : productBrand.trimmingCharacters(in: .whitespacesAndNewlines)
                 let category = selectedCategory == .none ? nil : selectedCategory.rawValue
-                onAdd(productName, brand, category)
+                let price = Double(productPrice.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0.0
+                onAdd(productName, brand, category, price)
             }
             .font(.poppins(size: 16, weight: .semibold))
             .foregroundColor(.white)
@@ -933,7 +946,35 @@ struct CreateNewProductSection: View {
             .cornerRadius(12)
             .padding(.horizontal)
         }
+        // .sheet(isPresented: $showAmazonResults) {
+        //     AmazonPriceResultsView(
+        //         results: amazonSearchResults,
+        //         onSelectPrice: { price in
+        //             productPrice = String(format: "%.2f", price)
+        //             showAmazonResults = false
+        //         }
+        //     )
+        // }
     }
+    
+    // private func searchPriceOnAmazon() {
+    //     guard !productName.isEmpty else { return }
+    //     
+    //     isSearchingPrice = true
+    //     Task {
+    //         do {
+    //             let results = try await productViewModel.searchAmazonPrices(for: productName)
+    //             await MainActor.run {
+    //                 amazonSearchResults = results
+    //                 showAmazonResults = true
+    //                 isSearchingPrice = false
+    //             }
+    //         } catch {
+    //             await MainActor.run {
+    //                 isSearchingPrice = false
+    //             }
+    //         }
+    // }
 }
 
 struct CategoryPickerView: View {
@@ -1028,6 +1069,16 @@ struct ShoppingListItemRow: View {
             }
             
             Spacer()
+            
+            Spacer()
+            
+            // Price display - always on the right
+            if product.price > 0 {
+                Text("$\(String(format: "%.2f", product.price))")
+                    .font(.poppins(size:14, weight: .semibold))
+                    .foregroundColor(product.isCompleted ? .gray : AppColors.accentGreen)
+                    .frame(minWidth: 50, alignment: .trailing)
+            }
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
@@ -1220,12 +1271,119 @@ struct StarRatingView: View {
     }
 }
 
-struct RecentProductRow: View {
-    let product: GroceryItem
-    let onAdd: () -> Void
+// struct RecentProductRow: View {
+//     let product: GroceryItem
+//     let onAdd: () -> Void
+//     
+//     var body: some View {
+//         Button(action: onAdd) {
+//             HStack {
+//                 VStack(alignment: .leading, spacing: 4) {
+//                     Text(product.productName ?? "Unknown Product")
+//                         .font(.poppins(size: 16, weight: .medium))
+//                         .foregroundColor(.primary)
+//                     
+//                     if let brand = product.brand, !brand.isEmpty {
+//                         Text(brand)
+//                             .font(.poppins(size: 14, weight: .regular))
+//                             .foregroundColor(.gray)
+//                     }
+//                     
+//                     if let category = product.category, !category.isEmpty {
+//                         Text(category)
+//                             .font(.poppins(size: 12, weight: .regular))
+//                             .foregroundColor(.gray.opacity(0.7))
+//                     }
+//                 }
+//                 
+//                 Spacer()
+//                 
+//                 Image(systemName: "plus.circle.fill")
+//                     .foregroundColor(AppColors.accentGreen)
+//                     .font(.system(size: 20))
+//             }
+//             .padding()
+//             .background(Color(.systemGray6))
+//             .cornerRadius(12)
+//         }
+//         .buttonStyle(PlainButtonStyle())
+//     }
+// }
+
+
+
+
+// Amazon Price Results View
+struct AmazonPriceResultsView: View {
+    let results: [GroceryItem]
+    let onSelectPrice: (Double) -> Void
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        Button(action: onAdd) {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header
+                VStack(spacing: 16) {
+                    Text("Amazon Price Results")
+                        .font(.poppins(size: 24, weight: .bold))
+                        .padding(.top)
+                    
+                    Text("Select a price from Amazon")
+                        .font(.poppins(size: 16, weight: .regular))
+                        .foregroundColor(.gray)
+                }
+                .padding(.bottom)
+                
+                // Results List
+                if results.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray)
+                        Text("No price results found")
+                            .font(.poppins(size: 18, weight: .semibold))
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(results, id: \.objectID) { product in
+                                AmazonPriceResultRow(
+                                    product: product,
+                                    onSelect: {
+                                        onSelectPrice(product.price)
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+                
+                Spacer()
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .font(.poppins(size: 16, weight: .regular))
+                    .foregroundColor(.gray)
+                }
+            }
+        }
+    }
+}
+
+// Amazon Price Result Row
+struct AmazonPriceResultRow: View {
+    let product: GroceryItem
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(product.productName ?? "Unknown Product")
@@ -1238,8 +1396,8 @@ struct RecentProductRow: View {
                             .foregroundColor(.gray)
                     }
                     
-                    if let category = product.category, !category.isEmpty {
-                        Text(category)
+                    if let store = product.store, !store.isEmpty {
+                        Text(store)
                             .font(.poppins(size: 12, weight: .regular))
                             .foregroundColor(.gray.opacity(0.7))
                     }
@@ -1247,9 +1405,24 @@ struct RecentProductRow: View {
                 
                 Spacer()
                 
-                Image(systemName: "plus.circle.fill")
-                    .foregroundColor(AppColors.accentGreen)
-                    .font(.system(size: 20))
+                // Price display - always on the right
+                HStack(spacing: 8) {
+                    if product.price > 0 {
+                        Text("$\(String(format: "%.2f", product.price))")
+                            .font(.poppins(size: 16, weight: .semibold))
+                            .foregroundColor(AppColors.accentGreen)
+                            .frame(minWidth: 60, alignment: .trailing)
+                    } else {
+                        // Empty space to maintain alignment
+                        Text("")
+                            .font(.poppins(size: 16, weight: .semibold))
+                            .frame(minWidth: 60, alignment: .trailing)
+                    }
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                }
             }
             .padding()
             .background(Color(.systemGray6))
@@ -1258,9 +1431,6 @@ struct RecentProductRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
-
-
-
 
 #Preview {
     YourListView()

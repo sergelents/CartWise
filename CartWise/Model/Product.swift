@@ -27,35 +27,10 @@ struct GroceryPriceResponse: Codable, Sendable {
     let message: String?
     let data: [GroceryPriceData]?
     let success: Bool?
-    let products: [AmazonProduct]?
+    let products: [GroceryPriceData]?
     
-    // Computed property to get products from either format
     var allProducts: [GroceryPriceData] {
-        if let data = data {
-            return data
-        } else if let products = products {
-            return products.map { amazonProduct in
-                GroceryPriceData(
-                    id: amazonProduct.amazonLink ?? UUID().uuidString,
-                    productName: amazonProduct.name,
-                    brand: nil,
-                    category: nil,
-                    price: extractPrice(from: amazonProduct.price),
-                    currency: amazonProduct.currency ?? "$",
-                    store: "Amazon",
-                    location: nil,
-                    lastUpdated: ISO8601DateFormatter().string(from: Date()),
-                    imageURL: amazonProduct.image,
-                    barcode: nil
-                )
-            }
-        }
-        return []
-    }
-    
-    private func extractPrice(from priceString: String) -> Double {
-        let cleaned = priceString.replacingOccurrences(of: "[$€£¥]", with: "", options: .regularExpression)
-        return Double(cleaned) ?? 0.0
+        return data ?? products ?? []
     }
 }
 
@@ -87,19 +62,3 @@ struct GroceryPriceData: Codable, Sendable {
     }
 }
 
-// Amazon API Response Models (for internal use only)
-struct AmazonResponse: Codable, Sendable {
-    let products: [AmazonProduct]
-}
-
-struct AmazonProduct: Codable, Sendable {
-    let name: String
-    let price: String
-    let currency: String?
-    let customerReview: String?
-    let customerReviewCount: String?
-    let shippingMessage: String?
-    let amazonLink: String?
-    let image: String?
-    let boughtInfo: String?
-}

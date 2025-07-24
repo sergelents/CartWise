@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import CoreData
 
 
 
@@ -16,14 +17,23 @@ struct CategoryItemsView: View {
     let viewModel: ProductViewModel  // Receive ViewModel from parent
     @State private var selectedItemsToAdd: Set<String> = []
     @State private var isLoading = false
+    @State private var hasSearched = false
 
     
     private var categoryProducts: [GroceryItem] {
         // First, load all existing products from Core Data
         let allProducts = viewModel.products
         
-        // Filter products by looking at their names to see if they match the category
+        // Filter products by category field first, then by name keywords
         let filtered = allProducts.filter { groceryItem in
+            // First check if the category field matches
+            if let productCategory = groceryItem.category {
+                if productCategory.lowercased() == category.rawValue.lowercased() {
+                    return true
+                }
+            }
+            
+            // Then check product name against category keywords
             if let productName = groceryItem.productName {
                 let categoryKeywords = getCategoryKeywords(for: category)
                 let matches = categoryKeywords.contains { keyword in
@@ -34,7 +44,16 @@ struct CategoryItemsView: View {
             }
             return false
         }
+        
         print("CategoryItemsView: Total products: \(allProducts.count), Filtered products: \(filtered.count)")
+        
+        // If no products found after filtering, but we have products from the search,
+        // return all products as they were found for this category
+        if filtered.isEmpty && !allProducts.isEmpty {
+            print("CategoryItemsView: No products found for category \(category.rawValue), showing all products as fallback")
+            return allProducts
+        }
+        
         return filtered
     }
     
@@ -61,6 +80,21 @@ struct CategoryItemsView: View {
         }
     }
     
+    private var displayProducts: [GroceryItem] {
+        // If we have filtered products, show them
+        if !categoryProducts.isEmpty {
+            return categoryProducts
+        }
+        
+        // If we've searched and have products, show all products as they were found for this category
+        if hasSearched && !viewModel.products.isEmpty {
+            return viewModel.products
+        }
+        
+        // Otherwise, show filtered products (which might be empty)
+        return categoryProducts
+    }
+    
     var body: some View {
         VStack {
             if isLoading {
@@ -72,7 +106,7 @@ struct CategoryItemsView: View {
                         .foregroundColor(.gray)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if categoryProducts.isEmpty {
+            } else if displayProducts.isEmpty && !hasSearched {
                 VStack(spacing: 16) {
                     Image(systemName: "basket")
                         .resizable()
@@ -90,7 +124,7 @@ struct CategoryItemsView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 12) {
-                        ForEach(categoryProducts, id: \.id) { groceryItem in
+                        ForEach(displayProducts, id: \.id) { groceryItem in
                             ProductCard(
                                 product: groceryItem,
                                 productViewModel: viewModel,
@@ -116,6 +150,7 @@ struct CategoryItemsView: View {
             // Load existing products and search for new ones in this category when view appears
             Task {
                 isLoading = true
+                hasSearched = false // Reset search flag
                 await loadCategoryProducts()
                 await searchProductsForCategory()
                 isLoading = false
@@ -131,8 +166,25 @@ struct CategoryItemsView: View {
         // Check initial state
         print("CategoryItemsView: Initial products count: \(viewModel.products.count)")
         
+        // Search Amazon for products in this category
         await viewModel.searchProductsOnAmazon(by: categoryQuery)
         print("CategoryItemsView: After search - Found \(viewModel.products.count) products for category: \(category.rawValue)")
+        
+        // Update the category field for the found products to match the current category
+        for product in viewModel.products {
+            if product.category == nil || product.category?.isEmpty == true {
+                // Update the product's category to match the current category
+                let updatedProduct = product
+                updatedProduct.category = category.rawValue
+                await viewModel.updateProduct(updatedProduct)
+            }
+        }
+        
+        // Reload products to get the updated data
+        await viewModel.loadProducts()
+        
+        // Mark that we've searched for this category
+        hasSearched = true
         
         // Print details of each product found
         for (index, product) in viewModel.products.enumerated() {

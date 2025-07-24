@@ -11,6 +11,8 @@ import Combine
 final class ProductViewModel: ObservableObject {
     @Published var products: [GroceryItem] = []
     @Published var recentProducts: [GroceryItem] = []
+    @Published var priceComparison: PriceComparison?
+    @Published var isLoadingPriceComparison = false
     var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
@@ -42,14 +44,14 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func loadRecentProducts(limit: Int = 10) async {
-        do {
-            recentProducts = try await repository.fetchRecentProducts(limit: limit)
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
+    // func loadRecentProducts(limit: Int = 10) async {
+    //     do {
+    //         recentProducts = try await repository.fetchRecentProducts(limit: limit)
+    //         errorMessage = nil
+    //     } catch {
+    //         errorMessage = error.localizedDescription
+    //     }
+    // }
     
     func updateProduct(_ product: GroceryItem) async {
         do {
@@ -103,9 +105,22 @@ final class ProductViewModel: ObservableObject {
     
     func toggleAllProductsCompletion() async {
         do {
-            // Toggle all products completion status
+            // Check if all products are completed
+            let allCompleted = products.allSatisfy { $0.isCompleted }
+            
+            // If all are completed, uncheck them all. Otherwise, check them all.
             for product in products {
-                try await repository.toggleProductCompletion(product)
+                if allCompleted {
+                    // Uncheck all if all are completed
+                    if product.isCompleted {
+                        try await repository.toggleProductCompletion(product)
+                    }
+                } else {
+                    // Check all if not all are completed
+                    if !product.isCompleted {
+                        try await repository.toggleProductCompletion(product)
+                    }
+                }
             }
             await loadShoppingListProducts() // Refresh the list
             errorMessage = nil
@@ -162,6 +177,44 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
+    func searchProductsOnWalmart(by query: String) async {
+        print("ViewModel: Searching Walmart for query: \(query)")
+        do {
+            products = try await repository.searchProductsOnWalmart(by: query)
+            print("ViewModel: Received \(products.count) products from API")
+            errorMessage = nil
+        } catch {
+            print("ViewModel: Error searching Walmart: \(error)")
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func loadPriceComparison() async {
+        guard !products.isEmpty else {
+            priceComparison = nil
+            return
+        }
+        
+        isLoadingPriceComparison = true
+        errorMessage = nil
+        
+        do {
+            print("ViewModel: Starting price comparison for shopping list")
+            let comparison = try await repository.getPriceComparison(for: products)
+            priceComparison = comparison
+            print("ViewModel: Price comparison loaded successfully")
+        } catch {
+            print("ViewModel: Error loading price comparison: \(error)")
+            errorMessage = "Failed to load price comparison: \(error.localizedDescription)"
+        }
+        
+        isLoadingPriceComparison = false
+    }
+    
+    func refreshPriceComparison() async {
+        await loadPriceComparison()
+    }
+    
     func searchProductsByBarcode(_ barcode: String) async {
         do {
             products = try await repository.searchProducts(by: barcode)
@@ -171,7 +224,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil) async {
+    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, price: Double = 0.0) async {
         do {
             if await isDuplicateProduct(name: name) {
                 errorMessage = "Product '\(name)' already exists in your list"
@@ -184,7 +237,7 @@ final class ProductViewModel: ObservableObject {
                 productName: name,
                 brand: brand,
                 category: category,
-                price: 0.0,
+                price: price,
                 currency: "USD",
                 store: nil,
                 location: nil,
@@ -273,6 +326,7 @@ final class ProductViewModel: ObservableObject {
             return false // If search fails, allow creation
         }
     }
+    
 }
 
 // This code was generated with the help of Claude, saving me 1 hour of research and development.
