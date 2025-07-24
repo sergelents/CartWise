@@ -44,8 +44,9 @@ struct YourListView: View {
             }
             .sheet(isPresented: $showingAddProductModal) {
                 SmartAddProductModal(productViewModel: productViewModel, onAdd: addProductToSystem)
-                    .presentationDetents([.large])
+                    .presentationDetents([.large, .medium])
                     .presentationDragIndicator(.visible)
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
             }
             .alert("Duplicate Product", isPresented: $showingDuplicateAlert) {
                 Button("OK") {
@@ -254,44 +255,46 @@ struct ShoppingListCard: View {
                 .frame(maxWidth: .infinity, minHeight: 120)
                 .padding(.vertical, 24)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(productViewModel.products, id: \.objectID) { product in
-                            ShoppingListItemRow(
-                                product: product,
-                                isEditing: isEditing,
-                                isSelected: selectedItemsForDeletion.contains(product.id ?? ""),
-                                onToggle: {
-                                    if isEditing {
-                                        if let id = product.id {
-                                            if selectedItemsForDeletion.contains(id) {
-                                                selectedItemsForDeletion.remove(id)
-                                            } else {
-                                                selectedItemsForDeletion.insert(id)
-                                            }
-                                        }
-                                    } else {
-                                        // Toggle completion status
-                                        Task {
-                                            await productViewModel.toggleProductCompletion(product)
-                                            // Check if all products are completed after toggling
-                                            // if productViewModel.allProductsCompleted {
-                                            //     showingRatingPrompt = true
-                                            // }
+                List {
+                    ForEach(productViewModel.products, id: \.objectID) { product in
+                        ShoppingListItemRow(
+                            product: product,
+                            isEditing: isEditing,
+                            isSelected: selectedItemsForDeletion.contains(product.id ?? ""),
+                            onToggle: {
+                                if isEditing {
+                                    if let id = product.id {
+                                        if selectedItemsForDeletion.contains(id) {
+                                            selectedItemsForDeletion.remove(id)
+                                        } else {
+                                            selectedItemsForDeletion.insert(id)
                                         }
                                     }
-                                },
-                                onDelete: {
+                                } else {
+                                    // Toggle completion status
                                     Task {
-                                        await productViewModel.removeProductFromShoppingList(product)
+                                        await productViewModel.toggleProductCompletion(product)
+                                        // Check if all products are completed after toggling
+                                        // if productViewModel.allProductsCompleted {
+                                        //     showingRatingPrompt = true
+                                        // }
                                     }
                                 }
-                            )
-                        }
+                            },
+                            onDelete: {
+                                Task {
+                                    await productViewModel.removeProductFromShoppingList(product)
+                                }
+                            }
+                        )
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     }
-                    .padding(.top, 8)
                 }
                 .frame(maxHeight: 200)
+                .listStyle(PlainListStyle())
+                .background(Color.clear)
             }
 
             // Add Button & Check All Button 
@@ -530,104 +533,109 @@ struct SmartAddProductModal: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Search Header
-                VStack(spacing: 16) {
-                    Text("Add to Your List")
-                        .font(.poppins(size: 24, weight: .bold))
-                        .padding(.top)
-                    
-                    // Search Bar
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
-                        
-                        ZStack(alignment: .leading) {
-                            TextField("", text: $searchText)
-                                .font(.poppins(size: 16, weight: .regular))
-                                .focused($isSearchFocused)
-                                .onChange(of: searchText) {
-                                    isCreatingNew = false
-                                }
-                                .onChange(of: isSearchFocused) { _, focused in
-                                    if focused && searchText.isEmpty {
-                                        showCursor = true
-                                    } else {
-                                        showCursor = false
-                                    }
-                                }
-                            
-                            // Placeholder text when not focused
-                            if searchText.isEmpty && !isSearchFocused {
-                                Text("Search products...")
-                                    .font(.poppins(size: 16, weight: .regular))
-                                    .foregroundColor(.gray)
-                                    .allowsHitTesting(false)
-                            }
-                            
-                            // Solid cursor when focused
-                            if searchText.isEmpty && isSearchFocused {
-                                Rectangle()
-                                    .fill(AppColors.accentGreen)
-                                    .frame(width: 2, height: 20)
-                                    .allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                }
-                .padding(.bottom)
-                
-                // Results Section
-                if searchText.isEmpty {
-                    // Show recent products when search is empty
-                    // RecentProductsSection(productViewModel: productViewModel, onAdd: onAdd, dismiss: dismiss)
-                    
-                    // Show empty state when search is empty
+            GeometryReader { geometry in
+                VStack(spacing: 0) {
+                    // Fixed Header with Search
                     VStack(spacing: 16) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray)
-                        Text("Search for products to add to your list")
-                            .font(.poppins(size: 18, weight: .semibold))
-                            .foregroundColor(.gray)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    // Show search results
-                    SearchResultsSection(
-                        searchText: searchText,
-                        onAdd: { name, brand, category, price in
-                            onAdd(name, brand, category, price)
-                            dismiss()
-                        },
-                        onCreateNew: {
-                            isCreatingNew = true
-                        },
-                        productViewModel: productViewModel,
-                        dismiss: dismiss
-                    )
-                }
-                
-                // Create New Product Section (when creating new)
-                if isCreatingNew {
-                    CreateNewProductSection(
-                        productName: searchText,
-                        productBrand: $productBrand,
-                        selectedCategory: $selectedCategory,
-                        showCategoryPicker: $showCategoryPicker,
-                        productViewModel: productViewModel,
-                        onAdd: { name, brand, category, price in
-                            onAdd(name, brand, category, price)
-                            dismiss()
+                        Text("Add to Your List")
+                            .font(.poppins(size: 24, weight: .bold))
+                            .padding(.top)
+                        
+                        // Search Bar
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.gray)
+                            
+                            ZStack(alignment: .leading) {
+                                TextField("", text: $searchText)
+                                    .font(.poppins(size: 16, weight: .regular))
+                                    .focused($isSearchFocused)
+                                    .onChange(of: searchText) {
+                                        isCreatingNew = false
+                                    }
+                                    .onChange(of: isSearchFocused) { _, focused in
+                                        if focused && searchText.isEmpty {
+                                            showCursor = true
+                                        } else {
+                                            showCursor = false
+                                        }
+                                    }
+                                
+                                // Placeholder text when not focused
+                                if searchText.isEmpty && !isSearchFocused {
+                                    Text("Search products...")
+                                        .font(.poppins(size: 16, weight: .regular))
+                                        .foregroundColor(.gray)
+                                        .allowsHitTesting(false)
+                                }
+                                
+                                // Solid cursor when focused
+                                if searchText.isEmpty && isSearchFocused {
+                                    Rectangle()
+                                        .fill(AppColors.accentGreen)
+                                        .frame(width: 2, height: 20)
+                                        .allowsHitTesting(false)
+                                }
+                            }
                         }
-                    )
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                    }
+                    .padding(.bottom)
+                    .background(AppColors.backgroundSecondary)
+                    
+                    // Scrollable Content Area
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            // Results Section
+                            if searchText.isEmpty {
+                                // Show empty state when search is empty
+                                VStack(spacing: 16) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.system(size: 48))
+                                        .foregroundColor(.gray)
+                                    Text("Search for products to add to your list")
+                                        .font(.poppins(size: 18, weight: .semibold))
+                                        .foregroundColor(.gray)
+                                }
+                                .frame(maxWidth: .infinity, minHeight: geometry.size.height * 0.4)
+                                .padding(.top, 40)
+                            } else {
+                                // Show search results
+                                SearchResultsSection(
+                                    searchText: searchText,
+                                    onAdd: { name, brand, category, price in
+                                        onAdd(name, brand, category, price)
+                                        dismiss()
+                                    },
+                                    onCreateNew: {
+                                        isCreatingNew = true
+                                    },
+                                    productViewModel: productViewModel,
+                                    dismiss: dismiss
+                                )
+                            }
+                            
+                            // Create New Product Section (when creating new)
+                            if isCreatingNew {
+                                CreateNewProductSection(
+                                    productName: searchText,
+                                    productBrand: $productBrand,
+                                    selectedCategory: $selectedCategory,
+                                    showCategoryPicker: $showCategoryPicker,
+                                    productViewModel: productViewModel,
+                                    onAdd: { name, brand, category, price in
+                                        onAdd(name, brand, category, price)
+                                        dismiss()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    .background(AppColors.backgroundSecondary)
                 }
-                
-                Spacer()
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -945,6 +953,7 @@ struct CreateNewProductSection: View {
             .background(AppColors.accentGreen)
             .cornerRadius(12)
             .padding(.horizontal)
+            .padding(.bottom, 20) // Add extra bottom padding for keyboard
         }
         // .sheet(isPresented: $showAmazonResults) {
         //     AmazonPriceResultsView(
@@ -1070,8 +1079,6 @@ struct ShoppingListItemRow: View {
             
             Spacer()
             
-            Spacer()
-            
             // Price display - always on the right
             if product.price > 0 {
                 Text("$\(String(format: "%.2f", product.price))")
@@ -1087,6 +1094,7 @@ struct ShoppingListItemRow: View {
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.07), radius: 3, x: 0, y: 2)
         )
+        .contentShape(Rectangle()) // Ensure the entire row is tappable
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive, action: onDelete) {
                 Label("Delete", systemImage: "trash")
