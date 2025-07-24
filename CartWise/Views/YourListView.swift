@@ -62,9 +62,9 @@ struct YourListView: View {
                     Task {
                         await productViewModel.toggleAllProductsCompletion()
                         // Only show rating prompt if all items are actually completed
-                        if productViewModel.allProductsCompleted {
-                            showingRatingPrompt = true
-                        }
+                        // if productViewModel.allProductsCompleted {
+                        //     showingRatingPrompt = true
+                        // }
                     }
                 }
             } message: {
@@ -275,9 +275,9 @@ struct ShoppingListCard: View {
                                         Task {
                                             await productViewModel.toggleProductCompletion(product)
                                             // Check if all products are completed after toggling
-                                            if productViewModel.allProductsCompleted {
-                                                showingRatingPrompt = true
-                                            }
+                                            // if productViewModel.allProductsCompleted {
+                                            //     showingRatingPrompt = true
+                                            // }
                                         }
                                     }
                                 },
