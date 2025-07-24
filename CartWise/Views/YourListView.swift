@@ -72,6 +72,7 @@ struct YourListView: View {
             .onAppear {
                 Task {
                     await productViewModel.loadShoppingListProducts()
+                    await productViewModel.loadPriceComparison()
                 }
             }
         }
@@ -153,6 +154,16 @@ struct MainContentView: View {
                     showingAddProductModal: $showingAddProductModal,
                     showingCheckAllConfirmation: $showingCheckAllConfirmation
                 )
+
+                // Price Comparison Card
+                PriceComparisonView(
+                    priceComparison: productViewModel.priceComparison,
+                    isLoading: productViewModel.isLoadingPriceComparison,
+                    onRefresh: {
+                        await productViewModel.refreshPriceComparison()
+                    }
+                )
+                .padding(.horizontal)
 
                 Spacer()
             }
