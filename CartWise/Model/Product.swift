@@ -35,7 +35,7 @@ struct GroceryPriceResponse: Codable, Sendable {
 }
 
 struct GroceryPriceData: Codable, Sendable {
-    let id: String
+    let id: String?
     let productName: String
     let brand: String?
     let category: String?

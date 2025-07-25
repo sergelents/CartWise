@@ -130,7 +130,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             // Save network results to local cache
             for networkProduct in networkProducts.prefix(10) { // Limit to first 10
                 _ = try await createProduct(
-                    id: networkProduct.id,
+                    id: networkProduct.id ?? UUID().uuidString,
                     productName: networkProduct.productName,
                     brand: networkProduct.brand,
                     category: networkProduct.category,
@@ -163,7 +163,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             var groceryItems: [GroceryItem] = []
             for amazonProduct in amazonProducts.prefix(10) { // Limit to first 10
                 let groceryItem = try await createProduct(
-                    id: amazonProduct.id,
+                    id: amazonProduct.id ?? UUID().uuidString,
                     productName: amazonProduct.productName,
                     brand: amazonProduct.brand,
                     category: amazonProduct.category,
@@ -199,7 +199,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             var groceryItems: [GroceryItem] = []
             for walmartProduct in walmartProducts.prefix(10) { // Limit to first 10
                 let groceryItem = try await createProduct(
-                    id: walmartProduct.id,
+                    id: walmartProduct.id ?? UUID().uuidString,
                     productName: walmartProduct.productName,
                     brand: walmartProduct.brand,
                     category: walmartProduct.category,
@@ -333,7 +333,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             
             // Save to local cache
             let savedProduct = try await createProduct(
-                id: networkProduct.id,
+                id: networkProduct.id ?? UUID().uuidString,
                 productName: networkProduct.productName,
                 brand: networkProduct.brand,
                 category: networkProduct.category,

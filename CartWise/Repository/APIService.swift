@@ -163,83 +163,11 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     }
     
     private func decodeGroceryPriceResponse(from data: Data) throws -> GroceryPriceResponse {
-        // Try different response formats
-        do {
-            // First try: standard format with status
-            let decoder = JSONDecoder()
-            decoder.keyDecodingStrategy = .convertFromSnakeCase
-            return try decoder.decode(GroceryPriceResponse.self, from: data)
-        } catch {
-            print("APIService: First decode attempt failed: \(error)")
-            
-            do {
-                // Second try: API wrapper format with raw_body_sample
-                let apiWrapper = try JSONDecoder().decode(APIWrapperResponse.self, from: data)
-                
-                // Parse the raw_body_sample string as JSON
-                if let rawBodyData = apiWrapper.rawBodySample.data(using: .utf8) {
-                    do {
-                        let products = try JSONDecoder().decode([APIProduct].self, from: rawBodyData)
-                        let groceryProducts = products.map { apiProduct in
-                            return GroceryPriceData(
-                                id: UUID().uuidString,
-                                productName: apiProduct.title,
-                                brand: nil,
-                                category: nil,
-                                price: 0.0, // API doesn't provide price data
-                                currency: "USD",
-                                store: "Unknown",
-                                location: nil,
-                                lastUpdated: "",
-                                imageURL: apiProduct.image,
-                                barcode: nil
-                            )
-                        }
-                        return GroceryPriceResponse(
-                            status: nil,
-                            message: apiWrapper.message,
-                            data: groceryProducts,
-                            success: apiWrapper.success,
-                            products: nil
-                        )
-                    } catch {
-                        print("APIService: Failed to parse raw_body_sample: \(error)")
-                        return GroceryPriceResponse(
-                            status: nil,
-                            message: apiWrapper.message,
-                            data: [],
-                            success: apiWrapper.success,
-                            products: nil
-                        )
-                    }
-                } else {
-                    return GroceryPriceResponse(
-                        status: nil,
-                        message: apiWrapper.message,
-                        data: [],
-                        success: apiWrapper.success,
-                        products: nil
-                    )
-                }
-            } catch {
-                print("APIService: Second decode attempt failed: \(error)")
-                
-                do {
-                    // Third try: simple array format
-                    let products = try JSONDecoder().decode([GroceryPriceData].self, from: data)
-                    return GroceryPriceResponse(
-                        status: nil,
-                        message: nil,
-                        data: products,
-                        success: true,
-                        products: nil
-                    )
-                } catch {
-                    print("APIService: Third decode attempt failed: \(error)")
-                    throw NetworkError.decodingError(error)
-                }
-            }
-        }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        
+        // Try to decode the standard format
+        return try decoder.decode(GroceryPriceResponse.self, from: data)
     }
 }
 
