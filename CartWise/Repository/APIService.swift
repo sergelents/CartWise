@@ -165,41 +165,39 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     private func decodeGroceryPriceResponse(from data: Data) throws -> GroceryPriceResponse {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        
-        // Try to decode the standard format
-        return try decoder.decode(GroceryPriceResponse.self, from: data)
+        // Decode the API wrapper
+        let apiWrapper = try decoder.decode(APIWrapperResponse.self, from: data)
+        // Parse the raw_body_sample string as JSON
+        guard let rawBodyData = apiWrapper.rawBodySample.data(using: .utf8) else {
+            return GroceryPriceResponse(status: nil, message: apiWrapper.message, data: [], success: apiWrapper.success, products: nil)
+        }
+        let rawBody = try decoder.decode(RawBodyResponse.self, from: rawBodyData)
+        // Map RawProduct to GroceryPriceData
+        let groceryProducts = rawBody.products.map { raw in
+            GroceryPriceData(
+                id: nil,
+                productName: raw.title,
+                brand: raw.brand,
+                category: raw.category,
+                price: raw.price ?? 0.0,
+                currency: raw.currency ?? "USD",
+                store: raw.store ?? "Unknown",
+                location: raw.location,
+                lastUpdated: raw.lastUpdated ?? "",
+                imageURL: raw.imageURL,
+                barcode: raw.barcode
+            )
+        }
+        return GroceryPriceResponse(
+            status: nil,
+            message: apiWrapper.message,
+            data: groceryProducts,
+            success: apiWrapper.success,
+            products: nil
+        )
     }
 }
 
-// MARK: - Response Models
-
-struct AmazonResponse: Codable, Sendable {
-    let products: [GroceryPriceData]
-}
-
-// API Wrapper Response Models
-struct APIWrapperResponse: Codable, Sendable {
-    let success: Bool
-    let rawBodyType: String
-    let rawBodySample: String
-    let fullResponseStructure: [String]
-    let message: String
-    
-    enum CodingKeys: String, CodingKey {
-        case success
-        case rawBodyType = "raw_body_type"
-        case rawBodySample = "raw_body_sample"
-        case fullResponseStructure = "full_response_structure"
-        case message
-    }
-}
-
-struct APIProduct: Codable, Sendable {
-    let position: Int
-    let title: String
-    let image: String
-    let link: String
-}
 
 // MARK: - Enhanced Error Handling
 
