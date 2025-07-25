@@ -316,10 +316,9 @@ struct ProductCard: View {
 
 // Product Detail View
 struct ProductDetailView: View {
-    let product: GroceryItem
-    let productViewModel: ProductViewModel  // Use shared instance
+    @ObservedObject var product: GroceryItem // Use ObservedObject for live updates
+    let productViewModel: ProductViewModel
     
-    // Adding to shopping list and to favorites
     @State private var isAddingToFavorites = false
     @State private var isAddingToShoppingList = false
     @State private var showingSuccessMessage = false
@@ -348,11 +347,9 @@ struct ProductDetailView: View {
                     // TODO: Need to update data model to include last updated info?
                     ProductPriceView(
                         product: product,
-                        lastUpdated: "7/17/2025",
-                        lastUpdatedBy: "Kelly Yong"
+                        lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
+                        lastUpdatedBy: "-"
                     )
-
-                    // Add to Shopping List and Add to Favorites View
                     AddToShoppingListAndFavoritesView(
                         onAddToShoppingList: {
                             addToShoppingList()
@@ -362,15 +359,18 @@ struct ProductDetailView: View {
                             isAddingToFavorites.toggle()
                         }
                     )
-
-                    // Update Price View
                     UpdatePriceView(
                         product: product,
-                        onUpdatePrice: {
-                            // TODO: Update price functionality
+                        // Need to get username from user
+                        userName: "username",
+                        onUpdatePrice: { newPrice, updatedBy, updatedAt in
+                            product.price = newPrice
+                            product.lastUpdated = updatedAt
+                            await productViewModel.updateProduct(product)
+                            await productViewModel.loadProducts()
                         },
-                        lastUpdated: "7/17/2025",
-                        lastUpdatedBy: "Kelly Yong"
+                        lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
+                        lastUpdatedBy: "-"
                     )
                 }
                 .padding(.horizontal, 24)
@@ -620,21 +620,70 @@ struct AddToShoppingListAndFavoritesView: View {
 // Update Price View
 struct UpdatePriceView: View {
     let product: GroceryItem
-    let onUpdatePrice: () -> Void
+    let userName: String
+    let onUpdatePrice: (_ newPrice: Double, _ updatedBy: String, _ updatedAt: Date) async -> Void
     let lastUpdated: String
     let lastUpdatedBy: String
-    
+
+    @State private var showSheet: Bool = false
+    @State private var priceInput: String = ""
+    @State private var showError: Bool = false
+
     var body: some View {
         VStack(alignment: .center, spacing: 12) {
             Text("Price Inaccurate?")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.primary)
 
-            Button(action: onUpdatePrice) {
+            Button(action: {
+                showSheet = true
+            }) {
                 Text("Update Price")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(Color.accentColorGreen)
                     .padding(.bottom, 6)
+            }
+            .sheet(isPresented: $showSheet) {
+                VStack(spacing: 20) {
+                    Text("Enter New Price")
+                        .font(.headline)
+                    TextField("New price", text: $priceInput)
+                        .keyboardType(.decimalPad)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                        .frame(maxWidth: 200)
+                    if showError {
+                        Text("Please enter a valid number.")
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    }
+                    HStack {
+                        Button("Cancel") {
+                            showSheet = false
+                            priceInput = ""
+                            showError = false
+                        }
+                        .padding()
+                        Spacer()
+                        Button("Confirm") {
+                            if let newPrice = Double(priceInput), newPrice > 0 {
+                                Task {
+                                    await onUpdatePrice(newPrice, userName, Date())
+                                    showSheet = false
+                                    priceInput = ""
+                                    showError = false
+                                }
+                            } else {
+                                showError = true
+                            }
+                        }
+                        .padding()
+                        .disabled(priceInput.isEmpty)
+                    }
+                }
+                .padding()
+                .interactiveDismissDisabled(true) // Prevent swipe to dismiss
             }
         }
         .padding()
