@@ -7,6 +7,8 @@
 
 import SwiftUI
 import CoreData
+import MapKit
+import Combine
 
 let accentGreen = Color(red: 0/255, green: 181/255, blue: 83/255)
 let accentYellow = Color(red: 255/255, green: 215/255, blue: 0/255)
@@ -61,6 +63,54 @@ struct ProfileView: View {
                         .padding(.horizontal)
                         .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
                         Spacer(minLength: 100)
+                        
+                        // Nearby Grocery Stores Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Nearby Grocery Stores")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal)
+                            Button(action: { viewModel.findNearbyGroceryStores() }) {
+                                HStack {
+                                    Image(systemName: "location.circle.fill")
+                                        .foregroundColor(accentGreen)
+                                    Text(viewModel.isFindingNearbyStores ? "Finding..." : "Find Nearby Grocery Stores")
+                                        .fontWeight(.semibold)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .cornerRadius(10)
+                                .padding(.horizontal)
+                            }
+                            if let error = viewModel.locationError {
+                                Text(error)
+                                    .foregroundColor(.red)
+                                    .padding(.horizontal)
+                            }
+                            if !viewModel.nearbyStores.isEmpty {
+                                ForEach(viewModel.nearbyStores) { store in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(store.name)
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                        Text(store.address)
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                        if let distance = store.distance {
+                                            Text(String(format: "%.1f meters away", distance))
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    .padding()
+                                    .background(Color.white)
+                                    .cornerRadius(10)
+                                    .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
+                                    .padding(.horizontal)
+                                }
+                            }
+                        }
                     }
                 }
                 VStack {
@@ -182,17 +232,35 @@ struct StoreModel: Identifiable {
     let address: String
 }
 
+struct NearbyGroceryStore: Identifiable {
+    let id = UUID()
+    let name: String
+    let address: String
+    let distance: Double? // in meters
+}
+
 // MARK: - ProfileViewModel
 class ProfileViewModel: ObservableObject {
     @Published var savedStores: [StoreModel] = []
     @Published var isEditingStores = false
     @Published var showAddStoreSheet = false
+    @Published var nearbyStores: [NearbyGroceryStore] = []
+    @Published var isFindingNearbyStores = false
+    @Published var locationError: String? = nil
     
     private var context: NSManagedObjectContext
+    private var locationManager = LocationManager()
+    private var cancellables = Set<AnyCancellable>()
     
     init(context: NSManagedObjectContext = PersistenceController.shared.container.viewContext) {
         self.context = context
         fetchStores()
+        locationManager.$lastLocation
+            .sink { [weak self] location in
+                guard let self = self, let location = location, self.isFindingNearbyStores else { return }
+                self.searchNearbyGroceryStores(location: location)
+            }
+            .store(in: &cancellables)
     }
     
     func fetchStores() {
@@ -211,5 +279,39 @@ class ProfileViewModel: ObservableObject {
     func deleteStore(_ store: StoreModel) {
         // TODO: Delete from Core Data
         savedStores.removeAll { $0.id == store.id }
+    }
+    
+    func findNearbyGroceryStores() {
+        isFindingNearbyStores = true
+        locationError = nil
+        locationManager.requestLocation()
+    }
+    private func searchNearbyGroceryStores(location: CLLocation) {
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = "grocery store"
+        request.region = MKCoordinateRegion(center: location.coordinate, latitudinalMeters: 5000, longitudinalMeters: 5000)
+        let search = MKLocalSearch(request: request)
+        search.start { [weak self] response, error in
+            DispatchQueue.main.async {
+                self?.isFindingNearbyStores = false
+                if let error = error {
+                    self?.locationError = error.localizedDescription
+                    self?.nearbyStores = []
+                    return
+                }
+                guard let mapItems = response?.mapItems else {
+                    self?.locationError = "No stores found."
+                    self?.nearbyStores = []
+                    return
+                }
+                self?.nearbyStores = mapItems.map { item in
+                    NearbyGroceryStore(
+                        name: item.name ?? "Unknown",
+                        address: item.placemark.title ?? "",
+                        distance: item.placemark.location?.distance(from: location)
+                    )
+                }
+            }
+        }
     }
 }
