@@ -574,9 +574,9 @@ struct CustomButtonView: View {
                 Text(title)
                     .font(.system(size: CGFloat(fontSize), weight: weight ?? .regular))
                     .foregroundColor(textColor)
-                    .frame(width: 100, height: 10)
+                    .frame(width: 100, height: 12)
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
             .padding(.horizontal, 8)
             .background(isAdded ? isAddedColor : buttonColor)
             .cornerRadius(8)
@@ -638,7 +638,7 @@ struct UpdatePriceView: View {
     var body: some View {
         VStack(alignment: .center, spacing: 2) {
             Text("Price Inaccurate?")
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 17, weight: .bold))
                 .foregroundColor(.primary)
                 .padding(.top, 2)
 
@@ -646,7 +646,7 @@ struct UpdatePriceView: View {
                 showSheet = true
             }) {
                 Text("Update Price")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundColor(AppColors.accentGreen)
                     .padding(.bottom, 6)
             }
@@ -691,6 +691,7 @@ struct UpdatePriceView: View {
                             .font(.system(size: 16, weight: .medium))
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                     }
+                    .padding(.bottom, 16)
                 }
                 .padding(.horizontal, 16)
                 
@@ -700,30 +701,52 @@ struct UpdatePriceView: View {
                         .font(.caption)
                 }
                 
-                HStack {
-                    Button("Cancel") {
-                        showSheet = false
-                        priceInput = ""
-                        showError = false
-                    }
-
-                    Button("Confirm") {
-                        if let newPrice = Double(priceInput), newPrice > 0 {
-                            Task {
-                                await onUpdatePrice(newPrice, userName, Date())
-                                showSheet = false
-                                priceInput = ""
-                                showError = false
+                HStack(spacing: 20) {
+                    CustomButtonView(
+                        title: "Cancel",
+                        imageName: "",
+                        fontSize: 16,
+                        weight: .bold,
+                        buttonColor: Color.gray.opacity(0.3),
+                        textColor: .primary,
+                        action: {
+                            showSheet = false
+                            priceInput = ""
+                            showError = false
+                        },
+                        isAddedImageName: "",
+                        isAddedColor: Color.gray.opacity(0.3)
+                    )
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 18)
+                    
+                    CustomButtonView(
+                        title: "Confirm",
+                        imageName: "",
+                        fontSize: 16,
+                        weight: .bold,
+                        buttonColor: AppColors.accentGreen,
+                        textColor: .white,
+                        action: {
+                            if let newPrice = Double(priceInput), newPrice > 0 {
+                                Task {
+                                    await onUpdatePrice(newPrice, userName, Date())
+                                    showSheet = false
+                                    priceInput = ""
+                                    showError = false
+                                }
+                            } else {
+                                showError = true
                             }
-                        } else {
-                            showError = true
-                        }
-                    }
-                    .padding()
+                        },
+                        isAddedImageName: "",
+                        isAddedColor: AppColors.accentGreen
+                    )
+                    .padding(.vertical, 18)
                     .disabled(priceInput.isEmpty)
                 }
             }
-            .padding()
+            .padding(.horizontal, 18)
             .interactiveDismissDisabled(true) // Prevent swipe to dismiss
         }
         .padding()
