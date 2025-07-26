@@ -17,6 +17,10 @@ protocol CoreDataContainerProtocol: Sendable {
     func deleteProduct(_ product: GroceryItem) async throws
     func toggleProductCompletion(_ product: GroceryItem) async throws
     func addProductToShoppingList(_ product: GroceryItem) async throws
+    func fetchFavoriteProducts() async throws -> [GroceryItem]
+    func addProductToFavorites(_ product: GroceryItem) async throws
+    func removeProductFromFavorites(_ product: GroceryItem) async throws
+    func toggleProductFavorite(_ product: GroceryItem) async throws
     func searchProducts(by name: String) async throws -> [GroceryItem]
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
 }
@@ -135,6 +139,44 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             let productInContext = try context.existingObject(with: objectID) as! GroceryItem
             productInContext.isInShoppingList = true
             productInContext.isCompleted = false // Reset completion status when adding to list
+            try context.save()
+        }
+    }
+    
+    func fetchFavoriteProducts() async throws -> [GroceryItem] {
+        // Use viewContext through the actor
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            request.predicate = NSPredicate(format: "isFavorite == YES")
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.createdAt, ascending: false)]
+            return try context.fetch(request)
+        }
+    }
+    
+    func addProductToFavorites(_ product: GroceryItem) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            productInContext.isFavorite = true
+            try context.save()
+        }
+    }
+    
+    func removeProductFromFavorites(_ product: GroceryItem) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            productInContext.isFavorite = false
+            try context.save()
+        }
+    }
+    
+    func toggleProductFavorite(_ product: GroceryItem) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            productInContext.isFavorite.toggle()
             try context.save()
         }
     }
