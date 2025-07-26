@@ -127,7 +127,6 @@ struct CategoryItemsView: View {
                         ForEach(displayProducts, id: \.id) { groceryItem in
                             ProductCard(
                                 product: groceryItem,
-                                productViewModel: viewModel,
                                 isSelected: groceryItem.id != nil && selectedItemsToAdd.contains(groceryItem.id!),
                                 onToggle: {
                                     if let productId = groceryItem.id {
@@ -241,8 +240,8 @@ struct CategoryItemsView: View {
 
 // Product Card View
 struct ProductCard: View {
-    let product: GroceryItem
-    let productViewModel: ProductViewModel
+    @ObservedObject var product: GroceryItem
+    @EnvironmentObject var productViewModel: ProductViewModel
     let isSelected: Bool
     let onToggle: () -> Void
 
@@ -309,7 +308,7 @@ struct ProductCard: View {
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
-            ProductDetailView(product: product, productViewModel: productViewModel)
+            ProductDetailView(product: product)
         }
     }
 }
@@ -317,7 +316,7 @@ struct ProductCard: View {
 // Product Detail View
 struct ProductDetailView: View {
     @ObservedObject var product: GroceryItem // Use ObservedObject for live updates
-    let productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     
     // Adding to shopping list and to favorites
     @State private var isAddingToFavorites = false

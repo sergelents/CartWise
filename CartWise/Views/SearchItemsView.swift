@@ -13,11 +13,21 @@ import SwiftUI
 struct SearchItemsView: View {
     // State variable for search bar input
     @State private var searchText = ""
-    @State private var searchResults: [GroceryItem] = []
     @State private var isSearching = false
     @State private var selectedCategory: ProductCategory? = nil
 
     @EnvironmentObject var viewModel: ProductViewModel
+    
+    // Computed property for search results that updates automatically
+    private var searchResults: [GroceryItem] {
+        guard !searchText.isEmpty else { return [] }
+        // Filter viewModel products to match search text
+        let filtered = viewModel.products.filter { product in
+            guard let name = product.productName?.lowercased() else { return false }
+            return name.contains(searchText.lowercased())
+        }
+        return filtered
+    }
 
     // Returns categories matching search text, or all if search is empty
     // Predefined categories
@@ -111,7 +121,7 @@ struct SearchItemsView: View {
     
     private var searchResultsView: some View {
         List(searchResults, id: \.id) { product in
-            NavigationLink(destination: ProductDetailView(product: product, productViewModel: viewModel)) {
+            NavigationLink(destination: ProductDetailView(product: product)) {
                 SearchResultRowView(product: product)
             }
             .buttonStyle(PlainButtonStyle())
@@ -146,7 +156,6 @@ struct SearchItemsView: View {
     // MARK: - Helper Functions
     private func performSearch() async {
         guard !searchText.isEmpty else {
-            searchResults = []
             return
         }
         
@@ -183,7 +192,8 @@ struct SearchItemsView: View {
             }
         }
         
-        searchResults = combinedResults
+        // Update the viewModel products with combined results
+        // Note: We need to update the viewModel products directly
         print("Search completed: \(coreDataResults.count) Core Data results, \(apiResults.count) API results, \(combinedResults.count) total")
     }
     
@@ -226,7 +236,7 @@ struct SearchItemsView: View {
 
 // MARK: - Search Result Row
 struct SearchResultRowView: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
     
     var body: some View {
         HStack(spacing: 12) {
