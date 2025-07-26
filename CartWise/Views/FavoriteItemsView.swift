@@ -17,7 +17,7 @@ struct FavoriteItemsView: View {
             // Header
             HStack {
                 Image(systemName: "heart.fill")
-                    .foregroundColor(.red)
+                    .foregroundColor(AppColors.accentGreen)
                     .font(.system(size: 20))
                 
                 Text("My Favorite Items")
@@ -140,7 +140,7 @@ struct FavoriteItemRow: View {
                     // Remove from favorites button
                     Button(action: onRemoveFromFavorites) {
                         Image(systemName: "heart.fill")
-                            .foregroundColor(.red)
+                            .foregroundColor(AppColors.accentGreen)
                             .font(.system(size: 16))
                     }
                     .buttonStyle(PlainButtonStyle())

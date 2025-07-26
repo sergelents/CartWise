@@ -67,7 +67,7 @@ struct MyProfileView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
-                            .background(AppColors.accentRed)
+                            .background(AppColors.accentGreen)
                             .cornerRadius(14)
                         }
                         .padding(.horizontal)
