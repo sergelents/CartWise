@@ -48,11 +48,13 @@ struct MyProfileView: View {
                         .cornerRadius(18)
                         .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
                         .padding(.horizontal)
+                        .padding(.vertical, 8)
                         
                         // Favorites Section (Card)
                         FavoriteItemsView(productViewModel: productViewModel)
                             .padding(.horizontal)
                             .padding(.top, 4)
+                            .padding(.vertical, 8)
                         
                         // Log Out Button (Card style)
                         Button(action: {

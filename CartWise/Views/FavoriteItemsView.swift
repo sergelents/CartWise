@@ -78,6 +78,7 @@ struct FavoriteItemsView: View {
         .background(Color(.systemBackground))
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .padding(.vertical, 12)
         .sheet(isPresented: $showingProductDetail) {
             if let product = selectedProduct {
                 ProductDetailView(product: product, productViewModel: productViewModel)
