@@ -14,7 +14,7 @@ import CoreData
 
 struct CategoryItemsView: View { 
     let category: ProductCategory
-    let viewModel: ProductViewModel  // Receive ViewModel from parent
+    @EnvironmentObject var viewModel: ProductViewModel
     @State private var selectedItemsToAdd: Set<String> = []
     @State private var isLoading = false
     @State private var hasSearched = false
