@@ -13,48 +13,89 @@ struct FavoriteItemsView: View {
     @State private var selectedProduct: GroceryItem?
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
+        VStack(alignment: .leading, spacing: 20) {
+            // Enhanced Header
             HStack {
-                Image(systemName: "heart.fill")
-                    .foregroundColor(AppColors.accentGreen)
-                    .font(.system(size: 20))
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    AppColors.accentGreen.opacity(0.2),
+                                    AppColors.accentGreen.opacity(0.1)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: "heart.fill")
+                        .foregroundColor(AppColors.accentGreen)
+                        .font(.system(size: 18, weight: .medium))
+                }
                 
                 Text("My Favorite Items")
-                    .font(.poppins(size: 20, weight: .bold))
+                    .font(.poppins(size: 22, weight: .bold))
                     .foregroundColor(.primary)
+                    .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
                 
                 Spacer()
                 
                 Text("\(productViewModel.favoriteProducts.count) items")
-                    .font(.poppins(size: 14, weight: .regular))
+                    .font(.poppins(size: 15, weight: .medium))
                     .foregroundColor(.gray)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.gray.opacity(0.1))
+                    )
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
             
-            // Favorites List
+            // Enhanced Favorites List
             if productViewModel.favoriteProducts.isEmpty {
-                // Empty State
-                VStack(spacing: 16) {
-                    Image(systemName: "heart")
-                        .font(.system(size: 48))
-                        .foregroundColor(.gray.opacity(0.5))
+                // Enhanced Empty State
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.gray.opacity(0.1),
+                                        Color.gray.opacity(0.05)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 80, height: 80)
+                        
+                        Image(systemName: "heart")
+                            .font(.system(size: 36, weight: .light))
+                            .foregroundColor(.gray.opacity(0.6))
+                    }
                     
-                    Text("No favorite items yet")
-                        .font(.poppins(size: 18, weight: .medium))
-                        .foregroundColor(.gray)
-                    
-                    Text("Add items to your favorites to see them here")
-                        .font(.poppins(size: 14, weight: .regular))
-                        .foregroundColor(.gray.opacity(0.7))
-                        .multilineTextAlignment(.center)
+                    VStack(spacing: 8) {
+                        Text("No favorite items yet")
+                            .font(.poppins(size: 20, weight: .semibold))
+                            .foregroundColor(.gray)
+                        
+                        Text("Add items to your favorites to see them here")
+                            .font(.poppins(size: 15, weight: .regular))
+                            .foregroundColor(.gray.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
             } else {
-                // Favorites List
+                // Enhanced Favorites List
                 ScrollView {
-                    LazyVStack(spacing: 12) {
+                    LazyVStack(spacing: 16) {
                         ForEach(productViewModel.favoriteProducts, id: \.objectID) { product in
                             FavoriteItemRow(
                                 product: product,
@@ -70,15 +111,17 @@ struct FavoriteItemsView: View {
                             )
                         }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, 20)
                 }
-                .frame(maxHeight: 300)
+                .frame(maxHeight: 320)
             }
         }
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
-        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
+        )
+        .padding(.vertical, 16)
         .sheet(isPresented: $showingProductDetail) {
             if let product = selectedProduct {
                 ProductDetailView(product: product, productViewModel: productViewModel)
@@ -97,19 +140,30 @@ struct FavoriteItemRow: View {
     
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 12) {
-                // Product image placeholder
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.systemGray5))
-                    .frame(width: 50, height: 50)
+            HStack(spacing: 16) {
+                // Enhanced Product image placeholder
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(.systemGray5),
+                                Color(.systemGray6)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 56, height: 56)
                     .overlay(
                         Image(systemName: "photo")
-                            .foregroundColor(.gray)
+                            .foregroundColor(.gray.opacity(0.6))
+                            .font(.system(size: 20, weight: .light))
                     )
+                    .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(product.productName ?? "Unknown Product")
-                        .font(.poppins(size: 16, weight: .medium))
+                        .font(.poppins(size: 17, weight: .semibold))
                         .foregroundColor(.primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
@@ -122,34 +176,57 @@ struct FavoriteItemRow: View {
                     }
                     
                     if let store = product.store, !store.isEmpty {
-                        Text(store)
-                            .font(.poppins(size: 12, weight: .regular))
-                            .foregroundColor(.blue)
-                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(AppColors.accentGreen)
+                            Text(store)
+                                .font(.poppins(size: 12, weight: .medium))
+                                .foregroundColor(AppColors.accentGreen)
+                                .lineLimit(1)
+                        }
                     }
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: 4) {
+                VStack(alignment: .trailing, spacing: 8) {
                     if product.price > 0 {
                         Text("$\(String(format: "%.2f", product.price))")
-                            .font(.poppins(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
+                            .font(.poppins(size: 17, weight: .bold))
+                            .foregroundColor(AppColors.accentGreen)
                     }
                     
-                    // Remove from favorites button
+                    // Enhanced Remove from favorites button
                     Button(action: onRemoveFromFavorites) {
-                        Image(systemName: "heart.fill")
-                            .foregroundColor(AppColors.accentGreen)
-                            .font(.system(size: 16))
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            AppColors.accentGreen.opacity(0.2),
+                                            AppColors.accentGreen.opacity(0.1)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 32, height: 32)
+                            
+                            Image(systemName: "heart.fill")
+                                .foregroundColor(AppColors.accentGreen)
+                                .font(.system(size: 14, weight: .medium))
+                        }
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
             }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+            )
         }
         .buttonStyle(PlainButtonStyle())
     }
