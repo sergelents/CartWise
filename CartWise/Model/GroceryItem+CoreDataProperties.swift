@@ -27,6 +27,7 @@ extension GroceryItem {
     @NSManaged public var barcode: String?
     @NSManaged public var isCompleted: Bool
     @NSManaged public var isInShoppingList: Bool
+    @NSManaged public var isFavorite: Bool
     @NSManaged public var createdAt: Date?
     @NSManaged public var updatedAt: Date?
 
@@ -47,6 +48,7 @@ extension GroceryItem {
         self.barcode = barcode
         self.isCompleted = false
         self.isInShoppingList = false
+        self.isFavorite = false
         self.createdAt = Date()
         self.updatedAt = Date()
         self.lastUpdated = Date()
