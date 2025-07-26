@@ -39,7 +39,7 @@ struct MyProfileView: View {
                                     .foregroundColor(AppColors.textPrimary)
                             }
                             
-                            Text("Manage your favorites and account")
+                            Text("Manage your favorite items and account")
                                 .font(.poppins(size: 15, weight: .regular))
                                 .foregroundColor(.gray)
                         }

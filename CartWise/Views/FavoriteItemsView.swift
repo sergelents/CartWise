@@ -20,7 +20,7 @@ struct FavoriteItemsView: View {
                     .foregroundColor(.red)
                     .font(.system(size: 20))
                 
-                Text("My Favorites")
+                Text("My Favorite Items")
                     .font(.poppins(size: 20, weight: .bold))
                     .foregroundColor(.primary)
                 
