@@ -6,10 +6,13 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct MyProfileView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    @State private var currentUsername: String = ""
+    @State private var isLoadingUser: Bool = true
     
     var body: some View {
         NavigationView {
@@ -25,9 +28,17 @@ struct MyProfileView: View {
                                 .frame(width: 80, height: 80)
                                 .foregroundColor(AppColors.accentGreen)
                                 .padding(.top, 24)
-                            Text("My Profile")
-                                .font(.poppins(size: 24, weight: .bold))
-                                .foregroundColor(AppColors.textPrimary)
+                            
+                            if isLoadingUser {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .padding(.vertical, 8)
+                            } else {
+                                Text(currentUsername.isEmpty ? "User" : currentUsername)
+                                    .font(.poppins(size: 24, weight: .bold))
+                                    .foregroundColor(AppColors.textPrimary)
+                            }
+                            
                             Text("Manage your favorites and account")
                                 .font(.poppins(size: 15, weight: .regular))
                                 .foregroundColor(.gray)
@@ -68,6 +79,43 @@ struct MyProfileView: View {
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await loadCurrentUser()
+            }
+        }
+    }
+    
+    private func loadCurrentUser() async {
+        isLoadingUser = true
+        
+        do {
+            let context = PersistenceController.shared.container.viewContext
+            let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            
+            // Since we don't have a direct way to identify the current user,
+            // we'll fetch the most recently created user (assuming the last logged in user)
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            fetchRequest.fetchLimit = 1
+            
+            let users = try context.fetch(fetchRequest)
+            
+            if let currentUser = users.first, let username = currentUser.username {
+                await MainActor.run {
+                    currentUsername = username
+                    isLoadingUser = false
+                }
+            } else {
+                await MainActor.run {
+                    currentUsername = "User"
+                    isLoadingUser = false
+                }
+            }
+        } catch {
+            print("Error loading current user: \(error)")
+            await MainActor.run {
+                currentUsername = "User"
+                isLoadingUser = false
+            }
         }
     }
 }
