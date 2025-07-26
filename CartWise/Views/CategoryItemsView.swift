@@ -279,7 +279,7 @@ struct ProductCard: View {
                     
                     if let store = product.store {
                         Text(store)
-                            .font(.system(size: 12))
+                            .font(.system(size: 14))
                             .foregroundColor(.blue)
                             .lineLimit(1)
                     }
@@ -319,6 +319,7 @@ struct ProductDetailView: View {
     @ObservedObject var product: GroceryItem // Use ObservedObject for live updates
     let productViewModel: ProductViewModel
     
+    // Adding to shopping list and to favorites
     @State private var isAddingToFavorites = false
     @State private var isAddingToShoppingList = false
     @State private var showingSuccessMessage = false
@@ -330,7 +331,7 @@ struct ProductDetailView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .center, spacing: 18) {
+                VStack(alignment: .center, spacing: 16) {
                     
                     // Store View
                     if let store = product.store {
@@ -350,6 +351,8 @@ struct ProductDetailView: View {
                         lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
                         lastUpdatedBy: "-"
                     )
+
+                    // Add to Shopping List and Add to Favorites View
                     AddToShoppingListAndFavoritesView(
                         onAddToShoppingList: {
                             addToShoppingList()
@@ -359,6 +362,9 @@ struct ProductDetailView: View {
                             isAddingToFavorites.toggle()
                         }
                     )
+                    .padding(.bottom, 14)
+
+                    // Update Price View
                     UpdatePriceView(
                         product: product,
                         // Need to get username from user
@@ -433,7 +439,7 @@ struct StoreView: View {
             Image(systemName: "mappin.circle")
                 .foregroundColor(.blue)
             Text(store)
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundColor(.black)
             Spacer()
             Text(storeAddress)
@@ -584,7 +590,7 @@ struct AddToShoppingListAndFavoritesView: View {
     let onAddToFavorites: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
 
             // Add to List Button
             CustomButtonView(
@@ -613,7 +619,7 @@ struct AddToShoppingListAndFavoritesView: View {
             )
         }
         .padding(.horizontal, 10)
-        .padding(.top, 8)
+        .padding(.top, 4)
     }
 }
 
@@ -630,63 +636,98 @@ struct UpdatePriceView: View {
     @State private var showError: Bool = false
 
     var body: some View {
-        VStack(alignment: .center, spacing: 12) {
+        VStack(alignment: .center, spacing: 2) {
             Text("Price Inaccurate?")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.primary)
+                .padding(.top, 2)
 
             Button(action: {
                 showSheet = true
             }) {
                 Text("Update Price")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color.accentColorGreen)
+                    .foregroundColor(AppColors.accentGreen)
                     .padding(.bottom, 6)
             }
-            .sheet(isPresented: $showSheet) {
-                VStack(spacing: 20) {
-                    Text("Enter New Price")
-                        .font(.headline)
-                    TextField("New price", text: $priceInput)
-                        .keyboardType(.decimalPad)
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(8)
-                        .frame(maxWidth: 200)
-                    if showError {
-                        Text("Please enter a valid number.")
-                            .foregroundColor(.red)
-                            .font(.caption)
-                    }
+        .sheet(isPresented: $showSheet) {
+            VStack(spacing: 24) {
+                Text("Update Price")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppColors.accentGreen)
+                    .padding(.vertical, 20)
+                
+                // Product name
+                Text(product.productName ?? "Unknown Product")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
+                
+                // Current price
+                HStack {
+                    Text("$\(String(format: "%.2f", product.price))")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.primary)
+                }
+                .padding(.bottom, 18)
+                
+                // New price input
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("New Price:")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(AppColors.accentGreen)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
                     HStack {
-                        Button("Cancel") {
-                            showSheet = false
-                            priceInput = ""
-                            showError = false
-                        }
-                        .padding()
-                        Spacer()
-                        Button("Confirm") {
-                            if let newPrice = Double(priceInput), newPrice > 0 {
-                                Task {
-                                    await onUpdatePrice(newPrice, userName, Date())
-                                    showSheet = false
-                                    priceInput = ""
-                                    showError = false
-                                }
-                            } else {
-                                showError = true
-                            }
-                        }
-                        .padding()
-                        .disabled(priceInput.isEmpty)
+                        Text("$")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.gray)
+                        
+                        TextField("0.00", text: $priceInput)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 16, weight: .medium))
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
                     }
                 }
-                .padding()
-                .interactiveDismissDisabled(true) // Prevent swipe to dismiss
+                .padding(.horizontal, 16)
+                
+                if showError {
+                    Text("Please enter a valid number.")
+                        .foregroundColor(.red)
+                        .font(.caption)
+                }
+                
+                HStack {
+                    Button("Cancel") {
+                        showSheet = false
+                        priceInput = ""
+                        showError = false
+                    }
+
+                    Button("Confirm") {
+                        if let newPrice = Double(priceInput), newPrice > 0 {
+                            Task {
+                                await onUpdatePrice(newPrice, userName, Date())
+                                showSheet = false
+                                priceInput = ""
+                                showError = false
+                            }
+                        } else {
+                            showError = true
+                        }
+                    }
+                    .padding()
+                    .disabled(priceInput.isEmpty)
+                }
             }
+            .padding()
+            .interactiveDismissDisabled(true) // Prevent swipe to dismiss
         }
         .padding()
+        }
     }
 }
 
