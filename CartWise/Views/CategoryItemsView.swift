@@ -14,7 +14,7 @@ import CoreData
 
 struct CategoryItemsView: View { 
     let category: ProductCategory
-    let viewModel: ProductViewModel  // Receive ViewModel from parent
+    @EnvironmentObject var viewModel: ProductViewModel
     @State private var selectedItemsToAdd: Set<String> = []
     @State private var isLoading = false
     @State private var hasSearched = false
@@ -127,7 +127,6 @@ struct CategoryItemsView: View {
                         ForEach(displayProducts, id: \.id) { groceryItem in
                             ProductCard(
                                 product: groceryItem,
-                                productViewModel: viewModel,
                                 isSelected: groceryItem.id != nil && selectedItemsToAdd.contains(groceryItem.id!),
                                 onToggle: {
                                     if let productId = groceryItem.id {
@@ -241,8 +240,8 @@ struct CategoryItemsView: View {
 
 // Product Card View
 struct ProductCard: View {
-    let product: GroceryItem
-    let productViewModel: ProductViewModel
+    @ObservedObject var product: GroceryItem
+    @EnvironmentObject var productViewModel: ProductViewModel
     let isSelected: Bool
     let onToggle: () -> Void
 
@@ -279,7 +278,7 @@ struct ProductCard: View {
                     
                     if let store = product.store {
                         Text(store)
-                            .font(.system(size: 12))
+                            .font(.system(size: 14))
                             .foregroundColor(.blue)
                             .lineLimit(1)
                     }
@@ -309,15 +308,15 @@ struct ProductCard: View {
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
-            ProductDetailView(product: product, productViewModel: productViewModel)
+            ProductDetailView(product: product)
         }
     }
 }
 
 // Product Detail View
 struct ProductDetailView: View {
-    let product: GroceryItem
-    let productViewModel: ProductViewModel  // Use shared instance
+    @ObservedObject var product: GroceryItem // Use ObservedObject for live updates
+    @EnvironmentObject var productViewModel: ProductViewModel
     
     // Adding to shopping list and to favorites
     @State private var isAddingToFavorites = false
@@ -331,7 +330,7 @@ struct ProductDetailView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .center, spacing: 18) {
+                VStack(alignment: .center, spacing: 16) {
                     
                     // Store View
                     if let store = product.store {
@@ -348,8 +347,8 @@ struct ProductDetailView: View {
                     // TODO: Need to update data model to include last updated info?
                     ProductPriceView(
                         product: product,
-                        lastUpdated: "7/17/2025",
-                        lastUpdatedBy: "Kelly Yong"
+                        lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
+                        lastUpdatedBy: "-"
                     )
 
                     // Add to Shopping List and Add to Favorites View
@@ -362,15 +361,21 @@ struct ProductDetailView: View {
                             isAddingToFavorites.toggle()
                         }
                     )
+                    .padding(.bottom, 14)
 
                     // Update Price View
                     UpdatePriceView(
                         product: product,
-                        onUpdatePrice: {
-                            // TODO: Update price functionality
+                        // Need to get username from user
+                        userName: "username",
+                        onUpdatePrice: { newPrice, updatedBy, updatedAt in
+                            product.price = newPrice
+                            product.lastUpdated = updatedAt
+                            await productViewModel.updateProduct(product)
+                            await productViewModel.loadProducts()
                         },
-                        lastUpdated: "7/17/2025",
-                        lastUpdatedBy: "Kelly Yong"
+                        lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
+                        lastUpdatedBy: "-"
                     )
                 }
                 .padding(.horizontal, 24)
@@ -433,7 +438,7 @@ struct StoreView: View {
             Image(systemName: "mappin.circle")
                 .foregroundColor(.blue)
             Text(store)
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundColor(.black)
             Spacer()
             Text(storeAddress)
@@ -568,9 +573,9 @@ struct CustomButtonView: View {
                 Text(title)
                     .font(.system(size: CGFloat(fontSize), weight: weight ?? .regular))
                     .foregroundColor(textColor)
-                    .frame(width: 100, height: 10)
+                    .frame(width: 100, height: 12)
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
             .padding(.horizontal, 8)
             .background(isAdded ? isAddedColor : buttonColor)
             .cornerRadius(8)
@@ -584,7 +589,7 @@ struct AddToShoppingListAndFavoritesView: View {
     let onAddToFavorites: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
 
             // Add to List Button
             CustomButtonView(
@@ -613,31 +618,138 @@ struct AddToShoppingListAndFavoritesView: View {
             )
         }
         .padding(.horizontal, 10)
-        .padding(.top, 8)
+        .padding(.top, 4)
     }
 }
 
 // Update Price View
 struct UpdatePriceView: View {
     let product: GroceryItem
-    let onUpdatePrice: () -> Void
+    let userName: String
+    let onUpdatePrice: (_ newPrice: Double, _ updatedBy: String, _ updatedAt: Date) async -> Void
     let lastUpdated: String
     let lastUpdatedBy: String
-    
-    var body: some View {
-        VStack(alignment: .center, spacing: 12) {
-            Text("Price Inaccurate?")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.primary)
 
-            Button(action: onUpdatePrice) {
+    @State private var showSheet: Bool = false
+    @State private var priceInput: String = ""
+    @State private var showError: Bool = false
+
+    var body: some View {
+        VStack(alignment: .center, spacing: 2) {
+            Text("Price Inaccurate?")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(.primary)
+                .padding(.top, 2)
+
+            Button(action: {
+                showSheet = true
+            }) {
                 Text("Update Price")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color.accentColorGreen)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(AppColors.accentGreen)
                     .padding(.bottom, 6)
             }
+        .sheet(isPresented: $showSheet) {
+            VStack(spacing: 24) {
+                Text("Update Price")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppColors.accentGreen)
+                    .padding(.vertical, 20)
+                
+                // Product name
+                Text(product.productName ?? "Unknown Product")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
+                
+                // Current price
+                HStack {
+                    Text("$\(String(format: "%.2f", product.price))")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.primary)
+                }
+                .padding(.bottom, 18)
+                
+                // New price input
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("New Price:")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(AppColors.accentGreen)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    HStack {
+                        Text("$")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.gray)
+                        
+                        TextField("0.00", text: $priceInput)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 16, weight: .medium))
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    .padding(.bottom, 16)
+                }
+                .padding(.horizontal, 16)
+                
+                if showError {
+                    Text("Please enter a valid number.")
+                        .foregroundColor(.red)
+                        .font(.caption)
+                }
+                
+                HStack(spacing: 20) {
+                    CustomButtonView(
+                        title: "Cancel",
+                        imageName: "",
+                        fontSize: 16,
+                        weight: .bold,
+                        buttonColor: Color.gray.opacity(0.3),
+                        textColor: .primary,
+                        action: {
+                            showSheet = false
+                            priceInput = ""
+                            showError = false
+                        },
+                        isAddedImageName: "",
+                        isAddedColor: Color.gray.opacity(0.3)
+                    )
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 18)
+                    
+                    CustomButtonView(
+                        title: "Confirm",
+                        imageName: "",
+                        fontSize: 16,
+                        weight: .bold,
+                        buttonColor: AppColors.accentGreen,
+                        textColor: .white,
+                        action: {
+                            if let newPrice = Double(priceInput), newPrice > 0 {
+                                Task {
+                                    await onUpdatePrice(newPrice, userName, Date())
+                                    showSheet = false
+                                    priceInput = ""
+                                    showError = false
+                                }
+                            } else {
+                                showError = true
+                            }
+                        },
+                        isAddedImageName: "",
+                        isAddedColor: AppColors.accentGreen
+                    )
+                    .padding(.vertical, 18)
+                    .disabled(priceInput.isEmpty)
+                }
+            }
+            .padding(.horizontal, 18)
+            .interactiveDismissDisabled(true) // Prevent swipe to dismiss
         }
         .padding()
+        }
     }
 }
 

@@ -11,7 +11,7 @@
 import SwiftUI
 
 struct YourListView: View {
-    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    @EnvironmentObject var productViewModel: ProductViewModel
     @State private var suggestedStore: String = "Whole Foods Market"
     @State private var storeAddress: String = "1701 Wewatta St."
     @State private var total: Double = 0.00
@@ -27,7 +27,6 @@ struct YourListView: View {
     var body: some View {
         NavigationStack {
             MainContentView(
-                productViewModel: productViewModel,
                 isEditing: $isEditing,
                 allItemsChecked: $allItemsChecked,
                 selectedItemsForDeletion: $selectedItemsForDeletion,
@@ -100,7 +99,7 @@ struct YourListView: View {
 
 // Main Content View, edited by AI
 struct MainContentView: View {
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     @Binding var isEditing: Bool
     @Binding var allItemsChecked: Bool
     @Binding var selectedItemsForDeletion: Set<String>
