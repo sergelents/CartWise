@@ -24,7 +24,7 @@ enum ProductCategory: String, CaseIterable {
 // MARK: - Main Response Model
 struct APIResponse: Codable {
     let success: Bool
-    let pagination: Pagination
+    let pagination: Pagination?
     let products: [APIProduct]
 }
 
@@ -32,7 +32,7 @@ struct APIResponse: Codable {
 struct Pagination: Codable {
     let currentPage: Int
     let nextPage: Int?
-    let totalPages: String  // Note: This comes as string, not int
+    let totalPages: Int  // Note: This comes as string, not int
 }
 
 // MARK: - Product Model

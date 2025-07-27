@@ -226,10 +226,11 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     
     func getPriceComparison(for shoppingList: [GroceryItem]) async throws -> PriceComparison {
         print("Repository: Starting price comparison for \(shoppingList.count) items")
+        print("Repository: Items to check: \(shoppingList.compactMap { $0.productName })")
         
         // Use TaskGroup for concurrent price fetching
         return try await withTaskGroup(of: StorePrice.self) { group in
-            let stores: [Store] = [.amazon, .walmart]
+            let stores: [Store] = [.amazon]
             
             // Add tasks for each store
             for store in stores {
@@ -280,9 +281,13 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                 group.addTask {
                     do {
                         if let priceData = try await self.networkService.searchGroceryPrice(productName: productName, store: store) {
+                            // Debug: Print the raw price string
+                            print("Repository: Raw price string for \(productName): '\(priceData.price)'")
+                            
                             // Convert string price to Double
-                            let price = Double(priceData.price.replacingOccurrences(of: "$", with: "")) ?? 0.0
-                            print("Repository: Found \(productName) at \(store.rawValue) for $\(price)")
+                            let cleanPrice = priceData.price.replacingOccurrences(of: "$", with: "").trimmingCharacters(in: .whitespaces)
+                            let price = Double(cleanPrice) ?? 0.0
+                            print("Repository: Found \(productName) at \(store.rawValue) for $\(price) (cleaned from '\(priceData.price)')")
                             return (productName, price)
                         } else {
                             print("Repository: \(productName) not found at \(store.rawValue)")
@@ -301,8 +306,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     totalPrice += price
                     availableItems += 1
                     itemPrices[productName] = price
+                    print("Repository: Added \(productName) price $\(price) to total. Running total: $\(totalPrice)")
                 } else {
                     unavailableItems += 1
+                    print("Repository: No price found for \(productName)")
                 }
             }
         }
