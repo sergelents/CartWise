@@ -16,7 +16,6 @@ struct MyProfileView: View {
     @State private var currentUsername: String = ""
     @State private var isLoadingUser: Bool = true
     @State private var showingReputation = false
-    @State private var showingTestContributions = false
     
     var body: some View {
         NavigationView {
@@ -126,34 +125,7 @@ struct MyProfileView: View {
                                 )
                             }
                             
-                            // Test Contributions Button (for development)
-                            Button(action: {
-                                showingTestContributions = true
-                            }) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 16, weight: .medium))
-                                    Text("Test Contributions")
-                                        .font(.poppins(size: 16, weight: .semibold))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(
-                                            LinearGradient(
-                                                gradient: Gradient(colors: [
-                                                    Color.orange,
-                                                    Color.orange.opacity(0.8)
-                                                ]),
-                                                startPoint: .leading,
-                                                endPoint: .trailing
-                                            )
-                                        )
-                                        .shadow(color: Color.orange.opacity(0.3), radius: 6, x: 0, y: 3)
-                                )
-                            }
+
                         }
                         .frame(maxWidth: .infinity)
                         .background(
@@ -237,9 +209,7 @@ struct MyProfileView: View {
                     Text("You've earned the '\(achievement.name)' badge! \(achievement.description)")
                 }
             }
-            .sheet(isPresented: $showingTestContributions) {
-                TestContributionView(reputationViewModel: reputationViewModel)
-            }
+
             .overlay(
                 // Points Notification Toast
                 Group {
