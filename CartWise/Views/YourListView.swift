@@ -26,22 +26,22 @@ struct YourListView: View {
     
     var body: some View {
         NavigationStack {
-            MainContentView(
+        MainContentView(
                 productViewModel: productViewModel,
-                isEditing: $isEditing,
-                allItemsChecked: $allItemsChecked,
-                selectedItemsForDeletion: $selectedItemsForDeletion,
-                suggestedStore: suggestedStore,
-                storeAddress: storeAddress,
-                total: total,
+            isEditing: $isEditing,
+            allItemsChecked: $allItemsChecked,
+            selectedItemsForDeletion: $selectedItemsForDeletion,
+            suggestedStore: suggestedStore,
+            storeAddress: storeAddress,
+            total: total,
                 showingRatingPrompt: $showingRatingPrompt,
                 showingAddProductModal: $showingAddProductModal,
                 showingCheckAllConfirmation: $showingCheckAllConfirmation
-            )
+        )
             .navigationTitle("Your Shopping List")
-            .sheet(isPresented: $showingRatingPrompt) {
-                RatingPromptView()
-            }
+        .sheet(isPresented: $showingRatingPrompt) {
+            RatingPromptView()
+        }
             .sheet(isPresented: $showingAddProductModal) {
                 SmartAddProductModal(productViewModel: productViewModel, onAdd: addProductToSystem)
                     .presentationDetents([.large])
@@ -266,7 +266,7 @@ struct ShoppingListCard: View {
                                         if let id = product.id {
                                             if selectedItemsForDeletion.contains(id) {
                                                 selectedItemsForDeletion.remove(id)
-                                            } else {
+                                        } else {
                                                 selectedItemsForDeletion.insert(id)
                                             }
                                         }
@@ -540,7 +540,7 @@ struct SmartAddProductModal: View {
                     // Search Bar
                     HStack {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
+                .foregroundColor(.gray)
                         
                         ZStack(alignment: .leading) {
                             TextField("", text: $searchText)
@@ -561,7 +561,7 @@ struct SmartAddProductModal: View {
                             if searchText.isEmpty && !isSearchFocused {
                                 Text("Search products...")
                                     .font(.poppins(size: 16, weight: .regular))
-                                    .foregroundColor(.gray)
+                .foregroundColor(.gray)
                                     .allowsHitTesting(false)
                             }
                             
@@ -683,17 +683,17 @@ struct SearchResultsSection: View {
                 Button(action: onCreateNew) {
                     HStack {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(AppColors.accentGreen)
+            .foregroundColor(AppColors.accentGreen)
                         Text("Add \"\(searchText)\" as new product")
                             .font(.poppins(size: 16, weight: .regular))
                             .foregroundColor(.primary)
                         Spacer()
-                    }
-                    .padding()
+        }
+        .padding()
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
-                    .padding(.horizontal)
-                }
+        .padding(.horizontal)
+    }
             } else {
                 // Show search results in a scrollable container
                 ScrollView {
@@ -1020,7 +1020,7 @@ struct ShoppingListItemRow: View {
     let isSelected: Bool
     let onToggle: () -> Void
     let onDelete: () -> Void
-    
+
     var body: some View {
         HStack(alignment: .center) {
             Button(action: onToggle) {
@@ -1067,9 +1067,9 @@ struct ShoppingListItemRow: View {
                         .foregroundColor(.gray.opacity(0.7))
                 }
             }
-            
+
             Spacer()
-            
+
             Spacer()
             
             // Price display - always on the right

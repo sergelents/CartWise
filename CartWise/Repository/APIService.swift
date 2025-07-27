@@ -10,12 +10,12 @@ import Foundation
 import CoreData
 
 protocol NetworkServiceProtocol: Sendable {
-    func fetchProduct(by name: String) async throws -> GroceryPriceData?
-    func searchProducts(by name: String) async throws -> [GroceryPriceData]
-    func searchProductsOnAmazon(by query: String) async throws -> [GroceryPriceData]
-    func searchProductsOnWalmart(by query: String) async throws -> [GroceryPriceData]
-    func fetchProductWithRetry(by name: String, retries: Int) async throws -> GroceryPriceData?
-    func searchGroceryPrice(productName: String, store: Store) async throws -> GroceryPriceData?
+    func fetchProduct(by name: String) async throws -> APIProduct?
+    func searchProducts(by name: String) async throws -> [APIProduct]
+    func searchProductsOnAmazon(by query: String) async throws -> [APIProduct]
+    func searchProductsOnWalmart(by query: String) async throws -> [APIProduct]
+    func fetchProductWithRetry(by name: String, retries: Int) async throws -> APIProduct?
+    func searchGroceryPrice(productName: String, store: Store) async throws -> APIProduct?
 }
 
 enum Store: String, CaseIterable, Codable {
@@ -41,39 +41,39 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         self.session = session
     }
     
-    func searchProducts(by name: String) async throws -> [GroceryPriceData] {
+    func searchProducts(by name: String) async throws -> [APIProduct] {
         let url = try buildSearchURL(for: name)
-        let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
-        return response.data ?? []
+        let response = try await performRequest(url: url, responseType: APIResponse.self)
+        return response.products
     }
     
-    func searchProductsOnAmazon(by query: String) async throws -> [GroceryPriceData] {
+    func searchProductsOnAmazon(by query: String) async throws -> [APIProduct] {
         let url = try buildStoreSearchURL(for: query, store: .amazon)
-        let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
-        return response.allProducts
+        let response = try await performRequest(url: url, responseType: APIResponse.self)
+        return response.products
     }
     
-    func searchProductsOnWalmart(by query: String) async throws -> [GroceryPriceData] {
+    func searchProductsOnWalmart(by query: String) async throws -> [APIProduct] {
         let url = try buildStoreSearchURL(for: query, store: .walmart)
-        let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
-        return response.allProducts
+        let response = try await performRequest(url: url, responseType: APIResponse.self)
+        return response.products
     }
     
-    func searchGroceryPrice(productName: String, store: Store) async throws -> GroceryPriceData? {
+    func searchGroceryPrice(productName: String, store: Store) async throws -> APIProduct? {
         let url = try buildStoreSearchURL(for: productName, store: store)
-        let response = try await performRequest(url: url, responseType: GroceryPriceResponse.self)
+        let response = try await performRequest(url: url, responseType: APIResponse.self)
         
         // Return the first product from the API response
-        return response.allProducts.first
+        return response.products.first
     }
     
-    func fetchProduct(by name: String) async throws -> GroceryPriceData? {
+    func fetchProduct(by name: String) async throws -> APIProduct? {
         // For grocery prices API, we search by name and return the first result
         let products = try await searchProducts(by: name)
         return products.first
     }
     
-    func fetchProductWithRetry(by name: String, retries: Int = 3) async throws -> GroceryPriceData? {
+    func fetchProductWithRetry(by name: String, retries: Int = 3) async throws -> APIProduct? {
         var lastError: Error?
         
         for attempt in 1...retries {
@@ -145,10 +145,6 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
                 return try decoder.decode(responseType, from: data)
             } catch {
                 print("APIService: Decoding error: \(error)")
-                // Try to decode as a different format if the first attempt fails
-                if responseType == GroceryPriceResponse.self {
-                    return try decodeGroceryPriceResponse(from: data) as! T
-                }
                 throw NetworkError.decodingError(error)
             }
         case 404:
@@ -160,41 +156,6 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         default:
             throw NetworkError.httpError(httpResponse.statusCode)
         }
-    }
-    
-    private func decodeGroceryPriceResponse(from data: Data) throws -> GroceryPriceResponse {
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        // Decode the API wrapper
-        let apiWrapper = try decoder.decode(APIWrapperResponse.self, from: data)
-        // Parse the raw_body_sample string as JSON
-        guard let rawBodyData = apiWrapper.rawBodySample.data(using: .utf8) else {
-            return GroceryPriceResponse(status: nil, message: apiWrapper.message, data: [], success: apiWrapper.success, products: nil)
-        }
-        let rawBody = try decoder.decode(RawBodyResponse.self, from: rawBodyData)
-        // Map RawProduct to GroceryPriceData
-        let groceryProducts = rawBody.products.map { raw in
-            GroceryPriceData(
-                id: nil,
-                productName: raw.title,
-                brand: raw.brand,
-                category: raw.category,
-                price: raw.price ?? 0.0,
-                currency: raw.currency ?? "USD",
-                store: raw.store ?? "Unknown",
-                location: raw.location,
-                lastUpdated: raw.lastUpdated ?? "",
-                imageURL: raw.imageURL,
-                barcode: raw.barcode
-            )
-        }
-        return GroceryPriceResponse(
-            status: nil,
-            message: apiWrapper.message,
-            data: groceryProducts,
-            success: apiWrapper.success,
-            products: nil
-        )
     }
 }
 
@@ -248,5 +209,3 @@ enum NetworkError: Error, LocalizedError, Sendable {
         }
     }
 }
-
-// This code was generated with the help of Claude, saving me 4 hours of research and development.
