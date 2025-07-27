@@ -619,6 +619,12 @@ struct AddToShoppingListAndFavoritesView: View {
         }
         .padding(.horizontal, 10)
         .padding(.top, 4)
+        .task {
+            // Check if product is in shopping list
+            isInShoppingList = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
+            // Check if product is in favorites
+            isInFavorites = await productViewModel.isProductInFavorites(product)
+        }
     }
 }
 
