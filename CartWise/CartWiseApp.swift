@@ -21,6 +21,7 @@ struct CartWiseApp: App {
             AppCoordinatorView(coordinator: appCoordinator)
                 .environment(\.managedObjectContext, coreDataStack.persistentContainer.viewContext)
                 .environmentObject(productViewModel)
+                .preferredColorScheme(.light)
         }
     }
 }
