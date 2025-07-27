@@ -318,12 +318,6 @@ struct ProductDetailView: View {
     @ObservedObject var product: GroceryItem // Use ObservedObject for live updates
     @EnvironmentObject var productViewModel: ProductViewModel
     
-    // Adding to shopping list and to favorites
-    @State private var isAddingToFavorites = false
-    @State private var isAddingToShoppingList = false
-    @State private var showingSuccessMessage = false
-    @State private var showingDuplicateMessage = false
-
     // Dismissing the view
     @Environment(\.dismiss) private var dismiss
 
@@ -353,13 +347,9 @@ struct ProductDetailView: View {
 
                     // Add to Shopping List and Add to Favorites View
                     AddToShoppingListAndFavoritesView(
-                        onAddToShoppingList: {
-                            addToShoppingList()
-                        }, 
-                        onAddToFavorites: {
-                            // TODO: Add to favorites functionality
-                            isAddingToFavorites.toggle()
-                        }
+                        product: product,
+                        onAddToShoppingList: {},
+                        onAddToFavorites: {}
                     )
                     .padding(.bottom, 14)
 
@@ -387,41 +377,6 @@ struct ProductDetailView: View {
                     Button("Done") {
                         dismiss()
                     }
-                }
-            }
-        }
-        .alert("Added to Shopping List!", isPresented: $showingSuccessMessage) {
-            Button("OK") { }
-        } message: {
-            Text("\(product.productName ?? "Product") has been added to your shopping list.")
-        }
-        .alert("Already in Shopping List", isPresented: $showingDuplicateMessage) {
-            Button("OK") { }
-        } message: {
-            Text("\(product.productName ?? "Product") is already in your shopping list.")
-        }
-    }
-    
-    private func addToShoppingList() {
-        Task {
-            // Check if product already exists in shopping list
-            let isDuplicate = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
-            
-            if isDuplicate {
-                // Product already exists, show error message
-                await MainActor.run {
-                    showingDuplicateMessage = true
-                }
-            } else {
-                // Add the existing product to shopping list
-                await productViewModel.addExistingProductToShoppingList(product)
-                
-                // Refresh the shopping list to show the new item
-                await productViewModel.loadShoppingListProducts()
-                
-                // Show success message
-                await MainActor.run {
-                    showingSuccessMessage = true
                 }
             }
         }
@@ -558,26 +513,21 @@ struct CustomButtonView: View {
     let buttonColor: Color
     let textColor: Color
     let action: () -> Void
-    @State var isAdded : Bool = false
-    @State var isAddedImageName: String
-    @State var isAddedColor: Color
     
     var body: some View {
-        Button(action: {
-            action()
-            self.isAdded.toggle()}) {
+        Button(action: action) {
             HStack(alignment: .center, spacing: 2) {
-                Image(systemName: isAdded ? isAddedImageName : imageName)
+                Image(systemName: imageName)
                     .font(.system(size: 14))
                     .foregroundColor(textColor)
                 Text(title)
                     .font(.system(size: CGFloat(fontSize), weight: weight ?? .regular))
                     .foregroundColor(textColor)
-                    .frame(width: 100, height: 12)
+                    .frame(width: 100, height: 10)
             }
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
             .padding(.horizontal, 8)
-            .background(isAdded ? isAddedColor : buttonColor)
+            .background(buttonColor)
             .cornerRadius(8)
         }
     }
@@ -585,36 +535,44 @@ struct CustomButtonView: View {
 
 // Buttons Add to Shopping List and Add to Favorites View 
 struct AddToShoppingListAndFavoritesView: View {
+    @ObservedObject var product: GroceryItem
+    @EnvironmentObject var productViewModel: ProductViewModel
     let onAddToShoppingList: () -> Void
     let onAddToFavorites: () -> Void
+    @State private var isInShoppingList = false
+    @State private var isInFavorites = false
+    @State private var showingFavoriteSuccessMessage = false
+    @State private var showingFavoriteDuplicateMessage = false
+    @State private var showingSuccessMessage = false
+    @State private var showingDuplicateMessage = false
 
     var body: some View {
         HStack(spacing: 14) {
 
             // Add to List Button
             CustomButtonView(
-                title: "Add to My List",
-                imageName: "plus.circle.fill",
+                title: isInShoppingList ? "In My List" : "Add to My List",
+                imageName: isInShoppingList ? "checkmark.circle.fill" : "plus.circle.fill",
                 fontSize: 13,
                 weight: .bold,
-                buttonColor: Color.accentColorBlue,
+                buttonColor: isInShoppingList ? Color.accentColorGreen : Color.accentColorBlue,
                 textColor: .white,
-                action: onAddToShoppingList,
-                isAddedImageName: "checkmark.circle.fill",
-                isAddedColor: Color.accentColorGreen
+                action: {
+                    addToShoppingList()
+                }
             )
             Spacer()
             // Add to Favorite Button
             CustomButtonView(
-                title: "Add to Favorite",
-                imageName: "plus.circle.fill",
+                title: isInFavorites ? "In Favorites" : "Add to Favorite",
+                imageName: isInFavorites ? "heart.fill" : "plus.circle.fill",
                 fontSize: 13,
                 weight: .bold,
-                buttonColor: Color.accentColorPink,
+                buttonColor: isInFavorites ? Color.accentColorCoral : Color.accentColorPink,
                 textColor: .white,
-                action: onAddToFavorites,
-                isAddedImageName: "heart.fill",
-                isAddedColor: Color.accentColorCoral
+                action: {
+                    addToFavorites()
+                }
             )
         }
         .padding(.horizontal, 10)
@@ -624,6 +582,75 @@ struct AddToShoppingListAndFavoritesView: View {
             isInShoppingList = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
             // Check if product is in favorites
             isInFavorites = await productViewModel.isProductInFavorites(product)
+        }
+        .alert("Added to Favorites!", isPresented: $showingFavoriteSuccessMessage) {
+            Button("OK") { }
+        } message: {
+            Text("\(product.productName ?? "Product") has been added to your favorites.")
+        }
+        .alert("Already in Favorites", isPresented: $showingFavoriteDuplicateMessage) {
+            Button("OK") { }
+        } message: {
+            Text("\(product.productName ?? "Product") is already in your favorites.")
+        }
+        .alert("Added to Shopping List!", isPresented: $showingSuccessMessage) {
+            Button("OK") { }
+        } message: {
+            Text("\(product.productName ?? "Product") has been added to your shopping list.")
+        }
+        .alert("Already in Shopping List", isPresented: $showingDuplicateMessage) {
+            Button("OK") { }
+        } message: {
+            Text("\(product.productName ?? "Product") is already in your shopping list.")
+        }
+    }
+    
+    private func addToShoppingList() {
+        Task {
+            // Check if product already exists in shopping list
+            let isDuplicate = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
+            
+            if isDuplicate {
+                // Product already exists, show error message
+                await MainActor.run {
+                    showingDuplicateMessage = true
+                }
+            } else {
+                // Add the existing product to shopping list
+                await productViewModel.addExistingProductToShoppingList(product)
+                
+                // Refresh the shopping list to show the new item
+                await productViewModel.loadShoppingListProducts()
+                
+                // Update the local state
+                await MainActor.run {
+                    isInShoppingList = true
+                    showingSuccessMessage = true
+                }
+            }
+        }
+    }
+    
+    private func addToFavorites() {
+        Task {
+            // Check if product already exists in favorites
+            let isDuplicate = await productViewModel.isProductInFavorites(product)
+
+            if isDuplicate {
+                // Product already exists in favorites, show error message
+                await MainActor.run {
+                    showingFavoriteDuplicateMessage = true
+                }
+            } else {
+                // Add the existing product to favorites
+                await productViewModel.addProductToFavorites(product)
+
+                // Update the local state
+                await MainActor.run {
+                    isInFavorites = true
+                    showingFavoriteSuccessMessage = true
+                }
+            }
         }
     }
 }
@@ -718,9 +745,7 @@ struct UpdatePriceView: View {
                             showSheet = false
                             priceInput = ""
                             showError = false
-                        },
-                        isAddedImageName: "",
-                        isAddedColor: Color.gray.opacity(0.3)
+                        }
                     )
                     .padding(.horizontal, 18)
                     .padding(.vertical, 18)
@@ -743,9 +768,7 @@ struct UpdatePriceView: View {
                             } else {
                                 showError = true
                             }
-                        },
-                        isAddedImageName: "",
-                        isAddedColor: AppColors.accentGreen
+                        }
                     )
                     .padding(.vertical, 18)
                     .disabled(priceInput.isEmpty)
