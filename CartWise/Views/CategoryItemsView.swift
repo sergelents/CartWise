@@ -411,7 +411,7 @@ struct StoreView: View {
 
 // Product Name View
 struct ProductNameView: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
 
     var body: some View { 
         VStack(alignment: .center, spacing: 10) {
@@ -453,7 +453,7 @@ struct ProductNameView: View {
 
 // Product Image View
 struct ProductImageView: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
 
         var body: some View {
         RoundedRectangle(cornerRadius: 12)
@@ -484,7 +484,7 @@ struct ProductImageView: View {
 
 // Product Price View
 struct ProductPriceView: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
     var lastUpdated: String
     var lastUpdatedBy: String
 
