@@ -18,9 +18,6 @@ struct ReputationView: View {
             // Contribution Stats
             ContributionStatsView(reputationViewModel: reputationViewModel)
             
-            // Recent Contributions Section
-            RecentContributionsView(reputationViewModel: reputationViewModel)
-            
             // Achievements Section
             AchievementsView(reputationViewModel: reputationViewModel)
         }
