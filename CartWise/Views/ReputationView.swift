@@ -18,6 +18,9 @@ struct ReputationView: View {
             // Contribution Stats
             ContributionStatsView(reputationViewModel: reputationViewModel)
             
+            // Recent Contributions Section
+            RecentContributionsView(reputationViewModel: reputationViewModel)
+            
             // Achievements Section
             AchievementsView(reputationViewModel: reputationViewModel)
         }
@@ -252,6 +255,89 @@ struct AchievementBadge: View {
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(achievement.color.opacity(0.1))
+        )
+    }
+}
+
+struct RecentContributionsView: View {
+    @ObservedObject var reputationViewModel: ReputationViewModel
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text("Recent Contributions")
+                    .font(.poppins(size: 18, weight: .bold))
+                    .foregroundColor(AppColors.textPrimary)
+                
+                Spacer()
+            }
+            
+            let recentContributions = reputationViewModel.getRecentContributions()
+            
+            if recentContributions.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 32))
+                        .foregroundColor(.gray.opacity(0.5))
+                    
+                    Text("No recent contributions")
+                        .font(.poppins(size: 16, weight: .medium))
+                        .foregroundColor(.gray)
+                    
+                    Text("Start contributing to see your activity here!")
+                        .font(.poppins(size: 14, weight: .regular))
+                        .foregroundColor(.gray.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(recentContributions.prefix(3), id: \.id) { contribution in
+                        ContributionRowView(contribution: contribution)
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+        )
+    }
+}
+
+struct ContributionRowView: View {
+    let contribution: ContributionRecord
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "plus.circle.fill")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(.green)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(contribution.description)
+                    .font(.poppins(size: 14, weight: .medium))
+                    .foregroundColor(AppColors.textPrimary)
+                
+                Text(contribution.date, style: .relative)
+                    .font(.poppins(size: 12, weight: .regular))
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            Text("+\(contribution.points)")
+                .font(.poppins(size: 16, weight: .bold))
+                .foregroundColor(.green)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.green.opacity(0.1))
         )
     }
 }

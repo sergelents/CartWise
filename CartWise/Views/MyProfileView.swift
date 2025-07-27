@@ -12,6 +12,7 @@ struct MyProfileView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
     @StateObject private var reputationViewModel = ReputationViewModel()
+    @StateObject private var reputationService = ReputationService.shared
     @State private var currentUsername: String = ""
     @State private var isLoadingUser: Bool = true
     @State private var showingReputation = false
@@ -211,6 +212,9 @@ struct MyProfileView: View {
             .task {
                 await loadCurrentUser()
                 await reputationViewModel.loadCurrentUser()
+                
+                // Setup ReputationService with the reputation view model
+                ReputationService.shared.setup(with: reputationViewModel)
             }
             .sheet(isPresented: $showingReputation) {
                 NavigationView {
@@ -236,6 +240,37 @@ struct MyProfileView: View {
             .sheet(isPresented: $showingTestContributions) {
                 TestContributionView(reputationViewModel: reputationViewModel)
             }
+            .overlay(
+                // Points Notification Toast
+                Group {
+                    if reputationService.showPointsNotification {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Image(systemName: "star.fill")
+                                    .foregroundColor(.yellow)
+                                Text(reputationService.pointsNotificationMessage)
+                                    .font(.poppins(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                Text("+\(reputationService.pointsNotificationPoints)")
+                                    .font(.poppins(size: 16, weight: .bold))
+                                    .foregroundColor(.yellow)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.black.opacity(0.8))
+                                    .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+                            )
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 100)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                        .animation(.easeInOut(duration: 0.3), value: reputationService.showPointsNotification)
+                    }
+                }
+            )
         }
     }
     

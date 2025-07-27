@@ -60,13 +60,18 @@ struct YourListView: View {
                     // Do nothing, just dismiss the alert
                 }
                 Button("Complete All") {
-                    Task {
-                        await productViewModel.toggleAllProductsCompletion()
-                        // Only show rating prompt if all items are actually completed
-                        // if productViewModel.allProductsCompleted {
-                        //     showingRatingPrompt = true
-                        // }
-                    }
+                                            Task {
+                            await productViewModel.toggleAllProductsCompletion()
+                            
+                            // Award reputation points for bulk shopping list completion
+                            let completedCount = productViewModel.products.filter { $0.isCompleted }.count
+                            await ReputationService.shared.awardBulkPriceUpdate(count: completedCount)
+                            
+                            // Only show rating prompt if all items are actually completed
+                            // if productViewModel.allProductsCompleted {
+                            //     showingRatingPrompt = true
+                            // }
+                        }
                 }
             } message: {
                 Text("Are you sure you want to mark all items as completed?")
@@ -95,6 +100,9 @@ struct YourListView: View {
             } else {
                 await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category, price: price ?? 0.0)
             }
+            
+            // Award reputation points for adding product to shopping list
+            await ReputationService.shared.awardShoppingListAddition()
         }
     }
 }
@@ -274,6 +282,10 @@ struct ShoppingListCard: View {
                                     // Toggle completion status
                                     Task {
                                         await productViewModel.toggleProductCompletion(product)
+                                        
+                                        // Award reputation points for shopping list completion
+                                        await ReputationService.shared.awardShoppingListCompletion()
+                                        
                                         // Check if all products are completed after toggling
                                         // if productViewModel.allProductsCompleted {
                                         //     showingRatingPrompt = true

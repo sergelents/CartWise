@@ -299,6 +299,10 @@ final class ProductViewModel: ObservableObject {
                 isInShoppingList: true
             )
             await loadShoppingListProducts()
+            
+            // Award reputation points for creating a product
+            await ReputationService.shared.awardProductAdditionViaManualEntry()
+            
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -344,6 +348,10 @@ final class ProductViewModel: ObservableObject {
             if let apiProduct = try await repository.fetchProductFromNetwork(by: barcode) {
                 // Product found in API, add to shopping list
                 await addExistingProductToShoppingList(apiProduct)
+                
+                // Award reputation points for product discovery via barcode
+                await ReputationService.shared.awardProductDiscovery()
+                
                 errorMessage = nil
             } else {
                 // Product not found in API, create basic entry

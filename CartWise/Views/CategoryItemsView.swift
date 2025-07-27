@@ -369,9 +369,7 @@ struct ProductDetailView: View {
                     // Update Price View
                     UpdatePriceView(
                         product: product,
-                        onUpdatePrice: {
-                            // TODO: Update price functionality
-                        },
+                        onUpdatePrice: handlePriceUpdate,
                         lastUpdated: "7/17/2025",
                         lastUpdatedBy: "Kelly Yong"
                     )
@@ -424,6 +422,9 @@ struct ProductDetailView: View {
                 // Add the existing product to shopping list
                 await productViewModel.addExistingProductToShoppingList(product)
                 
+                // Award reputation points for adding to shopping list
+                await ReputationService.shared.awardShoppingListAddition()
+                
                 // Refresh the shopping list to show the new item
                 await productViewModel.loadShoppingListProducts()
                 
@@ -449,11 +450,20 @@ struct ProductDetailView: View {
                 // Add the existing product to favorites
                 await productViewModel.addProductToFavorites(product)
                 
+                // Award reputation points for adding to favorites
+                await ReputationService.shared.awardFavoriteAddition()
+                
                 // Show success message
                 await MainActor.run {
                     showingFavoriteSuccessMessage = true
                 }
             }
+        }
+    }
+    
+    private func handlePriceUpdate() {
+        Task {
+            await ReputationService.shared.awardPriceUpdate()
         }
     }
 }

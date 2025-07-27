@@ -160,7 +160,7 @@ struct AddItemsView: View {
                 ManualBarcodeEntryView(
                     barcode: $manualBarcode,
                     onBarcodeEntered: { barcode in
-                        handleBarcodeScanned(barcode)
+                        handleManualBarcodeEntry(barcode)
                         showingManualEntry = false
                     }
                 )
@@ -192,9 +192,47 @@ struct AddItemsView: View {
                     showingError = true
                 } else {
                     // Success - show success message and clear the scanned barcode
-                    successMessage = "Product added successfully!"
+                    successMessage = "Product added successfully! +25 reputation points!"
                     showingSuccess = true
                     scannedBarcode = ""
+                    
+                    // Award reputation points for product addition
+                    Task {
+                        await ReputationService.shared.awardProductAdditionViaBarcode()
+                    }
+                    
+                    // Hide success message after 2 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        showingSuccess = false
+                    }
+                }
+            }
+        }
+    }
+    
+    private func handleManualBarcodeEntry(_ barcode: String) {
+        scannedBarcode = barcode
+        isProcessing = true
+        
+        Task {
+            await productViewModel.createProductByBarcode(barcode)
+            
+            await MainActor.run {
+                isProcessing = false
+                
+                if let error = productViewModel.errorMessage {
+                    errorMessage = error
+                    showingError = true
+                } else {
+                    // Success - show success message and clear the scanned barcode
+                    successMessage = "Product added successfully! +25 reputation points!"
+                    showingSuccess = true
+                    scannedBarcode = ""
+                    
+                    // Award reputation points for manual product addition
+                    Task {
+                        await ReputationService.shared.awardProductAdditionViaManualEntry()
+                    }
                     
                     // Hide success message after 2 seconds
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
