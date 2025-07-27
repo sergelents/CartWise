@@ -33,7 +33,7 @@ struct MyProfileView: View {
                 .ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: 32) {
+                    VStack(spacing: 20) {
                         // Enhanced Profile Card with Reputation
                         VStack(spacing: 16) {
                             // Profile Avatar with enhanced styling
@@ -134,12 +134,12 @@ struct MyProfileView: View {
                                 .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
                         )
                         .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 8)
                         
                         // Enhanced Favorites Section
                         FavoriteItemsView(productViewModel: productViewModel)
                             .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, 8)
                         
                         // Enhanced Log Out Button
                         Button(action: {
@@ -172,7 +172,7 @@ struct MyProfileView: View {
                             )
                         }
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 32)
+                        .padding(.bottom, 20)
                         .scaleEffect(1.0)
                         .animation(.easeInOut(duration: 0.2), value: isLoggedIn)
                     }
