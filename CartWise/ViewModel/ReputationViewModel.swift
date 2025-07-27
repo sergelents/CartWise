@@ -68,6 +68,8 @@ class ReputationViewModel: ObservableObject {
                 user.addContributionPoints(20)
             case .storeReview:
                 user.addContributionPoints(30)
+            case .shoppingListAddition:
+                user.addContributionPoints(5)
             }
             
             // Check for new achievements

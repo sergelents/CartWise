@@ -100,9 +100,6 @@ struct YourListView: View {
             } else {
                 await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category, price: price ?? 0.0)
             }
-            
-            // Award reputation points for adding product to shopping list
-            await ReputationService.shared.awardShoppingListAddition()
         }
     }
 }

@@ -132,6 +132,8 @@ class ReputationManager: ObservableObject {
             return 20
         case .storeReview:
             return 30
+        case .shoppingListAddition:
+            return 5
         }
     }
 }
@@ -143,4 +145,5 @@ enum ContributionAction {
     case reviewSubmission
     case photoUpload
     case storeReview
+    case shoppingListAddition
 } 

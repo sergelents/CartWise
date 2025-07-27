@@ -196,11 +196,6 @@ struct AddItemsView: View {
                     showingSuccess = true
                     scannedBarcode = ""
                     
-                    // Award reputation points for product addition
-                    Task {
-                        await ReputationService.shared.awardProductAdditionViaBarcode()
-                    }
-                    
                     // Hide success message after 2 seconds
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                         showingSuccess = false
@@ -228,11 +223,6 @@ struct AddItemsView: View {
                     successMessage = "Product added successfully! +25 reputation points!"
                     showingSuccess = true
                     scannedBarcode = ""
-                    
-                    // Award reputation points for manual product addition
-                    Task {
-                        await ReputationService.shared.awardProductAdditionViaManualEntry()
-                    }
                     
                     // Hide success message after 2 seconds
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {

@@ -73,7 +73,7 @@ class ReputationService: ObservableObject {
     /// Award points for adding a product to shopping list
     func awardShoppingListAddition() async {
         print("ReputationService: Awarding points for adding to shopping list")
-        await reputationViewModel?.addContribution(.productAddition) // Using product addition points
+        await reputationViewModel?.addContribution(.shoppingListAddition) // Using shopping list addition points
     }
     
     // MARK: - Price Update Actions
