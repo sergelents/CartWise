@@ -19,10 +19,18 @@
         <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
     </entity>
     <entity name="UserEntity" representedClassName="UserEntity" syncable="YES">
+        <attribute name="achievementBadges" optional="YES" attributeType="String"/>
+        <attribute name="contributionPoints" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="lastContributionDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="level" optional="YES" attributeType="String"/>
         <attribute name="password" optional="YES" attributeType="String"/>
+        <attribute name="priceUpdates" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="productAdditions" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="reputationLevel" optional="YES" attributeType="String"/>
+        <attribute name="reviewsSubmitted" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="totalContributions" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="updates" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="username" optional="YES" attributeType="String"/>
     </entity>

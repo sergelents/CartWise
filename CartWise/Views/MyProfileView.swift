@@ -11,8 +11,11 @@ import CoreData
 struct MyProfileView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    @StateObject private var reputationViewModel = ReputationViewModel()
     @State private var currentUsername: String = ""
     @State private var isLoadingUser: Bool = true
+    @State private var showingReputation = false
+    @State private var showingTestContributions = false
     
     var body: some View {
         NavigationView {
@@ -31,7 +34,7 @@ struct MyProfileView: View {
                 
                 ScrollView {
                     VStack(spacing: 32) {
-                        // Enhanced Profile Card
+                        // Enhanced Profile Card with Reputation
                         VStack(spacing: 16) {
                             // Profile Avatar with enhanced styling
                             ZStack {
@@ -61,10 +64,30 @@ struct MyProfileView: View {
                                     .scaleEffect(0.8)
                                     .padding(.vertical, 12)
                             } else {
-                                Text(currentUsername.isEmpty ? "User" : currentUsername)
-                                    .font(.poppins(size: 26, weight: .bold))
-                                    .foregroundColor(AppColors.textPrimary)
-                                    .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+                                VStack(spacing: 8) {
+                                    Text(currentUsername.isEmpty ? "User" : currentUsername)
+                                        .font(.poppins(size: 26, weight: .bold))
+                                        .foregroundColor(AppColors.textPrimary)
+                                        .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+                                    
+                                    // Reputation Level Badge
+                                    let currentLevel = reputationViewModel.getCurrentLevel()
+                                    HStack(spacing: 6) {
+                                        Image(systemName: currentLevel.icon)
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(currentLevel.color)
+                                        
+                                        Text(currentLevel.name)
+                                            .font(.poppins(size: 14, weight: .semibold))
+                                            .foregroundColor(currentLevel.color)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(currentLevel.color.opacity(0.1))
+                                    )
+                                }
                             }
                             
                             Text("Manage your favorite items and account")
@@ -72,6 +95,64 @@ struct MyProfileView: View {
                                 .foregroundColor(.gray)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 20)
+                            
+                            // Reputation Button
+                            Button(action: {
+                                showingReputation = true
+                            }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "trophy.fill")
+                                        .font(.system(size: 16, weight: .medium))
+                                    Text("View Reputation")
+                                        .font(.poppins(size: 16, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    AppColors.accentGreen,
+                                                    AppColors.accentGreen.opacity(0.8)
+                                                ]),
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                        .shadow(color: AppColors.accentGreen.opacity(0.3), radius: 6, x: 0, y: 3)
+                                )
+                            }
+                            
+                            // Test Contributions Button (for development)
+                            Button(action: {
+                                showingTestContributions = true
+                            }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 16, weight: .medium))
+                                    Text("Test Contributions")
+                                        .font(.poppins(size: 16, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    Color.orange,
+                                                    Color.orange.opacity(0.8)
+                                                ]),
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                        .shadow(color: Color.orange.opacity(0.3), radius: 6, x: 0, y: 3)
+                                )
+                            }
                         }
                         .frame(maxWidth: .infinity)
                         .background(
@@ -129,6 +210,31 @@ struct MyProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 await loadCurrentUser()
+                await reputationViewModel.loadCurrentUser()
+            }
+            .sheet(isPresented: $showingReputation) {
+                NavigationView {
+                    ReputationView(reputationViewModel: reputationViewModel)
+                        .navigationTitle("Reputation")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Done") {
+                                    showingReputation = false
+                                }
+                            }
+                        }
+                }
+            }
+            .alert("Achievement Unlocked!", isPresented: $reputationViewModel.showAchievementAlert) {
+                Button("Awesome!") { }
+            } message: {
+                if let achievement = reputationViewModel.newAchievement {
+                    Text("You've earned the '\(achievement.name)' badge! \(achievement.description)")
+                }
+            }
+            .sheet(isPresented: $showingTestContributions) {
+                TestContributionView(reputationViewModel: reputationViewModel)
             }
         }
     }

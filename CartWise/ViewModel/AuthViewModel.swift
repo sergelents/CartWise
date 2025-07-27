@@ -65,6 +65,16 @@ class AuthViewModel: ObservableObject {
             userEntity.updates = 0
             userEntity.level = "Newbie"
             userEntity.createdAt = Date()
+            
+            // Initialize reputation system fields
+            userEntity.contributionPoints = 0
+            userEntity.reputationLevel = "Newbie"
+            userEntity.totalContributions = 0
+            userEntity.priceUpdates = 0
+            userEntity.productAdditions = 0
+            userEntity.reviewsSubmitted = 0
+            userEntity.lastContributionDate = nil
+            userEntity.achievementBadges = "[]"
 
             print("AuthViewModel: Saving context")
             try context.save()
