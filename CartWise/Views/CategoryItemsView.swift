@@ -323,6 +323,8 @@ struct ProductDetailView: View {
     @State private var isAddingToShoppingList = false
     @State private var showingSuccessMessage = false
     @State private var showingDuplicateMessage = false
+    @State private var showingFavoriteSuccessMessage = false
+    @State private var showingFavoriteDuplicateMessage = false
 
     // Dismissing the view
     @Environment(\.dismiss) private var dismiss
@@ -353,12 +355,13 @@ struct ProductDetailView: View {
 
                     // Add to Shopping List and Add to Favorites View
                     AddToShoppingListAndFavoritesView(
+                        product: product,
+                        productViewModel: productViewModel,
                         onAddToShoppingList: {
                             addToShoppingList()
                         }, 
                         onAddToFavorites: {
-                            // TODO: Add to favorites functionality
-                            isAddingToFavorites.toggle()
+                            addToFavorites()
                         }
                     )
                     .padding(.bottom, 14)
@@ -400,6 +403,16 @@ struct ProductDetailView: View {
         } message: {
             Text("\(product.productName ?? "Product") is already in your shopping list.")
         }
+        .alert("Added to Favorites!", isPresented: $showingFavoriteSuccessMessage) {
+            Button("OK") { }
+        } message: {
+            Text("\(product.productName ?? "Product") has been added to your favorites.")
+        }
+        .alert("Already in Favorites", isPresented: $showingFavoriteDuplicateMessage) {
+            Button("OK") { }
+        } message: {
+            Text("\(product.productName ?? "Product") is already in your favorites.")
+        }
     }
     
     private func addToShoppingList() {
@@ -422,6 +435,28 @@ struct ProductDetailView: View {
                 // Show success message
                 await MainActor.run {
                     showingSuccessMessage = true
+                }
+            }
+        }
+    }
+    
+    private func addToFavorites() {
+        Task {
+            // Check if product already exists in favorites
+            let isDuplicate = await productViewModel.isProductInFavorites(product)
+            
+            if isDuplicate {
+                // Product already exists in favorites, show error message
+                await MainActor.run {
+                    showingFavoriteDuplicateMessage = true
+                }
+            } else {
+                // Add the existing product to favorites
+                await productViewModel.addProductToFavorites(product)
+                
+                // Show success message
+                await MainActor.run {
+                    showingFavoriteSuccessMessage = true
                 }
             }
         }
@@ -558,16 +593,11 @@ struct CustomButtonView: View {
     let buttonColor: Color
     let textColor: Color
     let action: () -> Void
-    @State var isAdded : Bool = false
-    @State var isAddedImageName: String
-    @State var isAddedColor: Color
     
     var body: some View {
-        Button(action: {
-            action()
-            self.isAdded.toggle()}) {
+        Button(action: action) {
             HStack(alignment: .center, spacing: 2) {
-                Image(systemName: isAdded ? isAddedImageName : imageName)
+                Image(systemName: imageName)
                     .font(.system(size: 14))
                     .foregroundColor(textColor)
                 Text(title)
@@ -577,7 +607,7 @@ struct CustomButtonView: View {
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 8)
-            .background(isAdded ? isAddedColor : buttonColor)
+            .background(buttonColor)
             .cornerRadius(8)
         }
     }
@@ -585,40 +615,46 @@ struct CustomButtonView: View {
 
 // Buttons Add to Shopping List and Add to Favorites View 
 struct AddToShoppingListAndFavoritesView: View {
+    let product: GroceryItem
+    let productViewModel: ProductViewModel
     let onAddToShoppingList: () -> Void
     let onAddToFavorites: () -> Void
+    @State private var isInShoppingList = false
+    @State private var isInFavorites = false
 
     var body: some View {
         HStack(spacing: 14) {
 
             // Add to List Button
             CustomButtonView(
-                title: "Add to My List",
-                imageName: "plus.circle.fill",
+                title: isInShoppingList ? "In My List" : "Add to My List",
+                imageName: isInShoppingList ? "checkmark.circle.fill" : "plus.circle.fill",
                 fontSize: 13,
                 weight: .bold,
-                buttonColor: Color.accentColorBlue,
+                buttonColor: isInShoppingList ? Color.accentColorGreen : Color.accentColorBlue,
                 textColor: .white,
-                action: onAddToShoppingList,
-                isAddedImageName: "checkmark.circle.fill",
-                isAddedColor: Color.accentColorGreen
+                action: onAddToShoppingList
             )
             Spacer()
             // Add to Favorite Button
             CustomButtonView(
-                title: "Add to Favorite",
-                imageName: "plus.circle.fill",
+                title: isInFavorites ? "In Favorites" : "Add to Favorite",
+                imageName: isInFavorites ? "heart.fill" : "plus.circle.fill",
                 fontSize: 13,
                 weight: .bold,
-                buttonColor: Color.accentColorPink,
+                buttonColor: isInFavorites ? Color.accentColorCoral : Color.accentColorPink,
                 textColor: .white,
-                action: onAddToFavorites,
-                isAddedImageName: "heart.fill",
-                isAddedColor: Color.accentColorCoral
+                action: onAddToFavorites
             )
         }
         .padding(.horizontal, 10)
-        .padding(.top, 4)
+        .padding(.top, 8)
+        .task {
+            // Check if product is in shopping list
+            isInShoppingList = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
+            // Check if product is in favorites
+            isInFavorites = await productViewModel.isProductInFavorites(product)
+        }
     }
 }
 

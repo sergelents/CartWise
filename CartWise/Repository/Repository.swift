@@ -18,6 +18,10 @@ protocol ProductRepositoryProtocol: Sendable {
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
     func toggleProductCompletion(_ product: GroceryItem) async throws
     func addProductToShoppingList(_ product: GroceryItem) async throws
+    func fetchFavoriteProducts() async throws -> [GroceryItem]
+    func addProductToFavorites(_ product: GroceryItem) async throws
+    func removeProductFromFavorites(_ product: GroceryItem) async throws
+    func toggleProductFavorite(_ product: GroceryItem) async throws
     func searchProducts(by name: String) async throws -> [GroceryItem]
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryItem]
     func searchProductsOnWalmart(by query: String) async throws -> [GroceryItem]
@@ -111,6 +115,26 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     func addProductToShoppingList(_ product: GroceryItem) async throws {
         // Add existing product to shopping list
         try await coreDataContainer.addProductToShoppingList(product)
+    }
+    
+    func fetchFavoriteProducts() async throws -> [GroceryItem] {
+        // Cache-first: return favorite products immediately
+        return try await coreDataContainer.fetchFavoriteProducts()
+    }
+    
+    func addProductToFavorites(_ product: GroceryItem) async throws {
+        // Add existing product to favorites
+        try await coreDataContainer.addProductToFavorites(product)
+    }
+    
+    func removeProductFromFavorites(_ product: GroceryItem) async throws {
+        // Remove product from favorites
+        try await coreDataContainer.removeProductFromFavorites(product)
+    }
+    
+    func toggleProductFavorite(_ product: GroceryItem) async throws {
+        // Toggle favorite status
+        try await coreDataContainer.toggleProductFavorite(product)
     }
     
     func searchProducts(by name: String) async throws -> [GroceryItem] {
