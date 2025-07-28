@@ -11,6 +11,7 @@ import CoreData
 @main
 struct CartWiseApp: App {
     @StateObject private var appCoordinator = AppCoordinator()
+    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
     
     // Create a CoreDataStack instance for the app
     private let coreDataStack = CoreDataStack.shared
@@ -19,6 +20,8 @@ struct CartWiseApp: App {
         WindowGroup {
             AppCoordinatorView(coordinator: appCoordinator)
                 .environment(\.managedObjectContext, coreDataStack.persistentContainer.viewContext)
+                .environmentObject(productViewModel)
+                .preferredColorScheme(.light)
         }
     }
 }

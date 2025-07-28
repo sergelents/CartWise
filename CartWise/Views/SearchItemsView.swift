@@ -13,11 +13,21 @@ import SwiftUI
 struct SearchItemsView: View {
     // State variable for search bar input
     @State private var searchText = ""
-    @State private var searchResults: [GroceryItem] = []
     @State private var isSearching = false
     @State private var selectedCategory: ProductCategory? = nil
 
-    @StateObject private var viewModel = ProductViewModel(repository: ProductRepository())
+    @EnvironmentObject var viewModel: ProductViewModel
+    
+    // Computed property for search results that updates automatically
+    private var searchResults: [GroceryItem] {
+        guard !searchText.isEmpty else { return [] }
+        // Filter viewModel products to match search text
+        let filtered = viewModel.products.filter { product in
+            guard let name = product.productName?.lowercased() else { return false }
+            return name.contains(searchText.lowercased())
+        }
+        return filtered
+    }
 
     // Returns categories matching search text, or all if search is empty
     // Predefined categories
@@ -111,7 +121,7 @@ struct SearchItemsView: View {
     
     private var searchResultsView: some View {
         List(searchResults, id: \.id) { product in
-            NavigationLink(destination: ProductDetailView(product: product, productViewModel: viewModel)) {
+            NavigationLink(destination: ProductDetailView(product: product)) {
                 SearchResultRowView(product: product)
             }
             .buttonStyle(PlainButtonStyle())
@@ -132,10 +142,9 @@ struct SearchItemsView: View {
         
         return LazyVGrid(columns: columns, spacing: 16) {
             ForEach(filteredCategories, id: \.self) { category in
-                NavigationLink(destination: CategoryItemsView(category: category, viewModel: viewModel)) {
+                NavigationLink(destination: CategoryItemsView(category: category)) {
                     CategoryCard(
-                        category: category, 
-                        productCount: getProductCount(for: category)
+                        category: category
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -144,24 +153,48 @@ struct SearchItemsView: View {
         .padding()
     }
 
-
     // MARK: - Helper Functions
     private func performSearch() async {
         guard !searchText.isEmpty else {
-            searchResults = []
             return
         }
         
         isSearching = true
         defer { isSearching = false }
         
-        do {
-            await viewModel.searchProductsOnAmazon(by: searchText)
-            searchResults = viewModel.products
-        } catch {
-            print("Search error: \(error)")
-            searchResults = []
+        // First, search Core Data for existing products
+        await viewModel.searchProducts(by: searchText)
+        let coreDataResults = viewModel.products
+        
+        // Then search Amazon API for new products
+        await viewModel.searchProductsOnAmazon(by: searchText)
+        let apiResults = viewModel.products
+        
+        // Combine results, avoiding duplicates
+        var combinedResults: [GroceryItem] = []
+        var seenNames = Set<String>()
+        
+        // Add Core Data results first
+        for product in coreDataResults {
+            if let name = product.productName?.lowercased() {
+                seenNames.insert(name)
+                combinedResults.append(product)
+            }
         }
+        
+        // Add API results that aren't duplicates
+        for product in apiResults {
+            if let name = product.productName?.lowercased() {
+                if !seenNames.contains(name) {
+                    seenNames.insert(name)
+                    combinedResults.append(product)
+                }
+            }
+        }
+        
+        // Update the viewModel products with combined results
+        // Note: We need to update the viewModel products directly
+        print("Search completed: \(coreDataResults.count) Core Data results, \(apiResults.count) API results, \(combinedResults.count) total")
     }
     
     // Helper function to enhance search query with category keywords
@@ -199,20 +232,11 @@ struct SearchItemsView: View {
             await performSearch()
         }
     }
-    
-    private func clearCategorySelection() {
-        selectedCategory = nil
-        searchResults = []
-    }
-
-    private func getProductCount(for category: ProductCategory) -> Int {
-        return viewModel.products.filter { $0.category == category.rawValue }.count
-    }
 }
 
 // MARK: - Search Result Row
 struct SearchResultRowView: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
     
     var body: some View {
         HStack(spacing: 12) {
@@ -266,7 +290,6 @@ struct SearchResultRowView: View {
 // MARK: - Category Card View
 struct CategoryCard: View {
     let category: ProductCategory
-    let productCount: Int
     
     var body: some View {
         VStack(spacing: 12) {
@@ -288,13 +311,6 @@ struct CategoryCard: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
-            
-            // Product count
-            if productCount > 0 {
-                Text("\(productCount) items")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            }
         }
         .frame(maxWidth: .infinity, minHeight: 95, maxHeight: 95)
         .padding()

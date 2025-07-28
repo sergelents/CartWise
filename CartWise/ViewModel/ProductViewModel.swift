@@ -1,3 +1,4 @@
+
 //
 //  ProductViewModel.swift
 //  CartWise
@@ -10,6 +11,7 @@ import Combine
 @MainActor
 final class ProductViewModel: ObservableObject {
     @Published var products: [GroceryItem] = []
+    @Published var favoriteProducts: [GroceryItem] = []
     @Published var recentProducts: [GroceryItem] = []
     @Published var priceComparison: PriceComparison?
     @Published var isLoadingPriceComparison = false
@@ -136,6 +138,58 @@ final class ProductViewModel: ObservableObject {
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+    
+    // MARK: - Favorites Methods
+    
+    func loadFavoriteProducts() async {
+        do {
+            favoriteProducts = try await repository.fetchFavoriteProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func addProductToFavorites(_ product: GroceryItem) async {
+        do {
+            try await repository.addProductToFavorites(product)
+            await loadFavoriteProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func removeProductFromFavorites(_ product: GroceryItem) async {
+        do {
+            try await repository.removeProductFromFavorites(product)
+            await loadFavoriteProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func toggleProductFavorite(_ product: GroceryItem) async {
+        do {
+            try await repository.toggleProductFavorite(product)
+            await loadFavoriteProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func isProductInFavorites(_ product: GroceryItem) async -> Bool {
+        do {
+            let favorites = try await repository.fetchFavoriteProducts()
+            return favorites.contains { favorite in
+                favorite.id == product.id
+            }
+        } catch {
+            return false
         }
     }
     

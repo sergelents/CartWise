@@ -11,7 +11,7 @@
 import SwiftUI
 
 struct YourListView: View {
-    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    @EnvironmentObject var productViewModel: ProductViewModel
     @State private var suggestedStore: String = "Whole Foods Market"
     @State private var storeAddress: String = "1701 Wewatta St."
     @State private var total: Double = 0.00
@@ -24,16 +24,15 @@ struct YourListView: View {
     @State private var duplicateProductName = ""
     @State private var showingCheckAllConfirmation = false
     
-    var body: some View {
+        var body: some View {
         NavigationStack {
-        MainContentView(
-                productViewModel: productViewModel,
-            isEditing: $isEditing,
-            allItemsChecked: $allItemsChecked,
-            selectedItemsForDeletion: $selectedItemsForDeletion,
-            suggestedStore: suggestedStore,
-            storeAddress: storeAddress,
-            total: total,
+            MainContentView(
+                isEditing: $isEditing,
+                allItemsChecked: $allItemsChecked,
+                selectedItemsForDeletion: $selectedItemsForDeletion,
+                suggestedStore: suggestedStore,
+                storeAddress: storeAddress,
+                total: total,
                 showingRatingPrompt: $showingRatingPrompt,
                 showingAddProductModal: $showingAddProductModal,
                 showingCheckAllConfirmation: $showingCheckAllConfirmation
@@ -43,9 +42,10 @@ struct YourListView: View {
             RatingPromptView()
         }
             .sheet(isPresented: $showingAddProductModal) {
-                SmartAddProductModal(productViewModel: productViewModel, onAdd: addProductToSystem)
+                SmartAddProductModal(onAdd: addProductToSystem)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
             }
             .alert("Duplicate Product", isPresented: $showingDuplicateAlert) {
                 Button("OK") {
@@ -100,7 +100,7 @@ struct YourListView: View {
 
 // Main Content View, edited by AI
 struct MainContentView: View {
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     @Binding var isEditing: Bool
     @Binding var allItemsChecked: Bool
     @Binding var selectedItemsForDeletion: Set<String>
@@ -128,7 +128,6 @@ struct MainContentView: View {
 
                 // Item List Card
                 ShoppingListCard(
-                    productViewModel: productViewModel,
                     isEditing: $isEditing,
                     allItemsChecked: $allItemsChecked,
                     selectedItemsForDeletion: $selectedItemsForDeletion,
@@ -156,7 +155,7 @@ struct MainContentView: View {
 
 // Shopping List Card
 struct ShoppingListCard: View {
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     @Binding var isEditing: Bool
     @Binding var allItemsChecked: Bool
     @Binding var selectedItemsForDeletion: Set<String>
@@ -254,44 +253,46 @@ struct ShoppingListCard: View {
                 .frame(maxWidth: .infinity, minHeight: 120)
                 .padding(.vertical, 24)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(productViewModel.products, id: \.objectID) { product in
-                            ShoppingListItemRow(
-                                product: product,
-                                isEditing: isEditing,
-                                isSelected: selectedItemsForDeletion.contains(product.id ?? ""),
-                                onToggle: {
-                                    if isEditing {
-                                        if let id = product.id {
-                                            if selectedItemsForDeletion.contains(id) {
-                                                selectedItemsForDeletion.remove(id)
+                List {
+                    ForEach(productViewModel.products, id: \.objectID) { product in
+                        ShoppingListItemRow(
+                            product: product,
+                            isEditing: isEditing,
+                            isSelected: selectedItemsForDeletion.contains(product.id ?? ""),
+                            onToggle: {
+                                if isEditing {
+                                    if let id = product.id {
+                                        if selectedItemsForDeletion.contains(id) {
+                                            selectedItemsForDeletion.remove(id)
                                         } else {
-                                                selectedItemsForDeletion.insert(id)
-                                            }
-                                        }
-                                    } else {
-                                        // Toggle completion status
-                                        Task {
-                                            await productViewModel.toggleProductCompletion(product)
-                                            // Check if all products are completed after toggling
-                                            // if productViewModel.allProductsCompleted {
-                                            //     showingRatingPrompt = true
-                                            // }
+                                            selectedItemsForDeletion.insert(id)
                                         }
                                     }
-                                },
-                                onDelete: {
+                                } else {
+                                    // Toggle completion status
                                     Task {
-                                        await productViewModel.removeProductFromShoppingList(product)
+                                        await productViewModel.toggleProductCompletion(product)
+                                        // Check if all products are completed after toggling
+                                        // if productViewModel.allProductsCompleted {
+                                        //     showingRatingPrompt = true
+                                        // }
                                     }
                                 }
-                            )
-                        }
+                            },
+                            onDelete: {
+                                Task {
+                                    await productViewModel.removeProductFromShoppingList(product)
+                                }
+                            }
+                        )
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     }
-                    .padding(.top, 8)
                 }
                 .frame(maxHeight: 200)
+                .listStyle(PlainListStyle())
+                .background(Color.clear)
             }
 
             // Add Button & Check All Button 
@@ -525,109 +526,112 @@ struct SmartAddProductModal: View {
     @State private var showCursor = false
     @State private var isCancelPressed = false
     @FocusState private var isSearchFocused: Bool
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     let onAdd: (String, String?, String?, Double?) -> Void
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Search Header
-                VStack(spacing: 16) {
-                    Text("Add to Your List")
-                        .font(.poppins(size: 24, weight: .bold))
-                        .padding(.top)
-                    
-                    // Search Bar
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                .foregroundColor(.gray)
-                        
-                        ZStack(alignment: .leading) {
-                            TextField("", text: $searchText)
-                                .font(.poppins(size: 16, weight: .regular))
-                                .focused($isSearchFocused)
-                                .onChange(of: searchText) {
-                                    isCreatingNew = false
-                                }
-                                .onChange(of: isSearchFocused) { _, focused in
-                                    if focused && searchText.isEmpty {
-                                        showCursor = true
-                                    } else {
-                                        showCursor = false
-                                    }
-                                }
-                            
-                            // Placeholder text when not focused
-                            if searchText.isEmpty && !isSearchFocused {
-                                Text("Search products...")
-                                    .font(.poppins(size: 16, weight: .regular))
-                .foregroundColor(.gray)
-                                    .allowsHitTesting(false)
-                            }
-                            
-                            // Solid cursor when focused
-                            if searchText.isEmpty && isSearchFocused {
-                                Rectangle()
-                                    .fill(AppColors.accentGreen)
-                                    .frame(width: 2, height: 20)
-                                    .allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                }
-                .padding(.bottom)
-                
-                // Results Section
-                if searchText.isEmpty {
-                    // Show recent products when search is empty
-                    // RecentProductsSection(productViewModel: productViewModel, onAdd: onAdd, dismiss: dismiss)
-                    
-                    // Show empty state when search is empty
+            GeometryReader { geometry in
+                VStack(spacing: 0) {
+                    // Fixed Header with Search
                     VStack(spacing: 16) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 48))
-                            .foregroundColor(.gray)
-                        Text("Search for products to add to your list")
-                            .font(.poppins(size: 18, weight: .semibold))
-                            .foregroundColor(.gray)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    // Show search results
-                    SearchResultsSection(
-                        searchText: searchText,
-                        onAdd: { name, brand, category, price in
-                            onAdd(name, brand, category, price)
-                            dismiss()
-                        },
-                        onCreateNew: {
-                            isCreatingNew = true
-                        },
-                        productViewModel: productViewModel,
-                        dismiss: dismiss
-                    )
-                }
-                
-                // Create New Product Section (when creating new)
-                if isCreatingNew {
-                    CreateNewProductSection(
-                        productName: searchText,
-                        productBrand: $productBrand,
-                        selectedCategory: $selectedCategory,
-                        showCategoryPicker: $showCategoryPicker,
-                        productViewModel: productViewModel,
-                        onAdd: { name, brand, category, price in
-                            onAdd(name, brand, category, price)
-                            dismiss()
+                        Text("Add to Your List")
+                            .font(.poppins(size: 24, weight: .bold))
+                            .padding(.top)
+                        
+                        // Search Bar
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.gray)
+                            
+                            ZStack(alignment: .leading) {
+                                TextField("", text: $searchText)
+                                    .font(.poppins(size: 16, weight: .regular))
+                                    .focused($isSearchFocused)
+                                    .onChange(of: searchText) {
+                                        isCreatingNew = false
+                                    }
+                                    .onChange(of: isSearchFocused) { _, focused in
+                                        if focused && searchText.isEmpty {
+                                            showCursor = true
+                                        } else {
+                                            showCursor = false
+                                        }
+                                    }
+                                
+                                // Placeholder text when not focused
+                                if searchText.isEmpty && !isSearchFocused {
+                                    Text("Search products...")
+                                        .font(.poppins(size: 16, weight: .regular))
+                                        .foregroundColor(.gray)
+                                        .allowsHitTesting(false)
+                                }
+                                
+                                // Solid cursor when focused
+                                if searchText.isEmpty && isSearchFocused {
+                                    Rectangle()
+                                        .fill(AppColors.accentGreen)
+                                        .frame(width: 2, height: 20)
+                                        .allowsHitTesting(false)
+                                }
+                            }
                         }
-                    )
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                    }
+                    .padding(.bottom)
+                    .background(AppColors.backgroundSecondary)
+                    
+                    // Scrollable Content Area
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            // Results Section
+                            if searchText.isEmpty {
+                                // Show empty state when search is empty
+                                VStack(spacing: 16) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.system(size: 48))
+                                        .foregroundColor(.gray)
+                                    Text("Search for products to add to your list")
+                                        .font(.poppins(size: 18, weight: .semibold))
+                                        .foregroundColor(.gray)
+                                }
+                                .frame(maxWidth: .infinity, minHeight: geometry.size.height * 0.4)
+                                .padding(.top, 40)
+                            } else {
+                                // Show search results
+                                SearchResultsSection(
+                                    searchText: searchText,
+                                    onAdd: { name, brand, category, price in
+                                        onAdd(name, brand, category, price)
+                                        dismiss()
+                                    },
+                                    onCreateNew: {
+                                        isCreatingNew = true
+                                    },
+                                    dismiss: dismiss
+                                )
+                            }
+                            
+                            // Create New Product Section (when creating new)
+                            if isCreatingNew {
+                                CreateNewProductSection(
+                                    productName: searchText,
+                                    productBrand: $productBrand,
+                                    selectedCategory: $selectedCategory,
+                                    showCategoryPicker: $showCategoryPicker,
+                                    onAdd: { name, brand, category, price in
+                                        onAdd(name, brand, category, price)
+                                        dismiss()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    .background(AppColors.backgroundSecondary)
                 }
-                
-                Spacer()
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -654,11 +658,12 @@ struct SmartAddProductModal: View {
     }
 }
 
+
 struct SearchResultsSection: View {
     let searchText: String
     let onAdd: (String, String?, String?, Double?) -> Void
     let onCreateNew: () -> Void
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     let dismiss: DismissAction
     @State private var searchResults: [GroceryItem] = []
     @State private var isSearching = false
@@ -765,7 +770,7 @@ struct SearchResultsSection: View {
 }
 
 struct SearchResultRow: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
     let onAdd: () -> Void
     
     var body: some View {
@@ -830,7 +835,7 @@ struct CreateNewProductSection: View {
     // @State private var isSearchingPrice = false
     // @State private var amazonSearchResults: [GroceryItem] = []
     // @State private var showAmazonResults = false
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     let onAdd: (String, String?, String?, Double?) -> Void
     
     var body: some View {
@@ -945,6 +950,7 @@ struct CreateNewProductSection: View {
             .background(AppColors.accentGreen)
             .cornerRadius(12)
             .padding(.horizontal)
+            .padding(.bottom, 20) // Add extra bottom padding for keyboard
         }
         // .sheet(isPresented: $showAmazonResults) {
         //     AmazonPriceResultsView(
@@ -1015,7 +1021,7 @@ struct CategoryPickerView: View {
 
 // Shopping List circle logic
 struct ShoppingListItemRow: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
     let isEditing: Bool
     let isSelected: Bool
     let onToggle: () -> Void
@@ -1067,9 +1073,7 @@ struct ShoppingListItemRow: View {
                         .foregroundColor(.gray.opacity(0.7))
                 }
             }
-
-            Spacer()
-
+            
             Spacer()
             
             // Price display - always on the right
@@ -1087,6 +1091,7 @@ struct ShoppingListItemRow: View {
                 .fill(Color.white)
                 .shadow(color: Color.black.opacity(0.07), radius: 3, x: 0, y: 2)
         )
+        .contentShape(Rectangle()) // Ensure the entire row is tappable
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive, action: onDelete) {
                 Label("Delete", systemImage: "trash")
@@ -1379,7 +1384,7 @@ struct AmazonPriceResultsView: View {
 
 // Amazon Price Result Row
 struct AmazonPriceResultRow: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
     let onSelect: () -> Void
     
     var body: some View {
