@@ -10,7 +10,7 @@ import CoreData
 
 struct MyProfileView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    @EnvironmentObject var productViewModel: ProductViewModel
     @State private var currentUsername: String = ""
     @State private var isLoadingUser: Bool = true
     
@@ -83,7 +83,7 @@ struct MyProfileView: View {
                         .padding(.vertical, 12)
                         
                         // Enhanced Favorites Section
-                        FavoriteItemsView(productViewModel: productViewModel)
+                        FavoriteItemsView()
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
                         

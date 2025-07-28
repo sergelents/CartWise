@@ -14,7 +14,7 @@ import CoreData
 
 struct CategoryItemsView: View { 
     let category: ProductCategory
-    let viewModel: ProductViewModel  // Receive ViewModel from parent
+    @EnvironmentObject var viewModel: ProductViewModel
     @State private var selectedItemsToAdd: Set<String> = []
     @State private var isLoading = false
     @State private var hasSearched = false
@@ -127,7 +127,6 @@ struct CategoryItemsView: View {
                         ForEach(displayProducts, id: \.id) { groceryItem in
                             ProductCard(
                                 product: groceryItem,
-                                productViewModel: viewModel,
                                 isSelected: groceryItem.id != nil && selectedItemsToAdd.contains(groceryItem.id!),
                                 onToggle: {
                                     if let productId = groceryItem.id {
@@ -241,8 +240,8 @@ struct CategoryItemsView: View {
 
 // Product Card View
 struct ProductCard: View {
-    let product: GroceryItem
-    let productViewModel: ProductViewModel
+    @ObservedObject var product: GroceryItem
+    @EnvironmentObject var productViewModel: ProductViewModel
     let isSelected: Bool
     let onToggle: () -> Void
 
@@ -279,7 +278,7 @@ struct ProductCard: View {
                     
                     if let store = product.store {
                         Text(store)
-                            .font(.system(size: 12))
+                            .font(.system(size: 14))
                             .foregroundColor(.blue)
                             .lineLimit(1)
                     }
@@ -309,31 +308,23 @@ struct ProductCard: View {
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
-            ProductDetailView(product: product, productViewModel: productViewModel)
+            ProductDetailView(product: product)
         }
     }
 }
 
 // Product Detail View
 struct ProductDetailView: View {
-    let product: GroceryItem
-    let productViewModel: ProductViewModel  // Use shared instance
+    @ObservedObject var product: GroceryItem // Use ObservedObject for live updates
+    @EnvironmentObject var productViewModel: ProductViewModel
     
-    // Adding to shopping list and to favorites
-    @State private var isAddingToFavorites = false
-    @State private var isAddingToShoppingList = false
-    @State private var showingSuccessMessage = false
-    @State private var showingDuplicateMessage = false
-    @State private var showingFavoriteSuccessMessage = false
-    @State private var showingFavoriteDuplicateMessage = false
-
     // Dismissing the view
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .center, spacing: 18) {
+                VStack(alignment: .center, spacing: 16) {
                     
                     // Store View
                     if let store = product.store {
@@ -350,30 +341,31 @@ struct ProductDetailView: View {
                     // TODO: Need to update data model to include last updated info?
                     ProductPriceView(
                         product: product,
-                        lastUpdated: "7/17/2025",
-                        lastUpdatedBy: "Kelly Yong"
+                        lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
+                        lastUpdatedBy: "-"
                     )
 
                     // Add to Shopping List and Add to Favorites View
                     AddToShoppingListAndFavoritesView(
                         product: product,
-                        productViewModel: productViewModel,
-                        onAddToShoppingList: {
-                            addToShoppingList()
-                        }, 
-                        onAddToFavorites: {
-                            addToFavorites()
-                        }
+                        onAddToShoppingList: {},
+                        onAddToFavorites: {}
                     )
+                    .padding(.bottom, 14)
 
                     // Update Price View
                     UpdatePriceView(
                         product: product,
-                        onUpdatePrice: {
-                            // TODO: Update price functionality
+                        // Need to get username from user
+                        userName: "username",
+                        onUpdatePrice: { newPrice, updatedBy, updatedAt in
+                            product.price = newPrice
+                            product.lastUpdated = updatedAt
+                            await productViewModel.updateProduct(product)
+                            await productViewModel.loadProducts()
                         },
-                        lastUpdated: "7/17/2025",
-                        lastUpdatedBy: "Kelly Yong"
+                        lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
+                        lastUpdatedBy: "-"
                     )
                 }
                 .padding(.horizontal, 24)
@@ -385,73 +377,6 @@ struct ProductDetailView: View {
                     Button("Done") {
                         dismiss()
                     }
-                }
-            }
-        }
-        .alert("Added to Shopping List!", isPresented: $showingSuccessMessage) {
-            Button("OK") { }
-        } message: {
-            Text("\(product.productName ?? "Product") has been added to your shopping list.")
-        }
-        .alert("Already in Shopping List", isPresented: $showingDuplicateMessage) {
-            Button("OK") { }
-        } message: {
-            Text("\(product.productName ?? "Product") is already in your shopping list.")
-        }
-        .alert("Added to Favorites!", isPresented: $showingFavoriteSuccessMessage) {
-            Button("OK") { }
-        } message: {
-            Text("\(product.productName ?? "Product") has been added to your favorites.")
-        }
-        .alert("Already in Favorites", isPresented: $showingFavoriteDuplicateMessage) {
-            Button("OK") { }
-        } message: {
-            Text("\(product.productName ?? "Product") is already in your favorites.")
-        }
-    }
-    
-    private func addToShoppingList() {
-        Task {
-            // Check if product already exists in shopping list
-            let isDuplicate = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
-            
-            if isDuplicate {
-                // Product already exists, show error message
-                await MainActor.run {
-                    showingDuplicateMessage = true
-                }
-            } else {
-                // Add the existing product to shopping list
-                await productViewModel.addExistingProductToShoppingList(product)
-                
-                // Refresh the shopping list to show the new item
-                await productViewModel.loadShoppingListProducts()
-                
-                // Show success message
-                await MainActor.run {
-                    showingSuccessMessage = true
-                }
-            }
-        }
-    }
-    
-    private func addToFavorites() {
-        Task {
-            // Check if product already exists in favorites
-            let isDuplicate = await productViewModel.isProductInFavorites(product)
-            
-            if isDuplicate {
-                // Product already exists in favorites, show error message
-                await MainActor.run {
-                    showingFavoriteDuplicateMessage = true
-                }
-            } else {
-                // Add the existing product to favorites
-                await productViewModel.addProductToFavorites(product)
-                
-                // Show success message
-                await MainActor.run {
-                    showingFavoriteSuccessMessage = true
                 }
             }
         }
@@ -468,7 +393,7 @@ struct StoreView: View {
             Image(systemName: "mappin.circle")
                 .foregroundColor(.blue)
             Text(store)
-                .font(.system(size: 16, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundColor(.black)
             Spacer()
             Text(storeAddress)
@@ -486,7 +411,7 @@ struct StoreView: View {
 
 // Product Name View
 struct ProductNameView: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
 
     var body: some View { 
         VStack(alignment: .center, spacing: 10) {
@@ -528,7 +453,7 @@ struct ProductNameView: View {
 
 // Product Image View
 struct ProductImageView: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
 
         var body: some View {
         RoundedRectangle(cornerRadius: 12)
@@ -559,7 +484,7 @@ struct ProductImageView: View {
 
 // Product Price View
 struct ProductPriceView: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
     var lastUpdated: String
     var lastUpdatedBy: String
 
@@ -610,15 +535,19 @@ struct CustomButtonView: View {
 
 // Buttons Add to Shopping List and Add to Favorites View 
 struct AddToShoppingListAndFavoritesView: View {
-    let product: GroceryItem
-    let productViewModel: ProductViewModel
+    @ObservedObject var product: GroceryItem
+    @EnvironmentObject var productViewModel: ProductViewModel
     let onAddToShoppingList: () -> Void
     let onAddToFavorites: () -> Void
     @State private var isInShoppingList = false
     @State private var isInFavorites = false
+    @State private var showingFavoriteSuccessMessage = false
+    @State private var showingFavoriteDuplicateMessage = false
+    @State private var showingSuccessMessage = false
+    @State private var showingDuplicateMessage = false
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
 
             // Add to List Button
             CustomButtonView(
@@ -628,7 +557,9 @@ struct AddToShoppingListAndFavoritesView: View {
                 weight: .bold,
                 buttonColor: isInShoppingList ? Color.accentColorGreen : Color.accentColorBlue,
                 textColor: .white,
-                action: onAddToShoppingList
+                action: {
+                    addToShoppingList()
+                }
             )
             Spacer()
             // Add to Favorite Button
@@ -639,16 +570,87 @@ struct AddToShoppingListAndFavoritesView: View {
                 weight: .bold,
                 buttonColor: isInFavorites ? Color.accentColorCoral : Color.accentColorPink,
                 textColor: .white,
-                action: onAddToFavorites
+                action: {
+                    addToFavorites()
+                }
             )
         }
         .padding(.horizontal, 10)
-        .padding(.top, 8)
+        .padding(.top, 4)
         .task {
             // Check if product is in shopping list
             isInShoppingList = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
             // Check if product is in favorites
             isInFavorites = await productViewModel.isProductInFavorites(product)
+        }
+        .alert("Added to Favorites!", isPresented: $showingFavoriteSuccessMessage) {
+            Button("OK") { }
+        } message: {
+            Text("\(product.productName ?? "Product") has been added to your favorites.")
+        }
+        .alert("Already in Favorites", isPresented: $showingFavoriteDuplicateMessage) {
+            Button("OK") { }
+        } message: {
+            Text("\(product.productName ?? "Product") is already in your favorites.")
+        }
+        .alert("Added to Shopping List!", isPresented: $showingSuccessMessage) {
+            Button("OK") { }
+        } message: {
+            Text("\(product.productName ?? "Product") has been added to your shopping list.")
+        }
+        .alert("Already in Shopping List", isPresented: $showingDuplicateMessage) {
+            Button("OK") { }
+        } message: {
+            Text("\(product.productName ?? "Product") is already in your shopping list.")
+        }
+    }
+    
+    private func addToShoppingList() {
+        Task {
+            // Check if product already exists in shopping list
+            let isDuplicate = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
+            
+            if isDuplicate {
+                // Product already exists, show error message
+                await MainActor.run {
+                    showingDuplicateMessage = true
+                }
+            } else {
+                // Add the existing product to shopping list
+                await productViewModel.addExistingProductToShoppingList(product)
+                
+                // Refresh the shopping list to show the new item
+                await productViewModel.loadShoppingListProducts()
+                
+                // Update the local state
+                await MainActor.run {
+                    isInShoppingList = true
+                    showingSuccessMessage = true
+                }
+            }
+        }
+    }
+    
+    private func addToFavorites() {
+        Task {
+            // Check if product already exists in favorites
+            let isDuplicate = await productViewModel.isProductInFavorites(product)
+
+            if isDuplicate {
+                // Product already exists in favorites, show error message
+                await MainActor.run {
+                    showingFavoriteDuplicateMessage = true
+                }
+            } else {
+                // Add the existing product to favorites
+                await productViewModel.addProductToFavorites(product)
+
+                // Update the local state
+                await MainActor.run {
+                    isInFavorites = true
+                    showingFavoriteSuccessMessage = true
+                }
+            }
         }
     }
 }
@@ -656,24 +658,127 @@ struct AddToShoppingListAndFavoritesView: View {
 // Update Price View
 struct UpdatePriceView: View {
     let product: GroceryItem
-    let onUpdatePrice: () -> Void
+    let userName: String
+    let onUpdatePrice: (_ newPrice: Double, _ updatedBy: String, _ updatedAt: Date) async -> Void
     let lastUpdated: String
     let lastUpdatedBy: String
-    
-    var body: some View {
-        VStack(alignment: .center, spacing: 12) {
-            Text("Price Inaccurate?")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.primary)
 
-            Button(action: onUpdatePrice) {
+    @State private var showSheet: Bool = false
+    @State private var priceInput: String = ""
+    @State private var showError: Bool = false
+
+    var body: some View {
+        VStack(alignment: .center, spacing: 2) {
+            Text("Price Inaccurate?")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(.primary)
+                .padding(.top, 2)
+
+            Button(action: {
+                showSheet = true
+            }) {
                 Text("Update Price")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color.accentColorGreen)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(AppColors.accentGreen)
                     .padding(.bottom, 6)
             }
+        .sheet(isPresented: $showSheet) {
+            VStack(spacing: 24) {
+                Text("Update Price")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppColors.accentGreen)
+                    .padding(.vertical, 20)
+                
+                // Product name
+                Text(product.productName ?? "Unknown Product")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
+                
+                // Current price
+                HStack {
+                    Text("$\(String(format: "%.2f", product.price))")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.primary)
+                }
+                .padding(.bottom, 18)
+                
+                // New price input
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("New Price:")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(AppColors.accentGreen)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    HStack {
+                        Text("$")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.gray)
+                        
+                        TextField("0.00", text: $priceInput)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 16, weight: .medium))
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    .padding(.bottom, 16)
+                }
+                .padding(.horizontal, 16)
+                
+                if showError {
+                    Text("Please enter a valid number.")
+                        .foregroundColor(.red)
+                        .font(.caption)
+                }
+                
+                HStack(spacing: 20) {
+                    CustomButtonView(
+                        title: "Cancel",
+                        imageName: "",
+                        fontSize: 16,
+                        weight: .bold,
+                        buttonColor: Color.gray.opacity(0.3),
+                        textColor: .primary,
+                        action: {
+                            showSheet = false
+                            priceInput = ""
+                            showError = false
+                        }
+                    )
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 18)
+                    
+                    CustomButtonView(
+                        title: "Confirm",
+                        imageName: "",
+                        fontSize: 16,
+                        weight: .bold,
+                        buttonColor: AppColors.accentGreen,
+                        textColor: .white,
+                        action: {
+                            if let newPrice = Double(priceInput), newPrice > 0 {
+                                Task {
+                                    await onUpdatePrice(newPrice, userName, Date())
+                                    showSheet = false
+                                    priceInput = ""
+                                    showError = false
+                                }
+                            } else {
+                                showError = true
+                            }
+                        }
+                    )
+                    .padding(.vertical, 18)
+                    .disabled(priceInput.isEmpty)
+                }
+            }
+            .padding(.horizontal, 18)
+            .interactiveDismissDisabled(true) // Prevent swipe to dismiss
         }
         .padding()
+        }
     }
 }
 

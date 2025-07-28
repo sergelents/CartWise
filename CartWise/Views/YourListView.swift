@@ -11,7 +11,7 @@
 import SwiftUI
 
 struct YourListView: View {
-    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    @EnvironmentObject var productViewModel: ProductViewModel
     @State private var suggestedStore: String = "Whole Foods Market"
     @State private var storeAddress: String = "1701 Wewatta St."
     @State private var total: Double = 0.00
@@ -27,7 +27,6 @@ struct YourListView: View {
     var body: some View {
         NavigationStack {
             MainContentView(
-                productViewModel: productViewModel,
                 isEditing: $isEditing,
                 allItemsChecked: $allItemsChecked,
                 selectedItemsForDeletion: $selectedItemsForDeletion,
@@ -43,8 +42,8 @@ struct YourListView: View {
                 RatingPromptView()
             }
             .sheet(isPresented: $showingAddProductModal) {
-                SmartAddProductModal(productViewModel: productViewModel, onAdd: addProductToSystem)
-                    .presentationDetents([.large, .medium])
+                SmartAddProductModal(onAdd: addProductToSystem)
+                    .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                     .ignoresSafeArea(.keyboard, edges: .bottom)
             }
@@ -101,7 +100,7 @@ struct YourListView: View {
 
 // Main Content View, edited by AI
 struct MainContentView: View {
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     @Binding var isEditing: Bool
     @Binding var allItemsChecked: Bool
     @Binding var selectedItemsForDeletion: Set<String>
@@ -129,7 +128,6 @@ struct MainContentView: View {
 
                 // Item List Card
                 ShoppingListCard(
-                    productViewModel: productViewModel,
                     isEditing: $isEditing,
                     allItemsChecked: $allItemsChecked,
                     selectedItemsForDeletion: $selectedItemsForDeletion,
@@ -157,7 +155,7 @@ struct MainContentView: View {
 
 // Shopping List Card
 struct ShoppingListCard: View {
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     @Binding var isEditing: Bool
     @Binding var allItemsChecked: Bool
     @Binding var selectedItemsForDeletion: Set<String>
@@ -528,7 +526,7 @@ struct SmartAddProductModal: View {
     @State private var showCursor = false
     @State private var isCancelPressed = false
     @FocusState private var isSearchFocused: Bool
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     let onAdd: (String, String?, String?, Double?) -> Void
     
     var body: some View {
@@ -613,7 +611,6 @@ struct SmartAddProductModal: View {
                                     onCreateNew: {
                                         isCreatingNew = true
                                     },
-                                    productViewModel: productViewModel,
                                     dismiss: dismiss
                                 )
                             }
@@ -625,7 +622,6 @@ struct SmartAddProductModal: View {
                                     productBrand: $productBrand,
                                     selectedCategory: $selectedCategory,
                                     showCategoryPicker: $showCategoryPicker,
-                                    productViewModel: productViewModel,
                                     onAdd: { name, brand, category, price in
                                         onAdd(name, brand, category, price)
                                         dismiss()
@@ -662,11 +658,12 @@ struct SmartAddProductModal: View {
     }
 }
 
+
 struct SearchResultsSection: View {
     let searchText: String
     let onAdd: (String, String?, String?, Double?) -> Void
     let onCreateNew: () -> Void
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     let dismiss: DismissAction
     @State private var searchResults: [GroceryItem] = []
     @State private var isSearching = false
@@ -773,7 +770,7 @@ struct SearchResultsSection: View {
 }
 
 struct SearchResultRow: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
     let onAdd: () -> Void
     
     var body: some View {
@@ -838,7 +835,7 @@ struct CreateNewProductSection: View {
     // @State private var isSearchingPrice = false
     // @State private var amazonSearchResults: [GroceryItem] = []
     // @State private var showAmazonResults = false
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     let onAdd: (String, String?, String?, Double?) -> Void
     
     var body: some View {
@@ -1024,7 +1021,7 @@ struct CategoryPickerView: View {
 
 // Shopping List circle logic
 struct ShoppingListItemRow: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
     let isEditing: Bool
     let isSelected: Bool
     let onToggle: () -> Void
@@ -1387,7 +1384,7 @@ struct AmazonPriceResultsView: View {
 
 // Amazon Price Result Row
 struct AmazonPriceResultRow: View {
-    let product: GroceryItem
+    @ObservedObject var product: GroceryItem
     let onSelect: () -> Void
     
     var body: some View {

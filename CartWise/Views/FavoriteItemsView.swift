@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct FavoriteItemsView: View {
-    @ObservedObject var productViewModel: ProductViewModel
+    @EnvironmentObject var productViewModel: ProductViewModel
     @State private var showingProductDetail = false
     @State private var selectedProduct: GroceryItem?
     
@@ -124,7 +124,7 @@ struct FavoriteItemsView: View {
         .padding(.vertical, 16)
         .sheet(isPresented: $showingProductDetail) {
             if let product = selectedProduct {
-                ProductDetailView(product: product, productViewModel: productViewModel)
+                ProductDetailView(product: product)
             }
         }
         .task {
@@ -233,5 +233,5 @@ struct FavoriteItemRow: View {
 }
 
 #Preview {
-    FavoriteItemsView(productViewModel: ProductViewModel(repository: ProductRepository()))
+    FavoriteItemsView()
 } 

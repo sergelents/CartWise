@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AddItemsView: View {
-    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    @EnvironmentObject var productViewModel: ProductViewModel
     @State private var scannedBarcode: String = ""
     @State private var manualBarcode: String = ""
     @State private var showingCamera = false
