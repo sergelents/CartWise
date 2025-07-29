@@ -294,24 +294,47 @@ struct TagPickerView: View {
     let allTags: [Tag]
     @Binding var selectedTags: [Tag]
     let onDone: () -> Void
+    @State private var searchText = ""
+    
+    var filteredTags: [Tag] {
+        if searchText.isEmpty {
+            return allTags
+        } else {
+            return allTags.filter { tag in
+                tag.displayName.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(allTags, id: \.id) { tag in
-                    Button(action: {
-                        if selectedTags.contains(where: { $0.id == tag.id }) {
-                            selectedTags.removeAll { $0.id == tag.id }
-                        } else {
-                            selectedTags.append(tag)
-                        }
-                    }) {
-                        HStack {
-                            Text(tag.displayName)
-                            Spacer()
+            VStack {
+                // Search bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gray)
+                    TextField("Search tags...", text: $searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+                .padding(.horizontal)
+                .padding(.top)
+                
+                List {
+                    ForEach(filteredTags, id: \.id) { tag in
+                        Button(action: {
                             if selectedTags.contains(where: { $0.id == tag.id }) {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.accentColor)
+                                selectedTags.removeAll { $0.id == tag.id }
+                            } else {
+                                selectedTags.append(tag)
+                            }
+                        }) {
+                            HStack {
+                                Text(tag.displayName)
+                                Spacer()
+                                if selectedTags.contains(where: { $0.id == tag.id }) {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.accentColor)
+                                }
                             }
                         }
                     }
