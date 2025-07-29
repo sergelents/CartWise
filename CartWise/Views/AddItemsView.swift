@@ -19,6 +19,7 @@ struct AddItemsView: View {
     @State private var pendingCompany: String = ""
     @State private var pendingPrice: String = ""
     @State private var pendingCategory: ProductCategory = .none
+    @State private var pendingIsOnSale: Bool = false
     @State private var showCategoryPicker = false
     @State private var errorMessage: String?
     @State private var showingError = false
@@ -180,10 +181,11 @@ struct AddItemsView: View {
                     company: $pendingCompany,
                     price: $pendingPrice,
                     selectedCategory: $pendingCategory,
+                    isOnSale: $pendingIsOnSale,
                     showCategoryPicker: $showCategoryPicker,
-                    onConfirm: { barcode, productName, company, price, category in
+                    onConfirm: { barcode, productName, company, price, category, isOnSale in
                         showingBarcodeConfirmation = false
-                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category)
+                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale)
                     },
                     onCancel: {
                         showingBarcodeConfirmation = false
@@ -211,7 +213,7 @@ struct AddItemsView: View {
         showingBarcodeConfirmation = true
     }
     
-    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory) {
+    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory, isOnSale: Bool) {
         scannedBarcode = barcode
         isProcessing = true
         
@@ -221,6 +223,7 @@ struct AddItemsView: View {
             
             await productViewModel.createProductByBarcode(
                 barcode,
+                isOnSale: isOnSale,
                 productName: productName.isEmpty ? "Unknown Product" : productName,
                 brand: company.isEmpty ? nil : company,
                 category: category == .none ? nil : category.rawValue,
@@ -254,6 +257,7 @@ struct AddItemsView: View {
         pendingCompany = ""
         pendingPrice = ""
         pendingCategory = .none
+        pendingIsOnSale = false
     }
     
     private func handleError(_ error: String) {
@@ -270,8 +274,9 @@ struct BarcodeConfirmationView: View {
     @Binding var company: String
     @Binding var price: String
     @Binding var selectedCategory: ProductCategory
+    @Binding var isOnSale: Bool
     @Binding var showCategoryPicker: Bool
-    let onConfirm: (String, String, String, String, ProductCategory) -> Void
+    let onConfirm: (String, String, String, String, ProductCategory, Bool) -> Void
     let onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
     
@@ -374,6 +379,27 @@ struct BarcodeConfirmationView: View {
                                 .cornerRadius(8)
                                 .keyboardType(.decimalPad)
                         }
+                        
+                        // Sale Checkbox
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Button(action: {
+                                    isOnSale.toggle()
+                                }) {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: isOnSale ? "checkmark.square.fill" : "square")
+                                            .foregroundColor(isOnSale ? AppColors.accentOrange : .gray)
+                                            .font(.system(size: 28))
+                                        Text("On Sale")
+                                            .font(.headline)
+                                            .foregroundColor(AppColors.textPrimary)
+                                    }
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                
+                                Spacer()
+                            }
+                        }
                     }
                     .padding(.horizontal)
                     
@@ -382,7 +408,7 @@ struct BarcodeConfirmationView: View {
                     // Action Buttons
                     VStack(spacing: 12) {
                         Button(action: {
-                            onConfirm(barcode, productName, company, price, selectedCategory)
+                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale)
                         }) {
                             Text("Add Item")
                                 .fontWeight(.semibold)
