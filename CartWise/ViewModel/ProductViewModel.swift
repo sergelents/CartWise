@@ -15,6 +15,7 @@ final class ProductViewModel: ObservableObject {
     @Published var recentProducts: [GroceryItem] = []
     @Published var priceComparison: PriceComparison?
     @Published var isLoadingPriceComparison = false
+    @Published var tags: [Tag] = []
     var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
@@ -25,8 +26,11 @@ final class ProductViewModel: ObservableObject {
     }
     
     init(repository: ProductRepositoryProtocol) {
-            self.repository = repository
+        self.repository = repository
+        Task {
+            await loadTags()
         }
+    }
     
     func loadShoppingListProducts() async {
         do {
@@ -392,6 +396,15 @@ final class ProductViewModel: ObservableObject {
 }
 
 extension ProductViewModel {
+    @MainActor
+    func loadTags() async {
+        do {
+            tags = try await repository.fetchAllTags()
+        } catch {
+            tags = []
+        }
+    }
+    
     @MainActor
     func fetchAllTags() async -> [Tag] {
         do {

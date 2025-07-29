@@ -9,7 +9,9 @@ import SwiftUI
 import CoreData
 
 struct AddItemsView: View {
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    let availableTags: [Tag] // Pass tags as parameter
+    
     @State private var scannedBarcode: String = ""
     @State private var manualBarcode: String = ""
     @State private var showingCamera = false
@@ -23,7 +25,6 @@ struct AddItemsView: View {
     @State private var pendingIsOnSale: Bool = false
     @State private var showCategoryPicker = false
     // Tag selection state
-    @State private var availableTags: [Tag] = []
     @State private var selectedTags: [Tag] = []
     @State private var showingTagPicker = false
     @State private var errorMessage: String?
@@ -170,9 +171,7 @@ struct AddItemsView: View {
             .navigationTitle("Add Items")
             .navigationBarTitleDisplayMode(.large)
             .onAppear {
-                Task {
-                    availableTags = await productViewModel.fetchAllTags()
-                }
+                // Tags are now passed as parameter, no need to fetch
             }
             .sheet(isPresented: $showingManualEntry) {
                 ManualBarcodeEntryView(
@@ -683,5 +682,5 @@ struct ManualBarcodeEntryView: View {
 }
 
 #Preview {
-    AddItemsView()
+    AddItemsView(availableTags: []) // Pass an empty array for preview
 }
