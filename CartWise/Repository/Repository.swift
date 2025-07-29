@@ -154,16 +154,16 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             // Save network results to local cache
             for networkProduct in networkProducts.prefix(10) { // Limit to first 10
                 _ = try await createProduct(
-                    id: networkProduct.id,
-                    productName: networkProduct.productName,
-                    brand: networkProduct.brand,
-                    category: networkProduct.category,
-                    price: networkProduct.price,
+                    id: UUID().uuidString,
+                    productName: networkProduct.name,
+                    brand: nil, // API doesn't provide brand
+                    category: nil, // API doesn't provide category
+                    price: Double(networkProduct.price.replacingOccurrences(of: "$", with: "")) ?? 0.0,
                     currency: networkProduct.currency,
-                    store: networkProduct.store,
-                    location: networkProduct.location,
-                    imageURL: networkProduct.imageURL,
-                    barcode: networkProduct.barcode,
+                    store: "Amazon", // Default store
+                    location: nil, // API doesn't provide location
+                    imageURL: networkProduct.image,
+                    barcode: nil, // API doesn't provide barcode
                     isInShoppingList: false
                 )
             }
@@ -187,16 +187,16 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             var groceryItems: [GroceryItem] = []
             for amazonProduct in amazonProducts.prefix(10) { // Limit to first 10
                 let groceryItem = try await createProduct(
-                    id: amazonProduct.id,
-                    productName: amazonProduct.productName,
-                    brand: amazonProduct.brand,
-                    category: amazonProduct.category,
-                    price: amazonProduct.price,
+                    id: UUID().uuidString,
+                    productName: amazonProduct.name,
+                    brand: nil, // API doesn't provide brand
+                    category: nil, // API doesn't provide category
+                    price: Double(amazonProduct.price.replacingOccurrences(of: "$", with: "")) ?? 0.0,
                     currency: amazonProduct.currency,
-                    store: amazonProduct.store,
-                    location: amazonProduct.location,
-                    imageURL: amazonProduct.imageURL,
-                    barcode: amazonProduct.barcode,
+                    store: "Amazon",
+                    location: nil, // API doesn't provide location
+                    imageURL: amazonProduct.image,
+                    barcode: nil, // API doesn't provide barcode
                     isInShoppingList: false
                 )
                 print("Repository: Created GroceryItem: '\(groceryItem.productName ?? "Unknown")'")
@@ -223,16 +223,17 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             var groceryItems: [GroceryItem] = []
             for walmartProduct in walmartProducts.prefix(10) { // Limit to first 10
                 let groceryItem = try await createProduct(
-                    id: walmartProduct.id,
-                    productName: walmartProduct.productName,
-                    brand: walmartProduct.brand,
-                    category: walmartProduct.category,
-                    price: walmartProduct.price,
+                    id: UUID().uuidString,
+                    productName: walmartProduct.name,
+                    brand: nil, // API doesn't provide brand
+                    category: nil, // API doesn't provide category
+                    price: Double(walmartProduct.price.replacingOccurrences(of: "$", with: "")) ?? 0.0,
                     currency: walmartProduct.currency,
-                    store: walmartProduct.store,
-                    location: walmartProduct.location,
-                    imageURL: walmartProduct.imageURL,
-                    barcode: walmartProduct.barcode
+                    store: "Walmart",
+                    location: nil, // API doesn't provide location
+                    imageURL: walmartProduct.image,
+                    barcode: nil, // API doesn't provide barcode
+                    isInShoppingList: false
                 )
                 print("Repository: Created GroceryItem: '\(groceryItem.productName ?? "Unknown")'")
                 groceryItems.append(groceryItem)
@@ -249,10 +250,11 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     
     func getPriceComparison(for shoppingList: [GroceryItem]) async throws -> PriceComparison {
         print("Repository: Starting price comparison for \(shoppingList.count) items")
+        print("Repository: Items to check: \(shoppingList.compactMap { $0.productName })")
         
         // Use TaskGroup for concurrent price fetching
         return try await withTaskGroup(of: StorePrice.self) { group in
-            let stores: [Store] = [.amazon, .walmart]
+            let stores: [Store] = [.amazon]
             
             // Add tasks for each store
             for store in stores {
@@ -303,8 +305,14 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                 group.addTask {
                     do {
                         if let priceData = try await self.networkService.searchGroceryPrice(productName: productName, store: store) {
-                            print("Repository: Found \(productName) at \(store.rawValue) for $\(priceData.price)")
-                            return (productName, priceData.price)
+                            // Debug: Print the raw price string
+                            print("Repository: Raw price string for \(productName): '\(priceData.price)'")
+                            
+                            // Convert string price to Double
+                            let cleanPrice = priceData.price.replacingOccurrences(of: "$", with: "").trimmingCharacters(in: .whitespaces)
+                            let price = Double(cleanPrice) ?? 0.0
+                            print("Repository: Found \(productName) at \(store.rawValue) for $\(price) (cleaned from '\(priceData.price)')")
+                            return (productName, price)
                         } else {
                             print("Repository: \(productName) not found at \(store.rawValue)")
                             return (productName, nil)
@@ -322,8 +330,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     totalPrice += price
                     availableItems += 1
                     itemPrices[productName] = price
+                    print("Repository: Added \(productName) price $\(price) to total. Running total: $\(totalPrice)")
                 } else {
                     unavailableItems += 1
+                    print("Repository: No price found for \(productName)")
                 }
             }
         }
@@ -357,16 +367,16 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             
             // Save to local cache
             let savedProduct = try await createProduct(
-                id: networkProduct.id,
-                productName: networkProduct.productName,
-                brand: networkProduct.brand,
-                category: networkProduct.category,
-                price: networkProduct.price,
+                id: UUID().uuidString,
+                productName: networkProduct.name,
+                brand: nil, // API doesn't provide brand
+                category: nil, // API doesn't provide category
+                price: Double(networkProduct.price.replacingOccurrences(of: "$", with: "")) ?? 0.0,
                 currency: networkProduct.currency,
-                store: networkProduct.store,
-                location: networkProduct.location,
-                imageURL: networkProduct.imageURL,
-                barcode: networkProduct.barcode,
+                store: "Amazon", // Default to Amazon since this is from Amazon API
+                location: nil, // API doesn't provide location
+                imageURL: networkProduct.image,
+                barcode: nil, // API doesn't provide barcode
                 isInShoppingList: false
             )
             

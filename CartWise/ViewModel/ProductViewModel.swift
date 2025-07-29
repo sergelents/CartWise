@@ -244,7 +244,10 @@ final class ProductViewModel: ObservableObject {
     }
     
     func loadPriceComparison() async {
-        guard !products.isEmpty else {
+        // Get the current shopping list products specifically
+        let shoppingListProducts = try? await repository.fetchListProducts()
+        
+        guard let shoppingList = shoppingListProducts, !shoppingList.isEmpty else {
             priceComparison = nil
             return
         }
@@ -253,8 +256,8 @@ final class ProductViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            print("ViewModel: Starting price comparison for shopping list")
-            let comparison = try await repository.getPriceComparison(for: products)
+            print("ViewModel: Starting price comparison for shopping list with \(shoppingList.count) items")
+            let comparison = try await repository.getPriceComparison(for: shoppingList)
             priceComparison = comparison
             print("ViewModel: Price comparison loaded successfully")
         } catch {

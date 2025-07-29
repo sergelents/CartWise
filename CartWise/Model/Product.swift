@@ -21,44 +21,29 @@ enum ProductCategory: String, CaseIterable {
     case household = "Household & Personal Care"
 }
 
-// Grocery Price API Models
-struct GroceryPriceResponse: Codable, Sendable {
-    let status: Int?
-    let message: String?
-    let data: [GroceryPriceData]?
-    let success: Bool?
-    let products: [GroceryPriceData]?
-    
-    var allProducts: [GroceryPriceData] {
-        return data ?? products ?? []
-    }
+// MARK: - Main Response Model
+struct APIResponse: Codable {
+    let success: Bool
+    let pagination: Pagination?
+    let products: [APIProduct]
 }
 
-struct GroceryPriceData: Codable, Sendable {
-    let id: String
-    let productName: String
-    let brand: String?
-    let category: String?
-    let price: Double
+// MARK: - Pagination Model
+struct Pagination: Codable {
+    let currentPage: Int
+    let nextPage: Int?
+    let totalPages: Int  // Note: This comes as string, not int
+}
+
+// MARK: - Product Model
+struct APIProduct: Codable {
+    let name: String
+    let price: String
     let currency: String
-    let store: String
-    let location: String?
-    let lastUpdated: String
-    let imageURL: String?
-    let barcode: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case id
-        case productName = "product_name"
-        case brand
-        case category
-        case price
-        case currency
-        case store
-        case location
-        case lastUpdated = "last_updated"
-        case imageURL = "image_url"
-        case barcode
-    }
+    let customerReview: String  // Can be empty string
+    let customerReviewCount: String
+    let shippingMessage: String  // Can be empty string
+    let amazonLink: String
+    let image: String
+    let boughtInfo: String  // Can be empty string
 }
-

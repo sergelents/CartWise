@@ -24,7 +24,7 @@ struct YourListView: View {
     @State private var duplicateProductName = ""
     @State private var showingCheckAllConfirmation = false
     
-    var body: some View {
+        var body: some View {
         NavigationStack {
             MainContentView(
                 isEditing: $isEditing,
@@ -36,11 +36,11 @@ struct YourListView: View {
                 showingRatingPrompt: $showingRatingPrompt,
                 showingAddProductModal: $showingAddProductModal,
                 showingCheckAllConfirmation: $showingCheckAllConfirmation
-            )
+        )
             .navigationTitle("Your Shopping List")
-            .sheet(isPresented: $showingRatingPrompt) {
-                RatingPromptView()
-            }
+        .sheet(isPresented: $showingRatingPrompt) {
+            RatingPromptView()
+        }
             .sheet(isPresented: $showingAddProductModal) {
                 SmartAddProductModal(onAdd: addProductToSystem)
                     .presentationDetents([.large])
@@ -688,17 +688,17 @@ struct SearchResultsSection: View {
                 Button(action: onCreateNew) {
                     HStack {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(AppColors.accentGreen)
+            .foregroundColor(AppColors.accentGreen)
                         Text("Add \"\(searchText)\" as new product")
                             .font(.poppins(size: 16, weight: .regular))
                             .foregroundColor(.primary)
                         Spacer()
-                    }
-                    .padding()
+        }
+        .padding()
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
-                    .padding(.horizontal)
-                }
+        .padding(.horizontal)
+    }
             } else {
                 // Show search results in a scrollable container
                 ScrollView {
@@ -1026,7 +1026,7 @@ struct ShoppingListItemRow: View {
     let isSelected: Bool
     let onToggle: () -> Void
     let onDelete: () -> Void
-    
+
     var body: some View {
         HStack(alignment: .center) {
             Button(action: onToggle) {
