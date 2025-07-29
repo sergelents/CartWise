@@ -48,6 +48,7 @@ enum TabItem: String, CaseIterable {
 struct AppCoordinatorView: View {
     @ObservedObject var coordinator: AppCoordinator
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
+    @EnvironmentObject var productViewModel: ProductViewModel
     
     var body: some View {
         Group {
@@ -70,7 +71,7 @@ struct AppCoordinatorView: View {
                         .tag(TabItem.searchItems)
                         .tint(Color.accentColorBlue)
                     
-                    AddItemsView()
+                    AddItemsView(availableTags: productViewModel.tags)
                         .tabItem {
                             Image(systemName: coordinator.selectedTab == .addItems ?
                                   TabItem.addItems.selectedIconName : TabItem.addItems.iconName)

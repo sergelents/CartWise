@@ -12,7 +12,7 @@ protocol CoreDataContainerProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
     func fetchListProducts() async throws -> [GroceryItem]
     // func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool) async throws -> GroceryItem
+    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool, isOnSale: Bool) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
     func deleteProduct(_ product: GroceryItem) async throws
     func toggleProductCompletion(_ product: GroceryItem) async throws
@@ -23,6 +23,14 @@ protocol CoreDataContainerProtocol: Sendable {
     func toggleProductFavorite(_ product: GroceryItem) async throws
     func searchProducts(by name: String) async throws -> [GroceryItem]
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
+    
+    // Tag-related methods
+    func fetchAllTags() async throws -> [Tag]
+    func createTag(id: String, name: String, color: String) async throws -> Tag
+    func updateTag(_ tag: Tag) async throws
+    func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws
+    func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws
+    func initializeDefaultTags() async throws
 }
 
 final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
@@ -66,7 +74,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     // }
     
     // createProduct was creating GroceryItem objects in background Core Data context, but ViewModel expecting objects from main context.
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false) async throws -> GroceryItem {
+    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false, isOnSale: Bool = false) async throws -> GroceryItem {
         // Create in background context first
         let objectID = try await coreDataStack.performBackgroundTask { context in
             let product = GroceryItem(
@@ -80,7 +88,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 store: store,
                 location: location,
                 imageURL: imageURL,
-                barcode: barcode
+                barcode: barcode,
+                isOnSale: isOnSale
             )
             
             // Set shopping list status based on parameter
@@ -189,6 +198,85 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             request.predicate = NSPredicate(format: "productName CONTAINS[cd] %@", name)
             request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.productName, ascending: true)]
             return try context.fetch(request)
+        }
+    }
+    
+    // MARK: - Tag Methods
+    
+    func fetchAllTags() async throws -> [Tag] {
+        // Ensure tags are seeded before fetching
+        try await coreDataStack.ensureTagsSeeded()
+        
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            let request: NSFetchRequest<Tag> = Tag.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \Tag.name, ascending: true)]
+            return try context.fetch(request)
+        }
+    }
+    
+    func createTag(id: String, name: String, color: String) async throws -> Tag {
+        let objectID = try await coreDataStack.performBackgroundTask { context in
+            let tag = Tag(context: context, id: id, name: name, color: color)
+            try context.save()
+            return tag.objectID
+        }
+        
+        let viewContext = await coreDataStack.viewContext
+        return try await viewContext.perform {
+            return try viewContext.existingObject(with: objectID) as! Tag
+        }
+    }
+    
+    func updateTag(_ tag: Tag) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = tag.objectID
+            let tagInContext = try context.existingObject(with: objectID) as! Tag
+            tagInContext.updatedAt = Date()
+            try context.save()
+        }
+    }
+    
+    func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            
+            // Get the tags in the current context
+            let tagObjectIDs = tags.map { $0.objectID }
+            let tagsInContext = try tagObjectIDs.map { try context.existingObject(with: $0) as! Tag }
+            
+            // Add tags to product
+            let currentTags = productInContext.tags as? Set<Tag> ?? Set()
+            let newTags = currentTags.union(Set(tagsInContext))
+            productInContext.tags = NSSet(set: newTags)
+            
+            try context.save()
+        }
+    }
+    
+    func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            
+            // Get the tags in the current context
+            let tagObjectIDs = tags.map { $0.objectID }
+            let tagsInContext = try tagObjectIDs.map { try context.existingObject(with: $0) as! Tag }
+            
+            // Remove tags from product
+            let currentTags = productInContext.tags as? Set<Tag> ?? Set()
+            let newTags = currentTags.subtracting(Set(tagsInContext))
+            productInContext.tags = NSSet(set: newTags)
+            
+            try context.save()
+        }
+    }
+    
+    func initializeDefaultTags() async throws {
+        // Use the new seeded data approach
+        try await coreDataStack.performBackgroundTask { context in
+            try TagSeedData.seedTags(in: context)
         }
     }
 } 

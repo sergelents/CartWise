@@ -25,6 +25,12 @@ actor CoreDataStack {
             }
         }
         container.viewContext.automaticallyMergesChangesFromParent = true
+        
+        // Seed tags after container is loaded
+        Task {
+            try? await seedTagsIfNeeded()
+        }
+        
         return container
     }()
     
@@ -53,5 +59,15 @@ actor CoreDataStack {
                 }
             }
         }
+    }
+    
+    private func seedTagsIfNeeded() async throws {
+        try await performBackgroundTask { context in
+            try TagSeedData.seedTags(in: context)
+        }
+    }
+    
+    func ensureTagsSeeded() async throws {
+        try await seedTagsIfNeeded()
     }
 }

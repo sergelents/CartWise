@@ -6,13 +6,27 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct AddItemsView: View {
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    let availableTags: [Tag] // Pass tags as parameter
+    
     @State private var scannedBarcode: String = ""
     @State private var manualBarcode: String = ""
     @State private var showingCamera = false
     @State private var showingManualEntry = false
+    @State private var showingBarcodeConfirmation = false
+    @State private var pendingBarcode: String = ""
+    @State private var pendingProductName: String = ""
+    @State private var pendingCompany: String = ""
+    @State private var pendingPrice: String = ""
+    @State private var pendingCategory: ProductCategory = .none
+    @State private var pendingIsOnSale: Bool = false
+    @State private var showCategoryPicker = false
+    // Tag selection state
+    @State private var selectedTags: [Tag] = []
+    @State private var showingTagPicker = false
     @State private var errorMessage: String?
     @State private var showingError = false
     @State private var isProcessing = false
@@ -156,15 +170,52 @@ struct AddItemsView: View {
             }
             .navigationTitle("Add Items")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                // Tags are now passed as parameter, no need to fetch
+            }
             .sheet(isPresented: $showingManualEntry) {
                 ManualBarcodeEntryView(
                     barcode: $manualBarcode,
                     onBarcodeEntered: { barcode in
-                        handleBarcodeScanned(barcode)
+                        pendingBarcode = barcode
+                        showingBarcodeConfirmation = true
                         showingManualEntry = false
                     }
                 )
             }
+            .sheet(isPresented: $showingBarcodeConfirmation) {
+                BarcodeConfirmationView(
+                    barcode: $pendingBarcode,
+                    productName: $pendingProductName,
+                    company: $pendingCompany,
+                    price: $pendingPrice,
+                    selectedCategory: $pendingCategory,
+                    isOnSale: $pendingIsOnSale,
+                    showCategoryPicker: $showCategoryPicker,
+                    availableTags: availableTags,
+                    selectedTags: $selectedTags,
+                    showingTagPicker: $showingTagPicker,
+                    onConfirm: { barcode, productName, company, price, category, isOnSale, tags in
+                        showingBarcodeConfirmation = false
+                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale, tags: tags)
+                    },
+                    onCancel: {
+                        showingBarcodeConfirmation = false
+                        resetPendingData()
+                    }
+                )
+                .sheet(isPresented: $showCategoryPicker) {
+                    CategoryPickerView(selectedCategory: $pendingCategory)
+                }
+                .sheet(isPresented: $showingTagPicker) {
+                    TagPickerView(
+                        allTags: availableTags,
+                        selectedTags: $selectedTags,
+                        onDone: { showingTagPicker = false }
+                    )
+                }
+            }
+
             .alert("Error", isPresented: $showingError) {
                 Button("OK") {
                     showingError = false
@@ -177,16 +228,32 @@ struct AddItemsView: View {
     }
     
     private func handleBarcodeScanned(_ barcode: String) {
-        scannedBarcode = barcode
+        pendingBarcode = barcode
         showingCamera = false
+        showingBarcodeConfirmation = true
+    }
+    
+    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory, isOnSale: Bool, tags: [Tag]) {
+        scannedBarcode = barcode
         isProcessing = true
         
         Task {
-            await productViewModel.createProductByBarcode(barcode)
-            
+            // Convert price string to Double
+            let priceValue = Double(price.replacingOccurrences(of: "$", with: "")) ?? 0.0
+            let newProduct = await productViewModel.createProductByBarcode(
+                barcode,
+                isOnSale: isOnSale,
+                productName: productName.isEmpty ? "Unknown Product" : productName,
+                brand: company.isEmpty ? nil : company,
+                category: category == .none ? nil : category.rawValue,
+                price: priceValue
+            )
+            // Associate tags with the new product
+            if let newProduct = newProduct {
+                await productViewModel.addTagsToProduct(newProduct, tags: tags)
+            }
             await MainActor.run {
                 isProcessing = false
-                
                 if let error = productViewModel.errorMessage {
                     errorMessage = error
                     showingError = true
@@ -195,7 +262,6 @@ struct AddItemsView: View {
                     successMessage = "Product added successfully!"
                     showingSuccess = true
                     scannedBarcode = ""
-                    
                     // Hide success message after 2 seconds
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                         showingSuccess = false
@@ -205,10 +271,326 @@ struct AddItemsView: View {
         }
     }
     
+    private func resetPendingData() {
+        pendingBarcode = ""
+        pendingProductName = ""
+        pendingCompany = ""
+        pendingPrice = ""
+        pendingCategory = .none
+        pendingIsOnSale = false
+        selectedTags = []
+    }
+    
     private func handleError(_ error: String) {
         errorMessage = error
         showingError = true
         showingCamera = false
+    }
+}
+
+// MARK: - Tag Picker View
+struct TagPickerView: View {
+    let allTags: [Tag]
+    @Binding var selectedTags: [Tag]
+    let onDone: () -> Void
+    @State private var searchText = ""
+    
+    var filteredTags: [Tag] {
+        if searchText.isEmpty {
+            return allTags
+        } else {
+            return allTags.filter { tag in
+                tag.displayName.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                // Search bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gray)
+                    TextField("Search tags...", text: $searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+                .padding(.horizontal)
+                .padding(.top)
+                
+                List {
+                    ForEach(filteredTags, id: \.id) { tag in
+                        Button(action: {
+                            if selectedTags.contains(where: { $0.id == tag.id }) {
+                                selectedTags.removeAll { $0.id == tag.id }
+                            } else {
+                                selectedTags.append(tag)
+                            }
+                        }) {
+                            HStack {
+                                Text(tag.displayName)
+                                Spacer()
+                                if selectedTags.contains(where: { $0.id == tag.id }) {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.accentColor)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Select Tags")
+            .navigationBarItems(trailing: Button("Done") { onDone() })
+        }
+    }
+}
+
+// MARK: - Tag Chip View
+struct TagChipView: View {
+    let tag: Tag
+    let onRemove: () -> Void
+    
+    var body: some View {
+        HStack {
+            Text(tag.displayName)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color(hex: tag.displayColor))
+                .foregroundColor(.white)
+                .cornerRadius(16)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.white)
+            }
+        }
+        .padding(4)
+    }
+}
+
+// MARK: - Barcode Confirmation View
+struct BarcodeConfirmationView: View {
+    @Binding var barcode: String
+    @Binding var productName: String
+    @Binding var company: String
+    @Binding var price: String
+    @Binding var selectedCategory: ProductCategory
+    @Binding var isOnSale: Bool
+    @Binding var showCategoryPicker: Bool
+    let availableTags: [Tag]
+    @Binding var selectedTags: [Tag]
+    @Binding var showingTagPicker: Bool
+    let onConfirm: (String, String, String, String, ProductCategory, Bool, [Tag]) -> Void
+    let onCancel: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 12) {
+                        Image(systemName: "barcode.viewfinder")
+                            .font(.system(size: 40))
+                            .foregroundColor(AppColors.accentGreen)
+                        
+                        Text("Product Details")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        Text("Review and edit the product information")
+                            .font(.body)
+                            .foregroundColor(AppColors.textPrimary.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 20)
+                    
+                    // Form Fields
+                    VStack(spacing: 16) {
+                        // Barcode Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Barcode Number")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            TextField("Barcode", text: $barcode)
+                                .font(.system(.body, design: .monospaced))
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                                .keyboardType(.numberPad)
+                        }
+                        
+                        // Product Name Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Product Name")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            TextField("Enter product name...", text: $productName)
+                                .font(.body)
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                        }
+                        
+                        // Company Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Company/Brand")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            TextField("Enter company or brand...", text: $company)
+                                .font(.body)
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                        }
+                        
+                        // Category Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Category")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            Button(action: {
+                                showCategoryPicker = true
+                            }) {
+                                HStack {
+                                    Text(selectedCategory.rawValue)
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .foregroundColor(.gray)
+                                }
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                            }
+                        }
+                        
+                        // Price Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Price")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            TextField("Enter price...", text: $price)
+                                .font(.body)
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                                .keyboardType(.decimalPad)
+                        }
+                        
+                        // Sale Checkbox
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Button(action: {
+                                    isOnSale.toggle()
+                                }) {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: isOnSale ? "checkmark.square.fill" : "square")
+                                            .foregroundColor(isOnSale ? AppColors.accentOrange : .gray)
+                                            .font(.system(size: 28))
+                                        Text("On Sale")
+                                            .font(.headline)
+                                            .foregroundColor(AppColors.textPrimary)
+                                    }
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                
+                                Spacer()
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    // Tag Selection Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Tags")
+                            .font(.headline)
+                            .foregroundColor(AppColors.textPrimary)
+                            .padding(.bottom, 4)
+                        Button(action: {
+                            showingTagPicker = true
+                        }) {
+                            HStack {
+                                Text(selectedTags.isEmpty ? "Select tags..." : "\(selectedTags.count) tags selected")
+                                    .font(.body)
+                                    .foregroundColor(selectedTags.isEmpty ? .gray : .primary)
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(AppColors.backgroundSecondary)
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding(.horizontal)
+                    // Selected Tags Display
+                    if !selectedTags.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Selected Tags")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                                .padding(.bottom, 4)
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                                ForEach(selectedTags, id: \.id) { tag in
+                                    TagChipView(tag: tag) {
+                                        selectedTags.removeAll { $0.id == tag.id }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    Spacer(minLength: 20)
+                    
+                    // Action Buttons
+                    VStack(spacing: 12) {
+                        Button(action: {
+                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedTags)
+                        }) {
+                            Text("Add Item")
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(barcode.isEmpty ? Color.gray : AppColors.accentGreen)
+                                .cornerRadius(12)
+                        }
+                        .disabled(barcode.isEmpty)
+                        .padding(.horizontal)
+                        
+                        Button(action: {
+                            onCancel()
+                        }) {
+                            Text("Cancel")
+                                .fontWeight(.semibold)
+                                .foregroundColor(AppColors.accentGreen)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(AppColors.accentGreen.opacity(0.1))
+                                .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+            }
+            .navigationTitle("Product Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        onCancel()
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -300,5 +682,5 @@ struct ManualBarcodeEntryView: View {
 }
 
 #Preview {
-    AddItemsView()
+    AddItemsView(availableTags: []) // Pass an empty array for preview
 }

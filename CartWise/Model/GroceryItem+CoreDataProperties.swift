@@ -28,13 +28,15 @@ extension GroceryItem {
     @NSManaged public var isCompleted: Bool
     @NSManaged public var isInShoppingList: Bool
     @NSManaged public var isFavorite: Bool
+    @NSManaged public var isOnSale: Bool
     @NSManaged public var createdAt: Date?
     @NSManaged public var updatedAt: Date?
+    @NSManaged public var tags: NSSet?
 
 }
 
 extension GroceryItem {
-    convenience init(context: NSManagedObjectContext, id: String, productName: String, brand: String? = nil, category: String? = nil, price: Double = 0.0, currency: String = "USD", store: String? = nil, location: String? = nil, imageURL: String? = nil, barcode: String? = nil) {
+    convenience init(context: NSManagedObjectContext, id: String, productName: String, brand: String? = nil, category: String? = nil, price: Double = 0.0, currency: String = "USD", store: String? = nil, location: String? = nil, imageURL: String? = nil, barcode: String? = nil, isOnSale: Bool = false) {
         self.init(context: context)
         self.id = id
         self.productName = productName
@@ -49,6 +51,7 @@ extension GroceryItem {
         self.isCompleted = false
         self.isInShoppingList = false
         self.isFavorite = false
+        self.isOnSale = isOnSale
         self.createdAt = Date()
         self.updatedAt = Date()
         self.lastUpdated = Date()
@@ -56,5 +59,9 @@ extension GroceryItem {
 }
 
 extension GroceryItem : Identifiable {
-
+    // Computed property for easier access to tags
+    var tagArray: [Tag] {
+        let set = tags as? Set<Tag> ?? []
+        return Array(set)
+    }
 } 
