@@ -11,7 +11,7 @@ import CoreData
 @main
 struct CartWiseApp: App {
     @StateObject private var appCoordinator = AppCoordinator()
-    @StateObject var productViewModel = ProductViewModel(repository: ProductRepository())
+    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
     
     init() {
         // Tags are now seeded automatically by CoreDataStack
