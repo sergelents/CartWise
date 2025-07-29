@@ -204,6 +204,9 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     // MARK: - Tag Methods
     
     func fetchAllTags() async throws -> [Tag] {
+        // Ensure tags are seeded before fetching
+        try await coreDataStack.ensureTagsSeeded()
+        
         let context = await coreDataStack.viewContext
         return try await context.perform {
             let request: NSFetchRequest<Tag> = Tag.fetchRequest()
@@ -271,42 +274,9 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     }
     
     func initializeDefaultTags() async throws {
-        // Check if tags already exist
-        let existingTags = try await fetchAllTags()
-        if !existingTags.isEmpty {
-            return // Tags already initialized
-        }
-        
-        // Default tags to create
-        let defaultTags = [
-            ("Toilet Paper", "#FF6B6B"),
-            ("All-Purpose Cleaner", "#4ECDC4"),
-            ("Hand Sanitizer", "#45B7D1"),
-            ("Paper Towels", "#96CEB4"),
-            ("Dish Soap", "#FFEAA7"),
-            ("Laundry Detergent", "#DDA0DD"),
-            ("Trash Bags", "#98D8C8"),
-            ("Batteries", "#F7DC6F"),
-            ("Light Bulbs", "#BB8FCE"),
-            ("First Aid", "#E74C3C"),
-            ("Vitamins", "#F39C12"),
-            ("Pet Food", "#8E44AD"),
-            ("Baby Items", "#E91E63"),
-            ("Office Supplies", "#607D8B"),
-            ("Kitchen Essentials", "#795548"),
-            ("Bathroom Items", "#9C27B0"),
-            ("Cleaning Supplies", "#00BCD4"),
-            ("Personal Care", "#FF9800"),
-            ("Snacks", "#4CAF50"),
-            ("Beverages", "#2196F3")
-        ]
-        
-        // Create tags in background context
+        // Use the new seeded data approach
         try await coreDataStack.performBackgroundTask { context in
-            for (name, color) in defaultTags {
-                let tag = Tag(context: context, id: UUID().uuidString, name: name, color: color)
-            }
-            try context.save()
+            try TagSeedData.seedTags(in: context)
         }
     }
 } 

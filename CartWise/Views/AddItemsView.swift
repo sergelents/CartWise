@@ -512,6 +512,7 @@ struct BarcodeConfirmationView: View {
                         Text("Tags")
                             .font(.headline)
                             .foregroundColor(AppColors.textPrimary)
+                            .padding(.bottom, 4)
                         Button(action: {
                             showingTagPicker = true
                         }) {
@@ -535,6 +536,7 @@ struct BarcodeConfirmationView: View {
                             Text("Selected Tags")
                                 .font(.headline)
                                 .foregroundColor(AppColors.textPrimary)
+                                .padding(.bottom, 4)
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
                                 ForEach(selectedTags, id: \.id) { tag in
                                     TagChipView(tag: tag) {
@@ -543,6 +545,7 @@ struct BarcodeConfirmationView: View {
                                 }
                             }
                         }
+                        .padding(.horizontal)
                     }
                     
                     Spacer(minLength: 20)

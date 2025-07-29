@@ -14,9 +14,7 @@ struct CartWiseApp: App {
     @StateObject var productViewModel = ProductViewModel(repository: ProductRepository())
     
     init() {
-        Task {
-            try? await CoreDataContainer().initializeDefaultTags()
-        }
+        // Tags are now seeded automatically by CoreDataStack
     }
     
     // Create a CoreDataStack instance for the app
