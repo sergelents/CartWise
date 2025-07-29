@@ -281,7 +281,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, price: Double = 0.0) async {
+    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, price: Double = 0.0, isOnSale: Bool = false) async {
         do {
             if await isDuplicateProduct(name: name) {
                 errorMessage = "Product '\(name)' already exists in your list"
@@ -300,7 +300,8 @@ final class ProductViewModel: ObservableObject {
                 location: nil,
                 imageURL: nil,
                 barcode: nil,
-                isInShoppingList: true
+                isInShoppingList: true,
+                isOnSale: isOnSale
             )
             await loadShoppingListProducts()
             errorMessage = nil
@@ -336,7 +337,7 @@ final class ProductViewModel: ObservableObject {
     
     // MARK: - Barcode-specific methods for future implementation
     
-    func createProductByBarcode(_ barcode: String) async {
+    func createProductByBarcode(_ barcode: String, isOnSale: Bool = false, productName: String? = nil, brand: String? = nil, category: String? = nil, price: Double = 0.0, store: String? = nil) async {
         do {
             // Check if product already exists with this barcode
             if await isDuplicateBarcode(barcode) {
@@ -346,24 +347,26 @@ final class ProductViewModel: ObservableObject {
             
             // Try to fetch product from API using barcode
             if let apiProduct = try await repository.fetchProductFromNetwork(by: barcode) {
-                // Product found in API, add to shopping list
+                // Product found in API, add to shopping list with sale status
+                apiProduct.isOnSale = isOnSale
                 await addExistingProductToShoppingList(apiProduct)
                 errorMessage = nil
             } else {
-                // Product not found in API, create basic entry
+                // Product not found in API, create entry with user-provided data
                 let id = UUID().uuidString
                 _ = try await repository.createProduct(
                     id: id,
-                    productName: "Product (Barcode: \(barcode))",
-                    brand: nil,
-                    category: nil,
-                    price: 0.0,
+                    productName: productName ?? "Product (Barcode: \(barcode))",
+                    brand: brand,
+                    category: category,
+                    price: price,
                     currency: "USD",
-                    store: nil,
+                    store: store,
                     location: nil,
                     imageURL: nil,
                     barcode: barcode,
-                    isInShoppingList: false
+                    isInShoppingList: false,
+                    isOnSale: isOnSale
                 )
                 await loadShoppingListProducts()
                 errorMessage = nil

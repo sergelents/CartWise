@@ -13,6 +13,13 @@ struct AddItemsView: View {
     @State private var manualBarcode: String = ""
     @State private var showingCamera = false
     @State private var showingManualEntry = false
+    @State private var showingBarcodeConfirmation = false
+    @State private var pendingBarcode: String = ""
+    @State private var pendingProductName: String = ""
+    @State private var pendingCompany: String = ""
+    @State private var pendingPrice: String = ""
+    @State private var pendingCategory: ProductCategory = .none
+    @State private var showCategoryPicker = false
     @State private var errorMessage: String?
     @State private var showingError = false
     @State private var isProcessing = false
@@ -160,10 +167,32 @@ struct AddItemsView: View {
                 ManualBarcodeEntryView(
                     barcode: $manualBarcode,
                     onBarcodeEntered: { barcode in
-                        handleBarcodeScanned(barcode)
+                        pendingBarcode = barcode
+                        showingBarcodeConfirmation = true
                         showingManualEntry = false
                     }
                 )
+            }
+            .sheet(isPresented: $showingBarcodeConfirmation) {
+                BarcodeConfirmationView(
+                    barcode: $pendingBarcode,
+                    productName: $pendingProductName,
+                    company: $pendingCompany,
+                    price: $pendingPrice,
+                    selectedCategory: $pendingCategory,
+                    showCategoryPicker: $showCategoryPicker,
+                    onConfirm: { barcode, productName, company, price, category in
+                        showingBarcodeConfirmation = false
+                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category)
+                    },
+                    onCancel: {
+                        showingBarcodeConfirmation = false
+                        resetPendingData()
+                    }
+                )
+                .sheet(isPresented: $showCategoryPicker) {
+                    CategoryPickerView(selectedCategory: $pendingCategory)
+                }
             }
             .alert("Error", isPresented: $showingError) {
                 Button("OK") {
@@ -177,12 +206,26 @@ struct AddItemsView: View {
     }
     
     private func handleBarcodeScanned(_ barcode: String) {
-        scannedBarcode = barcode
+        pendingBarcode = barcode
         showingCamera = false
+        showingBarcodeConfirmation = true
+    }
+    
+    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory) {
+        scannedBarcode = barcode
         isProcessing = true
         
         Task {
-            await productViewModel.createProductByBarcode(barcode)
+            // Convert price string to Double
+            let priceValue = Double(price.replacingOccurrences(of: "$", with: "")) ?? 0.0
+            
+            await productViewModel.createProductByBarcode(
+                barcode,
+                productName: productName.isEmpty ? "Unknown Product" : productName,
+                brand: company.isEmpty ? nil : company,
+                category: category == .none ? nil : category.rawValue,
+                price: priceValue
+            )
             
             await MainActor.run {
                 isProcessing = false
@@ -205,12 +248,183 @@ struct AddItemsView: View {
         }
     }
     
+    private func resetPendingData() {
+        pendingBarcode = ""
+        pendingProductName = ""
+        pendingCompany = ""
+        pendingPrice = ""
+        pendingCategory = .none
+    }
+    
     private func handleError(_ error: String) {
         errorMessage = error
         showingError = true
         showingCamera = false
     }
 }
+
+// MARK: - Barcode Confirmation View
+struct BarcodeConfirmationView: View {
+    @Binding var barcode: String
+    @Binding var productName: String
+    @Binding var company: String
+    @Binding var price: String
+    @Binding var selectedCategory: ProductCategory
+    @Binding var showCategoryPicker: Bool
+    let onConfirm: (String, String, String, String, ProductCategory) -> Void
+    let onCancel: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 12) {
+                        Image(systemName: "barcode.viewfinder")
+                            .font(.system(size: 40))
+                            .foregroundColor(AppColors.accentGreen)
+                        
+                        Text("Product Details")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        
+                        Text("Review and edit the product information")
+                            .font(.body)
+                            .foregroundColor(AppColors.textPrimary.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 20)
+                    
+                    // Form Fields
+                    VStack(spacing: 16) {
+                        // Barcode Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Barcode Number")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            TextField("Barcode", text: $barcode)
+                                .font(.system(.body, design: .monospaced))
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                                .keyboardType(.numberPad)
+                        }
+                        
+                        // Product Name Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Product Name")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            TextField("Enter product name...", text: $productName)
+                                .font(.body)
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                        }
+                        
+                        // Company Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Company/Brand")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            TextField("Enter company or brand...", text: $company)
+                                .font(.body)
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                        }
+                        
+                        // Category Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Category")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            Button(action: {
+                                showCategoryPicker = true
+                            }) {
+                                HStack {
+                                    Text(selectedCategory.rawValue)
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .foregroundColor(.gray)
+                                }
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                            }
+                        }
+                        
+                        // Price Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Price")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            TextField("Enter price...", text: $price)
+                                .font(.body)
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                                .keyboardType(.decimalPad)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    Spacer(minLength: 20)
+                    
+                    // Action Buttons
+                    VStack(spacing: 12) {
+                        Button(action: {
+                            onConfirm(barcode, productName, company, price, selectedCategory)
+                        }) {
+                            Text("Add Item")
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(barcode.isEmpty ? Color.gray : AppColors.accentGreen)
+                                .cornerRadius(12)
+                        }
+                        .disabled(barcode.isEmpty)
+                        .padding(.horizontal)
+                        
+                        Button(action: {
+                            onCancel()
+                        }) {
+                            Text("Cancel")
+                                .fontWeight(.semibold)
+                                .foregroundColor(AppColors.accentGreen)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(AppColors.accentGreen.opacity(0.1))
+                                .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+            }
+            .navigationTitle("Product Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        onCancel()
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 
 // MARK: - Manual Barcode Entry View
 struct ManualBarcodeEntryView: View {

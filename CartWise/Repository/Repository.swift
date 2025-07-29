@@ -12,7 +12,7 @@ protocol ProductRepositoryProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
     func fetchListProducts() async throws -> [GroceryItem]
     // func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool) async throws -> GroceryItem
+    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool, isOnSale: Bool) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
     func deleteProduct(_ product: GroceryItem) async throws
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
@@ -75,7 +75,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     //     return try await coreDataContainer.fetchRecentProducts(limit: limit)
     // }
     
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false) async throws -> GroceryItem {
+    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false, isOnSale: Bool = false) async throws -> GroceryItem {
         // Create locally first
         return try await coreDataContainer.createProduct(
             id: id,
@@ -88,7 +88,8 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             location: location,
             imageURL: imageURL,
             barcode: barcode,
-            isInShoppingList: isInShoppingList
+            isInShoppingList: isInShoppingList,
+            isOnSale: isOnSale
         )
     }
     
@@ -164,7 +165,8 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     location: nil, // API doesn't provide location
                     imageURL: networkProduct.image,
                     barcode: nil, // API doesn't provide barcode
-                    isInShoppingList: false
+                    isInShoppingList: false,
+                    isOnSale: false
                 )
             }
 
@@ -197,7 +199,8 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     location: nil, // API doesn't provide location
                     imageURL: amazonProduct.image,
                     barcode: nil, // API doesn't provide barcode
-                    isInShoppingList: false
+                    isInShoppingList: false,
+                    isOnSale: false
                 )
                 print("Repository: Created GroceryItem: '\(groceryItem.productName ?? "Unknown")'")
                 groceryItems.append(groceryItem)
@@ -233,7 +236,8 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     location: nil, // API doesn't provide location
                     imageURL: walmartProduct.image,
                     barcode: nil, // API doesn't provide barcode
-                    isInShoppingList: false
+                    isInShoppingList: false,
+                    isOnSale: false
                 )
                 print("Repository: Created GroceryItem: '\(groceryItem.productName ?? "Unknown")'")
                 groceryItems.append(groceryItem)
@@ -377,7 +381,8 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                 location: nil, // API doesn't provide location
                 imageURL: networkProduct.image,
                 barcode: nil, // API doesn't provide barcode
-                isInShoppingList: false
+                isInShoppingList: false,
+                isOnSale: false
             )
             
             return savedProduct
