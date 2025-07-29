@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct AddItemsView: View {
     @EnvironmentObject var productViewModel: ProductViewModel
@@ -21,6 +22,10 @@ struct AddItemsView: View {
     @State private var pendingCategory: ProductCategory = .none
     @State private var pendingIsOnSale: Bool = false
     @State private var showCategoryPicker = false
+    // Tag selection state
+    @State private var availableTags: [Tag] = []
+    @State private var selectedTags: [Tag] = []
+    @State private var showingTagPicker = false
     @State private var errorMessage: String?
     @State private var showingError = false
     @State private var isProcessing = false
@@ -164,6 +169,11 @@ struct AddItemsView: View {
             }
             .navigationTitle("Add Items")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                Task {
+                    availableTags = await productViewModel.fetchAllTags()
+                }
+            }
             .sheet(isPresented: $showingManualEntry) {
                 ManualBarcodeEntryView(
                     barcode: $manualBarcode,
@@ -183,9 +193,12 @@ struct AddItemsView: View {
                     selectedCategory: $pendingCategory,
                     isOnSale: $pendingIsOnSale,
                     showCategoryPicker: $showCategoryPicker,
-                    onConfirm: { barcode, productName, company, price, category, isOnSale in
+                    availableTags: availableTags,
+                    selectedTags: $selectedTags,
+                    showingTagPicker: $showingTagPicker,
+                    onConfirm: { barcode, productName, company, price, category, isOnSale, tags in
                         showingBarcodeConfirmation = false
-                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale)
+                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale, tags: tags)
                     },
                     onCancel: {
                         showingBarcodeConfirmation = false
@@ -195,7 +208,15 @@ struct AddItemsView: View {
                 .sheet(isPresented: $showCategoryPicker) {
                     CategoryPickerView(selectedCategory: $pendingCategory)
                 }
+                .sheet(isPresented: $showingTagPicker) {
+                    TagPickerView(
+                        allTags: availableTags,
+                        selectedTags: $selectedTags,
+                        onDone: { showingTagPicker = false }
+                    )
+                }
             }
+
             .alert("Error", isPresented: $showingError) {
                 Button("OK") {
                     showingError = false
@@ -213,15 +234,14 @@ struct AddItemsView: View {
         showingBarcodeConfirmation = true
     }
     
-    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory, isOnSale: Bool) {
+    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory, isOnSale: Bool, tags: [Tag]) {
         scannedBarcode = barcode
         isProcessing = true
         
         Task {
             // Convert price string to Double
             let priceValue = Double(price.replacingOccurrences(of: "$", with: "")) ?? 0.0
-            
-            await productViewModel.createProductByBarcode(
+            let newProduct = await productViewModel.createProductByBarcode(
                 barcode,
                 isOnSale: isOnSale,
                 productName: productName.isEmpty ? "Unknown Product" : productName,
@@ -229,10 +249,12 @@ struct AddItemsView: View {
                 category: category == .none ? nil : category.rawValue,
                 price: priceValue
             )
-            
+            // Associate tags with the new product
+            if let newProduct = newProduct {
+                await productViewModel.addTagsToProduct(newProduct, tags: tags)
+            }
             await MainActor.run {
                 isProcessing = false
-                
                 if let error = productViewModel.errorMessage {
                     errorMessage = error
                     showingError = true
@@ -241,7 +263,6 @@ struct AddItemsView: View {
                     successMessage = "Product added successfully!"
                     showingSuccess = true
                     scannedBarcode = ""
-                    
                     // Hide success message after 2 seconds
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                         showingSuccess = false
@@ -258,12 +279,69 @@ struct AddItemsView: View {
         pendingPrice = ""
         pendingCategory = .none
         pendingIsOnSale = false
+        selectedTags = []
     }
     
     private func handleError(_ error: String) {
         errorMessage = error
         showingError = true
         showingCamera = false
+    }
+}
+
+// MARK: - Tag Picker View
+struct TagPickerView: View {
+    let allTags: [Tag]
+    @Binding var selectedTags: [Tag]
+    let onDone: () -> Void
+    
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(allTags, id: \.id) { tag in
+                    Button(action: {
+                        if selectedTags.contains(where: { $0.id == tag.id }) {
+                            selectedTags.removeAll { $0.id == tag.id }
+                        } else {
+                            selectedTags.append(tag)
+                        }
+                    }) {
+                        HStack {
+                            Text(tag.displayName)
+                            Spacer()
+                            if selectedTags.contains(where: { $0.id == tag.id }) {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Select Tags")
+            .navigationBarItems(trailing: Button("Done") { onDone() })
+        }
+    }
+}
+
+// MARK: - Tag Chip View
+struct TagChipView: View {
+    let tag: Tag
+    let onRemove: () -> Void
+    
+    var body: some View {
+        HStack {
+            Text(tag.displayName)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color(hex: tag.displayColor))
+                .foregroundColor(.white)
+                .cornerRadius(16)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.white)
+            }
+        }
+        .padding(4)
     }
 }
 
@@ -276,7 +354,10 @@ struct BarcodeConfirmationView: View {
     @Binding var selectedCategory: ProductCategory
     @Binding var isOnSale: Bool
     @Binding var showCategoryPicker: Bool
-    let onConfirm: (String, String, String, String, ProductCategory, Bool) -> Void
+    let availableTags: [Tag]
+    @Binding var selectedTags: [Tag]
+    @Binding var showingTagPicker: Bool
+    let onConfirm: (String, String, String, String, ProductCategory, Bool, [Tag]) -> Void
     let onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
     
@@ -403,12 +484,50 @@ struct BarcodeConfirmationView: View {
                     }
                     .padding(.horizontal)
                     
+                    // Tag Selection Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Tags")
+                            .font(.headline)
+                            .foregroundColor(AppColors.textPrimary)
+                        Button(action: {
+                            showingTagPicker = true
+                        }) {
+                            HStack {
+                                Text(selectedTags.isEmpty ? "Select tags..." : "\(selectedTags.count) tags selected")
+                                    .font(.body)
+                                    .foregroundColor(selectedTags.isEmpty ? .gray : .primary)
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(AppColors.backgroundSecondary)
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding(.horizontal)
+                    // Selected Tags Display
+                    if !selectedTags.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Selected Tags")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                                ForEach(selectedTags, id: \.id) { tag in
+                                    TagChipView(tag: tag) {
+                                        selectedTags.removeAll { $0.id == tag.id }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
                     Spacer(minLength: 20)
                     
                     // Action Buttons
                     VStack(spacing: 12) {
                         Button(action: {
-                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale)
+                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedTags)
                         }) {
                             Text("Add Item")
                                 .fontWeight(.semibold)
@@ -449,8 +568,6 @@ struct BarcodeConfirmationView: View {
         }
     }
 }
-
-
 
 // MARK: - Manual Barcode Entry View
 struct ManualBarcodeEntryView: View {

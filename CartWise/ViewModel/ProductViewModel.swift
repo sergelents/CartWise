@@ -337,24 +337,24 @@ final class ProductViewModel: ObservableObject {
     
     // MARK: - Barcode-specific methods for future implementation
     
-    func createProductByBarcode(_ barcode: String, isOnSale: Bool = false, productName: String? = nil, brand: String? = nil, category: String? = nil, price: Double = 0.0, store: String? = nil) async {
+    func createProductByBarcode(_ barcode: String, isOnSale: Bool = false, productName: String? = nil, brand: String? = nil, category: String? = nil, price: Double = 0.0, store: String? = nil) async -> GroceryItem? {
         do {
             // Check if product already exists with this barcode
             if await isDuplicateBarcode(barcode) {
                 errorMessage = "Product with barcode '\(barcode)' already exists in your list"
-                return
+                return nil
             }
-            
             // Try to fetch product from API using barcode
             if let apiProduct = try await repository.fetchProductFromNetwork(by: barcode) {
                 // Product found in API, add to shopping list with sale status
                 apiProduct.isOnSale = isOnSale
                 await addExistingProductToShoppingList(apiProduct)
                 errorMessage = nil
+                return apiProduct
             } else {
                 // Product not found in API, create entry with user-provided data
                 let id = UUID().uuidString
-                _ = try await repository.createProduct(
+                let savedProduct = try await repository.createProduct(
                     id: id,
                     productName: productName ?? "Product (Barcode: \(barcode))",
                     brand: brand,
@@ -370,9 +370,11 @@ final class ProductViewModel: ObservableObject {
                 )
                 await loadShoppingListProducts()
                 errorMessage = nil
+                return savedProduct
             }
         } catch {
             errorMessage = error.localizedDescription
+            return nil
         }
     }
     
@@ -387,6 +389,26 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
+}
+
+extension ProductViewModel {
+    @MainActor
+    func fetchAllTags() async -> [Tag] {
+        do {
+            return try await repository.fetchAllTags()
+        } catch {
+            return []
+        }
+    }
+    
+    @MainActor
+    func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async {
+        do {
+            try await repository.addTagsToProduct(product, tags: tags)
+        } catch {
+            // Optionally handle error
+        }
+    }
 }
 
 // This code was generated with the help of Claude, saving me 1 hour of research and development.

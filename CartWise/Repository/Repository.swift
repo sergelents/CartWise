@@ -27,6 +27,14 @@ protocol ProductRepositoryProtocol: Sendable {
     func searchProductsOnWalmart(by query: String) async throws -> [GroceryItem]
     func fetchProductFromNetwork(by name: String) async throws -> GroceryItem?
     func getPriceComparison(for shoppingList: [GroceryItem]) async throws -> PriceComparison
+    
+    // Tag-related methods
+    func fetchAllTags() async throws -> [Tag]
+    func createTag(id: String, name: String, color: String) async throws -> Tag
+    func updateTag(_ tag: Tag) async throws
+    func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws
+    func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws
+    func initializeDefaultTags() async throws
 }
 
 // Price comparison models
@@ -390,6 +398,32 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             // Product not found in API, return nil
             return nil
         }
+    }
+    
+    // MARK: - Tag Methods
+    
+    func fetchAllTags() async throws -> [Tag] {
+        return try await coreDataContainer.fetchAllTags()
+    }
+    
+    func createTag(id: String, name: String, color: String) async throws -> Tag {
+        return try await coreDataContainer.createTag(id: id, name: name, color: color)
+    }
+    
+    func updateTag(_ tag: Tag) async throws {
+        try await coreDataContainer.updateTag(tag)
+    }
+    
+    func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws {
+        try await coreDataContainer.addTagsToProduct(product, tags: tags)
+    }
+    
+    func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws {
+        try await coreDataContainer.removeTagsFromProduct(product, tags: tags)
+    }
+    
+    func initializeDefaultTags() async throws {
+        try await coreDataContainer.initializeDefaultTags()
     }
 }
 

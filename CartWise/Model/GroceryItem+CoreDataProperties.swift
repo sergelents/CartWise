@@ -31,6 +31,7 @@ extension GroceryItem {
     @NSManaged public var isOnSale: Bool
     @NSManaged public var createdAt: Date?
     @NSManaged public var updatedAt: Date?
+    @NSManaged public var tags: NSSet?
 
 }
 
@@ -58,5 +59,9 @@ extension GroceryItem {
 }
 
 extension GroceryItem : Identifiable {
-
+    // Computed property for easier access to tags
+    var tagArray: [Tag] {
+        let set = tags as? Set<Tag> ?? []
+        return Array(set)
+    }
 } 

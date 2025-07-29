@@ -11,7 +11,13 @@ import CoreData
 @main
 struct CartWiseApp: App {
     @StateObject private var appCoordinator = AppCoordinator()
-    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    @StateObject var productViewModel = ProductViewModel(repository: ProductRepository())
+    
+    init() {
+        Task {
+            try? await CoreDataContainer().initializeDefaultTags()
+        }
+    }
     
     // Create a CoreDataStack instance for the app
     private let coreDataStack = CoreDataStack.shared
