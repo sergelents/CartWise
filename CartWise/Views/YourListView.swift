@@ -519,10 +519,6 @@ struct ShoppingListCard: View {
 struct SmartAddProductModal: View {
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
-    @State private var productBrand = ""
-    @State private var selectedCategory: ProductCategory = .none
-    @State private var showCategoryPicker = false
-    @State private var isCreatingNew = false
     @State private var showCursor = false
     @State private var isCancelPressed = false
     @FocusState private var isSearchFocused: Bool
@@ -548,9 +544,6 @@ struct SmartAddProductModal: View {
                                 TextField("", text: $searchText)
                                     .font(.poppins(size: 16, weight: .regular))
                                     .focused($isSearchFocused)
-                                    .onChange(of: searchText) {
-                                        isCreatingNew = false
-                                    }
                                     .onChange(of: isSearchFocused) { _, focused in
                                         if focused && searchText.isEmpty {
                                             showCursor = true
@@ -609,23 +602,9 @@ struct SmartAddProductModal: View {
                                         dismiss()
                                     },
                                     onCreateNew: {
-                                        isCreatingNew = true
+                                        // This is no longer used since we redirect to barcode scanner
                                     },
                                     dismiss: dismiss
-                                )
-                            }
-                            
-                            // Create New Product Section (when creating new)
-                            if isCreatingNew {
-                                CreateNewProductSection(
-                                    productName: searchText,
-                                    productBrand: $productBrand,
-                                    selectedCategory: $selectedCategory,
-                                    showCategoryPicker: $showCategoryPicker,
-                                    onAdd: { name, brand, category, price in
-                                        onAdd(name, brand, category, price)
-                                        dismiss()
-                                    }
                                 )
                             }
                         }
@@ -651,9 +630,7 @@ struct SmartAddProductModal: View {
                         }
                 }
             }
-            .sheet(isPresented: $showCategoryPicker) {
-                CategoryPickerView(selectedCategory: $selectedCategory)
-            }
+
         }
     }
 }
@@ -667,6 +644,7 @@ struct SearchResultsSection: View {
     let dismiss: DismissAction
     @State private var searchResults: [GroceryItem] = []
     @State private var isSearching = false
+    @State private var showingBarcodeScanner = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -684,21 +662,39 @@ struct SearchResultsSection: View {
                 }
                 .padding(.horizontal)
             } else if searchResults.isEmpty {
-                // No results found - show create new option
-                Button(action: onCreateNew) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-            .foregroundColor(AppColors.accentGreen)
-                        Text("Add \"\(searchText)\" as new product")
-                            .font(.poppins(size: 16, weight: .regular))
-                            .foregroundColor(.primary)
-                        Spacer()
-        }
-        .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-        .padding(.horizontal)
-    }
+                // No results found - redirect to barcode scanner
+                VStack(spacing: 16) {
+                    Image(systemName: "barcode.viewfinder")
+                        .font(.system(size: 48))
+                        .foregroundColor(AppColors.accentGreen)
+                    
+                    Text("No products found")
+                        .font(.poppins(size: 18, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    Text("Use the barcode scanner to add \"\(searchText)\" to your list")
+                        .font(.poppins(size: 14, weight: .regular))
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                    
+                    Button(action: {
+                        showingBarcodeScanner = true
+                    }) {
+                        HStack {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 18))
+                            Text("Open Barcode Scanner")
+                                .font(.poppins(size: 16, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(AppColors.accentGreen)
+                        .cornerRadius(12)
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.vertical, 20)
             } else {
                 // Show search results in a scrollable container
                 ScrollView {
@@ -717,15 +713,17 @@ struct SearchResultsSection: View {
                 }
                 .frame(maxHeight: UIScreen.main.bounds.height * 0.6) // Larger scroll area for full-screen modal
                 
-                // Divider and create new option
+                // Divider and barcode scanner option
                 Divider()
                     .padding(.horizontal)
                 
-                Button(action: onCreateNew) {
+                Button(action: {
+                    showingBarcodeScanner = true
+                }) {
                     HStack {
-                        Image(systemName: "plus.circle.fill")
+                        Image(systemName: "barcode.viewfinder")
                             .foregroundColor(AppColors.accentGreen)
-                        Text("Add \"\(searchText)\" as new product")
+                        Text("Scan barcode for \"\(searchText)\"")
                             .font(.poppins(size: 16, weight: .regular))
                             .foregroundColor(.primary)
                         Spacer()
@@ -743,6 +741,9 @@ struct SearchResultsSection: View {
             } else {
                 searchResults = []
             }
+        }
+        .sheet(isPresented: $showingBarcodeScanner) {
+            AddItemsView(availableTags: productViewModel.tags)
         }
     }
     
@@ -823,164 +824,6 @@ struct SearchResultRow: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-}
-
-struct CreateNewProductSection: View {
-    let productName: String
-    @Binding var productBrand: String
-    @Binding var selectedCategory: ProductCategory
-    @Binding var showCategoryPicker: Bool
-    @State private var productPrice: String = ""
-    // @State private var showPriceField: Bool = false
-    // @State private var isSearchingPrice = false
-    // @State private var amazonSearchResults: [GroceryItem] = []
-    // @State private var showAmazonResults = false
-    @EnvironmentObject var productViewModel: ProductViewModel
-    let onAdd: (String, String?, String?, Double?) -> Void
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            Divider()
-                .padding(.horizontal)
-            
-            Text("Create New Product")
-                .font(.poppins(size: 18, weight: .semibold))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal)
-            
-            VStack(spacing: 16) {
-                // Product Name (pre-filled from search)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Product Name")
-                        .font(.poppins(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    Text(productName)
-                        .font(.poppins(size: 16, weight: .regular))
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(8)
-                }
-                
-                // Brand
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Brand (Optional)")
-                        .font(.poppins(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    TextField("e.g., Happy Hens", text: $productBrand)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .font(.poppins(size: 16, weight: .regular))
-                }
-                
-                // Category
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Category")
-                        .font(.poppins(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    Button(action: {
-                        showCategoryPicker = true
-                    }) {
-                        HStack {
-                            Text(selectedCategory.rawValue)
-                                .font(.poppins(size: 16, weight: .regular))
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.down")
-                                .foregroundColor(.gray)
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(8)
-                    }
-                }
-                
-                // Price
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Price (Optional)")
-                        .font(.poppins(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                    
-                    HStack {
-                        Text("$")
-                            .font(.poppins(size: 16, weight: .regular))
-                            .foregroundColor(.gray)
-                        
-                        TextField("0.00", text: $productPrice)
-                            .keyboardType(.decimalPad)
-                            .font(.poppins(size: 16, weight: .regular))
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
-                    
-                    // Search for price on Amazon button - commented out
-                    // Button(action: {
-                    //     searchPriceOnAmazon()
-                    // }) {
-                    //     HStack {
-                    //         if isSearchingPrice {
-                    //             ProgressView()
-                    //                 .scaleEffect(0.8)
-                    //         } else {
-                    //             Image(systemName: "magnifyingglass")
-                    //             .font(.system(size: 14))
-                    //         }
-                    //         Text(isSearchingPrice ? "Searching..." : "Search for price on Amazon")
-                    //             .font(.poppins(size: 14, weight: .regular))
-                    //     }
-                    //     .foregroundColor(AppColors.accentGreen)
-                    // }
-                    // .disabled(productName.isEmpty || isSearchingPrice)
-                }
-            }
-            .padding(.horizontal)
-            
-            // Add Button
-            Button("Add to List") {
-                let brand = productBrand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : productBrand.trimmingCharacters(in: .whitespacesAndNewlines)
-                let category = selectedCategory == .none ? nil : selectedCategory.rawValue
-                let price = Double(productPrice.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0.0
-                onAdd(productName, brand, category, price)
-            }
-            .font(.poppins(size: 16, weight: .semibold))
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(AppColors.accentGreen)
-            .cornerRadius(12)
-            .padding(.horizontal)
-            .padding(.bottom, 20) // Add extra bottom padding for keyboard
-        }
-        // .sheet(isPresented: $showAmazonResults) {
-        //     AmazonPriceResultsView(
-        //         results: amazonSearchResults,
-        //         onSelectPrice: { price in
-        //             productPrice = String(format: "%.2f", price)
-        //             showAmazonResults = false
-        //         }
-        //     )
-        // }
-    }
-    
-    // private func searchPriceOnAmazon() {
-    //     guard !productName.isEmpty else { return }
-    //     
-    //     isSearchingPrice = true
-    //     Task {
-    //         do {
-    //             let results = try await productViewModel.searchAmazonPrices(for: productName)
-    //             await MainActor.run {
-    //                 amazonSearchResults = results
-    //                 showAmazonResults = true
-    //                 isSearchingPrice = false
-    //             }
-    //         } catch {
-    //             await MainActor.run {
-    //                 isSearchingPrice = false
-    //             }
-    //         }
-    // }
 }
 
 struct CategoryPickerView: View {
