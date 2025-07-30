@@ -48,11 +48,18 @@ struct CategoryItemsView: View {
         
         print("CategoryItemsView: Total products: \(allProducts.count), Filtered products: \(filtered.count)")
         
+        // Don't know if Serg wants to keep show all products as fallback logic:
         // If no products found after filtering, but we have products from the search,
         // return all products as they were found for this category
-        if filtered.isEmpty && !allProducts.isEmpty {
-            print("CategoryItemsView: No products found for category \(category.rawValue), showing all products as fallback")
-            return allProducts
+        // if filtered.isEmpty && !allProducts.isEmpty {
+        //     print("CategoryItemsView: No products found for category \(category.rawValue), showing all products as fallback")
+        //     return allProducts
+        // }
+        
+        // If no products match the category, return empty array
+        if filtered.isEmpty {
+            print("CategoryItemsView: No products found for category \(category.rawValue), showing empty list")
+            return []
         }
         
         return filtered
@@ -80,21 +87,27 @@ struct CategoryItemsView: View {
             return ["household", "personal care", "cleaning", "hygiene", "soap", "shampoo"]
         }
     }
-    
+
+    // Already handles show filtered products
     private var displayProducts: [GroceryItem] {
-        // If we have filtered products, show them
-        if !categoryProducts.isEmpty {
-            return categoryProducts
-        }
-        
-        // If we've searched and have products, show all products as they were found for this category
-        if hasSearched && !viewModel.products.isEmpty {
-            return viewModel.products
-        }
-        
-        // Otherwise, show filtered products (which might be empty)
         return categoryProducts
     }
+    
+    // Not sure if Serg wants to keep this logic for showing all products as fallback
+    // private var displayProducts: [GroceryItem] {
+    //     // If we have filtered products, show them
+    //     if !categoryProducts.isEmpty {
+    //         return categoryProducts
+    //     }
+        
+    //     // If we've searched and have products, show all products as they were found for this category
+    //     if hasSearched && !viewModel.products.isEmpty {
+    //         return viewModel.products
+    //     }
+        
+    //     // Otherwise, show filtered products (which might be empty)
+    //     return categoryProducts
+    // }
     
     var body: some View {
         VStack {
@@ -107,7 +120,7 @@ struct CategoryItemsView: View {
                         .foregroundColor(.gray)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if displayProducts.isEmpty && !hasSearched {
+            } else if displayProducts.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "basket")
                         .resizable()
@@ -321,6 +334,9 @@ struct ProductDetailView: View {
     
     // Dismissing the view
     @Environment(\.dismiss) private var dismiss
+    
+    // State for delete confirmation
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         NavigationView {
@@ -374,12 +390,45 @@ struct ProductDetailView: View {
             .navigationTitle("Product Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Delete") {
+                        // Show confirmation dialog
+                        showDeleteConfirmation = true
+                    }
+                    .foregroundColor(.red)
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
                 }
             }
+            .alert("Delete Product", isPresented: $showDeleteConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await deleteProduct()
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to delete this product? This action cannot be undone.")
+            }
+        }
+    }
+    
+    private func deleteProduct() async {
+        do {
+            // Permanently delete product from Core Data
+            await productViewModel.permanentlyDeleteProduct(product)
+            
+            // Force reload products to update UI
+            await productViewModel.loadProducts()
+            
+            // Dismiss detail view
+            dismiss()
+        } catch {
+            print("Error deleting product: \(error)")
         }
     }
 }
