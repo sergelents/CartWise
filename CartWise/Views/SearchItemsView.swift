@@ -167,7 +167,7 @@ struct SearchItemsView: View {
         let coreDataResults = viewModel.products
         
         // Then search Amazon API for new products
-        await viewModel.searchProductsOnAmazon(by: searchText)
+        await viewModel.searchProducts(by: searchText)
         let apiResults = viewModel.products
         
         // Combine results, avoiding duplicates
