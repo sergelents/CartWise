@@ -24,6 +24,8 @@ struct AddItemsView: View {
     @State private var pendingCategory: ProductCategory = .none
     @State private var pendingIsOnSale: Bool = false
     @State private var showCategoryPicker = false
+    @State private var pendingLocation: Location? = nil
+    @State private var showLocationPicker = false
     // Tag selection state
     @State private var selectedTags: [Tag] = []
     @State private var showingTagPicker = false
@@ -191,13 +193,15 @@ struct AddItemsView: View {
                     price: $pendingPrice,
                     selectedCategory: $pendingCategory,
                     isOnSale: $pendingIsOnSale,
+                    selectedLocation: $pendingLocation,
+                    showLocationPicker: $showLocationPicker,
                     showCategoryPicker: $showCategoryPicker,
                     availableTags: availableTags,
                     selectedTags: $selectedTags,
                     showingTagPicker: $showingTagPicker,
-                    onConfirm: { barcode, productName, company, price, category, isOnSale, tags in
+                    onConfirm: { barcode, productName, company, price, category, isOnSale, location, tags in
                         showingBarcodeConfirmation = false
-                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale, tags: tags)
+                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale, location: location, tags: tags)
                     },
                     onCancel: {
                         showingBarcodeConfirmation = false
@@ -213,6 +217,9 @@ struct AddItemsView: View {
                         selectedTags: $selectedTags,
                         onDone: { showingTagPicker = false }
                     )
+                }
+                .sheet(isPresented: $showLocationPicker) {
+                    LocationPickerView(selectedLocation: $pendingLocation)
                 }
             }
 
@@ -233,7 +240,7 @@ struct AddItemsView: View {
         showingBarcodeConfirmation = true
     }
     
-    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory, isOnSale: Bool, tags: [Tag]) {
+    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory, isOnSale: Bool, location: Location?, tags: [Tag]) {
         scannedBarcode = barcode
         isProcessing = true
         
@@ -278,6 +285,7 @@ struct AddItemsView: View {
         pendingPrice = ""
         pendingCategory = .none
         pendingIsOnSale = false
+        pendingLocation = nil
         selectedTags = []
     }
     
@@ -375,11 +383,13 @@ struct BarcodeConfirmationView: View {
     @Binding var price: String
     @Binding var selectedCategory: ProductCategory
     @Binding var isOnSale: Bool
+    @Binding var selectedLocation: Location?
+    @Binding var showLocationPicker: Bool
     @Binding var showCategoryPicker: Bool
     let availableTags: [Tag]
     @Binding var selectedTags: [Tag]
     @Binding var showingTagPicker: Bool
-    let onConfirm: (String, String, String, String, ProductCategory, Bool, [Tag]) -> Void
+    let onConfirm: (String, String, String, String, ProductCategory, Bool, Location?, [Tag]) -> Void
     let onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
     
@@ -483,6 +493,29 @@ struct BarcodeConfirmationView: View {
                                 .keyboardType(.decimalPad)
                         }
                         
+                        // Location Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Location")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            Button(action: {
+                                showLocationPicker = true
+                            }) {
+                                HStack {
+                                    Text(selectedLocation?.name ?? "Select location...")
+                                        .font(.body)
+                                        .foregroundColor(selectedLocation == nil ? .gray : .primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .foregroundColor(.gray)
+                                }
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                            }
+                        }
+                        
                         // Sale Checkbox
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -552,7 +585,7 @@ struct BarcodeConfirmationView: View {
                     // Action Buttons
                     VStack(spacing: 12) {
                         Button(action: {
-                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedTags)
+                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedLocation, selectedTags)
                         }) {
                             Text("Add Item")
                                 .fontWeight(.semibold)
