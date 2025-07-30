@@ -21,6 +21,12 @@ enum ProductCategory: String, CaseIterable {
     case household = "Household & Personal Care"
 }
 
+// Store enum for price comparison
+enum Store: String, CaseIterable, Codable {
+    case amazon = "Amazon"
+    case walmart = "Walmart"
+}
+
 // MARK: - Main Response Model
 struct APIResponse: Codable {
     let success: Bool
@@ -43,7 +49,6 @@ struct APIProduct: Codable {
     let customerReview: String  // Can be empty string
     let customerReviewCount: String
     let shippingMessage: String  // Can be empty string
-    let amazonLink: String
     let image: String
     let boughtInfo: String  // Can be empty string
 }

@@ -208,44 +208,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func searchProductsOnAmazon(by query: String) async {
-        print("ViewModel: Searching Amazon for query: \(query)")
-        do {
-            products = try await repository.searchProductsOnAmazon(by: query)
-            print("ViewModel: Received \(products.count) products from API")
-            
-            // Print details of each product
-            for (index, product) in products.enumerated() {
-                print("  Product \(index + 1):")
-                print("    Name: \(product.productName ?? "Unknown")")
-                print("    Brand: \(product.brand ?? "Unknown")")
-                print("    Category: \(product.category ?? "Unknown")")
-                print("    Price: $\(product.price)")
-                print("    Store: \(product.store ?? "Unknown")")
-                print("    Location: \(product.location ?? "Unknown")")
-                print("    Image URL: \(product.imageURL ?? "None")")
-                print("    Barcode: \(product.barcode ?? "None")")
-                print("    ---")
-            }
-            
-            errorMessage = nil
-        } catch {
-            print("ViewModel: Error searching Amazon: \(error)")
-            errorMessage = error.localizedDescription
-        }
-    }
-    
-    func searchProductsOnWalmart(by query: String) async {
-        print("ViewModel: Searching Walmart for query: \(query)")
-        do {
-            products = try await repository.searchProductsOnWalmart(by: query)
-            print("ViewModel: Received \(products.count) products from API")
-            errorMessage = nil
-        } catch {
-            print("ViewModel: Error searching Walmart: \(error)")
-            errorMessage = error.localizedDescription
-        }
-    }
+
     
     func loadPriceComparison() async {
         // Get the current shopping list products specifically
@@ -348,34 +311,25 @@ final class ProductViewModel: ObservableObject {
                 errorMessage = "Product with barcode '\(barcode)' already exists in your list"
                 return nil
             }
-            // Try to fetch product from API using barcode
-            if let apiProduct = try await repository.fetchProductFromNetwork(by: barcode) {
-                // Product found in API, add to shopping list with sale status
-                apiProduct.isOnSale = isOnSale
-                await addExistingProductToShoppingList(apiProduct)
-                errorMessage = nil
-                return apiProduct
-            } else {
-                // Product not found in API, create entry with user-provided data
-                let id = UUID().uuidString
-                let savedProduct = try await repository.createProduct(
-                    id: id,
-                    productName: productName ?? "Product (Barcode: \(barcode))",
-                    brand: brand,
-                    category: category,
-                    price: price,
-                    currency: "USD",
-                    store: store,
-                    location: nil,
-                    imageURL: nil,
-                    barcode: barcode,
-                    isInShoppingList: false,
-                    isOnSale: isOnSale
-                )
-                await loadShoppingListProducts()
-                errorMessage = nil
-                return savedProduct
-            }
+            // Create new product with user-provided data
+            let id = UUID().uuidString
+            let savedProduct = try await repository.createProduct(
+                id: id,
+                productName: productName ?? "Product (Barcode: \(barcode))",
+                brand: brand,
+                category: category,
+                price: price,
+                currency: "USD",
+                store: store,
+                location: nil,
+                imageURL: nil,
+                barcode: barcode,
+                isInShoppingList: false,
+                isOnSale: isOnSale
+            )
+            await loadShoppingListProducts()
+            errorMessage = nil
+            return savedProduct
         } catch {
             errorMessage = error.localizedDescription
             return nil

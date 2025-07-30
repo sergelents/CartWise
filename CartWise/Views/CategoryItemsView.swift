@@ -17,7 +17,6 @@ struct CategoryItemsView: View {
     @EnvironmentObject var viewModel: ProductViewModel
     @State private var selectedItemsToAdd: Set<String> = []
     @State private var isLoading = false
-    @State private var hasSearched = false
 
     
     private var categoryProducts: [GroceryItem] {
@@ -81,17 +80,7 @@ struct CategoryItemsView: View {
     }
     
     private var displayProducts: [GroceryItem] {
-        // If we have filtered products, show them
-        if !categoryProducts.isEmpty {
-            return categoryProducts
-        }
-        
-        // If we've searched and have products, show all products as they were found for this category
-        if hasSearched && !viewModel.products.isEmpty {
-            return viewModel.products
-        }
-        
-        // Otherwise, show filtered products (which might be empty)
+        // Show filtered products for this category
         return categoryProducts
     }
     
@@ -106,7 +95,7 @@ struct CategoryItemsView: View {
                         .foregroundColor(.gray)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if displayProducts.isEmpty && !hasSearched {
+            } else if displayProducts.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "basket")
                         .resizable()
@@ -146,80 +135,16 @@ struct CategoryItemsView: View {
         }
         .navigationTitle(category.rawValue)
         .onAppear {
-            // Load existing products and search for new ones in this category when view appears
+            // Load existing products from local database only
             Task {
                 isLoading = true
-                hasSearched = false // Reset search flag
                 await loadCategoryProducts()
-                await searchProductsForCategory()
                 isLoading = false
             }
         }
     }
     
-    private func searchProductsForCategory() async {
-        // Create a query based on the category
-        let categoryQuery = createCategoryQuery(for: category)
-        print("CategoryItemsView: Searching for category: \(category.rawValue) with query: \(categoryQuery)")
-        
-        // Check initial state
-        print("CategoryItemsView: Initial products count: \(viewModel.products.count)")
-        
-        // Search Amazon for products in this category
-        await viewModel.searchProducts(by: categoryQuery)
-        print("CategoryItemsView: After search - Found \(viewModel.products.count) products for category: \(category.rawValue)")
-        
-        // Update the category field for the found products to match the current category
-        for product in viewModel.products {
-            if product.category == nil || product.category?.isEmpty == true {
-                // Update the product's category to match the current category
-                let updatedProduct = product
-                updatedProduct.category = category.rawValue
-                await viewModel.updateProduct(updatedProduct)
-            }
-        }
-        
-        // Reload products to get the updated data
-        await viewModel.loadProducts()
-        
-        // Mark that we've searched for this category
-        hasSearched = true
-        
-        // Print details of each product found
-        for (index, product) in viewModel.products.enumerated() {
-            print("  Product \(index + 1): \(product.productName ?? "Unknown") - Category: \(product.category ?? "None")")
-        }
-        
-        // Check filtered results
-        print("CategoryItemsView: Filtered products count: \(categoryProducts.count)")
-        for (index, product) in categoryProducts.enumerated() {
-            print("  Filtered Product \(index + 1): \(product.productName ?? "Unknown") - Category: \(product.category ?? "None")")
-        }
-    }
-    
-    private func createCategoryQuery(for category: ProductCategory) -> String {
-        // Use more specific search terms for better results
-        switch category {
-        case .none:
-            return "grocery food"
-        case .meat:
-            return "meat seafood"
-        case .dairy:
-            return "dairy milk cheese"
-        case .bakery:
-            return "bread bakery"
-        case .produce:
-            return "fresh vegetables fruits"
-        case .pantry:
-            return "canned food rice pasta beans"
-        case .beverages:
-            return "drinks beverages"
-        case .frozen:
-            return "frozen food"
-        case .household:
-            return "cleaning supplies"
-        }
-    }
+
     
     
     // MARK: - Helper Functions
