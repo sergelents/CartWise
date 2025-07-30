@@ -119,6 +119,12 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            
+            // Remove tag relationships before deletion
+            // tags property defined as NSSet, which is immutable (read-only)
+            // and removeAllObjects() is a method that only exists on NSMutableSet (mutable)
+            productInContext.tags = NSSet()
+            
             context.delete(productInContext)
             try context.save()
         }
