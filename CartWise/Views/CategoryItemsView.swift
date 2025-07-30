@@ -320,6 +320,7 @@ struct ProductDetailView: View {
     
     // Dismissing the view
     @Environment(\.dismiss) private var dismiss
+    @State private var showingDeleteAlert = false
 
     var body: some View {
         NavigationView {
@@ -373,10 +374,135 @@ struct ProductDetailView: View {
             .navigationTitle("Product Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Delete") {
+                        deleteProduct()
+                    }
+                    .foregroundColor(.red)
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
+                }
+            }
+        }
+        .alert("Delete Product", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                performDelete()
+            }
+        } message: {
+            Text("Are you sure you want to delete '\(product.productName ?? "this product")'? This action cannot be undone.")
+        }
+    }
+    
+    private func deleteProduct() {
+        showingDeleteAlert = true
+    }
+    
+    private func performDelete() {
+        Task {
+            do {
+                let context = PersistenceController.shared.container.viewContext
+                
+                print("Attempting to delete product with ID: \(product.id ?? "nil")")
+                print("Product name: \(product.productName ?? "Unknown")")
+                print("Product barcode: \(product.barcode ?? "Unknown")")
+                
+                // Try to delete the product directly if it's in the same context
+                if product.managedObjectContext == context {
+                    print("Product is in the same context, deleting directly")
+                    
+                    // Remove tags from the product first
+                    if let tags = product.tags as? Set<Tag> {
+                        print("Removing \(tags.count) tags from product")
+                        product.tags = nil
+                    }
+                    
+                    // Delete associated location prices first
+                    let priceFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
+                    priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@", product)
+                    
+                    let prices = try context.fetch(priceFetchRequest)
+                    print("Found \(prices.count) prices to delete")
+                    
+                    for price in prices {
+                        context.delete(price)
+                        print("Deleted price: $\(price.price) at \(price.location?.name ?? "Unknown")")
+                    }
+                    
+                    // Delete the product
+                    context.delete(product)
+                    print("Deleted product from context")
+                    
+                    try context.save()
+                    print("Context saved successfully")
+                    
+                    // Refresh the product list
+                    await productViewModel.loadProducts()
+                    
+                    await MainActor.run {
+                        dismiss()
+                    }
+                } else {
+                    print("Product is in different context, fetching by ID")
+                    
+                    // Get the product in the current context
+                    let fetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+                    fetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
+                    fetchRequest.fetchLimit = 1
+                    
+                    let products = try context.fetch(fetchRequest)
+                    print("Found \(products.count) products to delete")
+                    
+                    if let productToDelete = products.first {
+                        print("Deleting product: \(productToDelete.productName ?? "Unknown")")
+                        
+                        // Remove tags from the product first
+                        if let tags = productToDelete.tags as? Set<Tag> {
+                            print("Removing \(tags.count) tags from product")
+                            productToDelete.tags = nil
+                        }
+                        
+                        // Delete associated location prices first
+                        let priceFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
+                        priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@", productToDelete)
+                        
+                        let prices = try context.fetch(priceFetchRequest)
+                        print("Found \(prices.count) prices to delete")
+                        
+                        for price in prices {
+                            context.delete(price)
+                            print("Deleted price: $\(price.price) at \(price.location?.name ?? "Unknown")")
+                        }
+                        
+                        // Delete the product
+                        context.delete(productToDelete)
+                        print("Deleted product from context")
+                        
+                        try context.save()
+                        print("Context saved successfully")
+                        
+                        // Refresh the product list
+                        await productViewModel.loadProducts()
+                        
+                        await MainActor.run {
+                            dismiss()
+                        }
+                    } else {
+                        print("Product not found in context")
+                        await MainActor.run {
+                            dismiss()
+                        }
+                    }
+                }
+                
+            } catch {
+                print("Error deleting product: \(error)")
+                await MainActor.run {
+                    dismiss()
                 }
             }
         }
@@ -487,20 +613,120 @@ struct ProductPriceView: View {
     @ObservedObject var product: GroceryItem
     var lastUpdated: String
     var lastUpdatedBy: String
+    @State private var locationPrices: [GroceryItemPrice] = []
+    @State private var isLoading = true
 
     var body: some View {
-        VStack(alignment: .center, spacing: 10) {
+        VStack(alignment: .center, spacing: 16) {
+            // Main Price Display
             HStack {
                 Text("$\(String(format: "%.2f", product.price))")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.primary)
             }
+            
+            // Location-specific prices
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(0.8)
+            } else if locationPrices.isEmpty {
+                Text("No location-specific prices")
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(.gray)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Prices by Location")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    ForEach(locationPrices, id: \.id) { price in
+                        LocationPriceRow(price: price)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            
             // Last updated by
             Text("Last updated: \(lastUpdated) \n By \(lastUpdatedBy)")
                 .font(.system(size: 12, weight: .regular))
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
         }
+        .task {
+            await loadLocationPrices()
+        }
+    }
+    
+    private func loadLocationPrices() async {
+        isLoading = true
+        
+        do {
+            let context = PersistenceController.shared.container.viewContext
+            let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@", product)
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItemPrice.price, ascending: true)]
+            
+            let prices = try context.fetch(fetchRequest)
+            
+            await MainActor.run {
+                self.locationPrices = prices
+                self.isLoading = false
+            }
+        } catch {
+            print("Error loading location prices: \(error)")
+            await MainActor.run {
+                self.isLoading = false
+            }
+        }
+    }
+}
+
+// Location Price Row
+struct LocationPriceRow: View {
+    let price: GroceryItemPrice
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Location Icon
+            ZStack {
+                Circle()
+                    .fill(AppColors.accentGreen.opacity(0.1))
+                    .frame(width: 32, height: 32)
+                
+                Image(systemName: "location.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(AppColors.accentGreen)
+            }
+            
+            // Location and Price Info
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(price.location?.name ?? "Unknown Location")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    if let store = price.store, !store.isEmpty {
+                        Text("• \(store)")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(.gray)
+                    }
+                }
+                
+                if let lastUpdated = price.lastUpdated {
+                    Text("Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
+                        .font(.system(size: 10, weight: .regular))
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            Spacer()
+            
+            // Price
+            Text("$\(String(format: "%.2f", price.price))")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.primary)
+        }
+        .padding(.vertical, 4)
     }
 }
 
