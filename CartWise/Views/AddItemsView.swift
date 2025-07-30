@@ -258,23 +258,14 @@ struct AddItemsView: View {
                 isOnSale: isOnSale
             )
             
-            print("handleBarcodeProcessing - newProduct created: \(newProduct?.productName ?? "nil")")
-            print("handleBarcodeProcessing - location: \(location?.name ?? "nil")")
-            print("handleBarcodeProcessing - priceValue: \(priceValue)")
-            
             // Associate tags with the new product
             if let newProduct = newProduct {
                 await productViewModel.addTagsToProduct(newProduct, tags: tags)
                 
                 // Create location-specific price if location is selected
                 if let location = location {
-                    print("Location selected: \(location.name ?? "Unknown")")
                     await createLocationPrice(for: newProduct, at: location, price: priceValue)
-                } else {
-                    print("No location selected")
                 }
-            } else {
-                print("newProduct is nil")
             }
             
             await MainActor.run {
@@ -307,7 +298,6 @@ struct AddItemsView: View {
             let existingProducts = try context.fetch(fetchRequest)
             if let existingProduct = existingProducts.first {
                 // Product exists, update it with new information and return it
-                print("Product with barcode '\(barcode)' already exists, updating...")
                 
                 // Update product information if provided
                 if !productName.isEmpty && productName != "Unknown Product" {
@@ -323,7 +313,6 @@ struct AddItemsView: View {
                 existingProduct.updatedAt = Date()
                 
                 try context.save()
-                print("Updated existing product: \(existingProduct.productName ?? "Unknown") with barcode: \(barcode)")
                 return existingProduct
             }
             
@@ -344,11 +333,9 @@ struct AddItemsView: View {
             )
             
             try context.save()
-            print("Created new product: \(productName) with barcode: \(barcode)")
             return newProduct
             
         } catch {
-            print("Error creating/updating product: \(error)")
             productViewModel.errorMessage = error.localizedDescription
             return nil
         }
@@ -358,11 +345,6 @@ struct AddItemsView: View {
         do {
             let context = await CoreDataStack.shared.viewContext
             
-            print("createLocationPrice called for product: \(product.productName ?? "Unknown")")
-            print("Product ID: \(product.id ?? "nil")")
-            print("Location: \(location.name ?? "Unknown")")
-            print("Price: $\(price)")
-            
             // Get the product in the current context
             let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
             productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
@@ -370,10 +352,8 @@ struct AddItemsView: View {
             
             let products = try context.fetch(productFetchRequest)
             guard let productInContext = products.first else {
-                print("Product not found in context")
                 return
             }
-            print("Found product in context: \(productInContext.productName ?? "Unknown")")
             
             // Get the location in the current context
             let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
@@ -382,10 +362,8 @@ struct AddItemsView: View {
             
             let locations = try context.fetch(locationFetchRequest)
             guard let locationInContext = locations.first else {
-                print("Location not found in context")
                 return
             }
-            print("Found location in context: \(locationInContext.name ?? "Unknown")")
             
             // Create new GroceryItemPrice with objects from the same context
             let locationPrice = GroceryItemPrice(
@@ -399,19 +377,9 @@ struct AddItemsView: View {
             )
             
             try context.save()
-            print("Created location price: $\(price) at \(locationInContext.name ?? "Unknown")")
-            print("Location price ID: \(locationPrice.id ?? "nil")")
-            print("Product ID: \(productInContext.id ?? "nil")")
-            print("Location ID: \(locationInContext.id ?? "nil")")
-            
-            // Verify the relationship was created
-            let verifyFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            verifyFetchRequest.predicate = NSPredicate(format: "groceryItem == %@", productInContext)
-            let verifyPrices = try context.fetch(verifyFetchRequest)
-            print("Verification: Found \(verifyPrices.count) prices for this product after creation")
             
         } catch {
-            print("Error creating location price: \(error)")
+            // Handle error silently
         }
     }
     
