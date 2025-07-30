@@ -166,7 +166,7 @@ struct CategoryItemsView: View {
         print("CategoryItemsView: Initial products count: \(viewModel.products.count)")
         
         // Search Amazon for products in this category
-        await viewModel.searchProductsOnAmazon(by: categoryQuery)
+        await viewModel.searchProducts(by: categoryQuery)
         print("CategoryItemsView: After search - Found \(viewModel.products.count) products for category: \(category.rawValue)")
         
         // Update the category field for the found products to match the current category

@@ -152,38 +152,36 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
         let localResults = try await coreDataContainer.searchProducts(by: name)
 
         // If we have local results, return them immediately
-        if !localResults.isEmpty {
-            return localResults
-        }
+       return localResults
 
         // Network-second: if no local results, try network
-        do {
-            let networkProducts = try await networkService.searchProducts(by: name)
-
-            // Save network results to local cache
-            for networkProduct in networkProducts.prefix(10) { // Limit to first 10
-                _ = try await createProduct(
-                    id: UUID().uuidString,
-                    productName: networkProduct.name,
-                    brand: nil, // API doesn't provide brand
-                    category: nil, // API doesn't provide category
-                    price: Double(networkProduct.price.replacingOccurrences(of: "$", with: "")) ?? 0.0,
-                    currency: networkProduct.currency,
-                    store: "Amazon", // Default store
-                    location: nil, // API doesn't provide location
-                    imageURL: networkProduct.image,
-                    barcode: nil, // API doesn't provide barcode
-                    isInShoppingList: false,
-                    isOnSale: false
-                )
-            }
-
-            // Return the newly cached results
-            return try await coreDataContainer.searchProducts(by: name)
-        } catch {
-            // If network fails, return empty array (cache-first approach)
-            return []
-        }
+//        do {
+//            let networkProducts = try await networkService.searchProducts(by: name)
+//
+//            // Save network results to local cache
+//            for networkProduct in networkProducts.prefix(10) { // Limit to first 10
+//                _ = try await createProduct(
+//                    id: UUID().uuidString,
+//                    productName: networkProduct.name,
+//                    brand: nil, // API doesn't provide brand
+//                    category: nil, // API doesn't provide category
+//                    price: Double(networkProduct.price.replacingOccurrences(of: "$", with: "")) ?? 0.0,
+//                    currency: networkProduct.currency,
+//                    store: "Amazon", // Default store
+//                    location: nil, // API doesn't provide location
+//                    imageURL: networkProduct.image,
+//                    barcode: nil, // API doesn't provide barcode
+//                    isInShoppingList: false,
+//                    isOnSale: false
+//                )
+//            }
+//
+//            // Return the newly cached results
+//            return try await coreDataContainer.searchProducts(by: name)
+//        } catch {
+//            // If network fails, return empty array (cache-first approach)
+//            return []
+//        }
     }
     
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryItem] {
