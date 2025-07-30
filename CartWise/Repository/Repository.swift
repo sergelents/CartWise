@@ -58,12 +58,9 @@ struct PriceComparison: Codable, Sendable {
 
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     private let coreDataContainer: CoreDataContainerProtocol
-    private let networkService: NetworkServiceProtocol
     
-    init(coreDataContainer: CoreDataContainerProtocol = CoreDataContainer(),
-         networkService: NetworkServiceProtocol = NetworkService()) {
+    init(coreDataContainer: CoreDataContainerProtocol = CoreDataContainer()) {
         self.coreDataContainer = coreDataContainer
-        self.networkService = networkService
     }
     
     // MARK: - Cache-First Operations
@@ -181,81 +178,19 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
 //        } catch {
 //            // If network fails, return empty array (cache-first approach)
 //            return []
-//        }
+        //        }
     }
     
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryItem] {
-        print("Repository: Starting Amazon search for query: \(query)")
-        // Network-first: search Amazon directly
-        do {
-            let amazonProducts = try await networkService.searchProductsOnAmazon(by: query)
-            print("Repository: Got \(amazonProducts.count) products from network service")
-            
-            // Convert Amazon products to GroceryItems and save to local cache
-            var groceryItems: [GroceryItem] = []
-            for amazonProduct in amazonProducts.prefix(10) { // Limit to first 10
-                let groceryItem = try await createProduct(
-                    id: UUID().uuidString,
-                    productName: amazonProduct.name,
-                    brand: nil, // API doesn't provide brand
-                    category: nil, // API doesn't provide category
-                    price: Double(amazonProduct.price.replacingOccurrences(of: "$", with: "")) ?? 0.0,
-                    currency: amazonProduct.currency,
-                    store: "Amazon",
-                    location: nil, // API doesn't provide location
-                    imageURL: amazonProduct.image,
-                    barcode: nil, // API doesn't provide barcode
-                    isInShoppingList: false,
-                    isOnSale: false
-                )
-                print("Repository: Created GroceryItem: '\(groceryItem.productName ?? "Unknown")'")
-                groceryItems.append(groceryItem)
-            }
-            
-            print("Repository: Returning \(groceryItems.count) GroceryItems")
-            return groceryItems
-        } catch {
-            print("Repository: Error in Amazon search: \(error)")
-            // If Amazon search fails, return empty array
-            return []
-        }
+        print("Repository: Amazon search disabled - returning empty array for query: \(query)")
+        // Local-only: return empty array (API calls disabled)
+        return []
     }
     
     func searchProductsOnWalmart(by query: String) async throws -> [GroceryItem] {
-        print("Repository: Starting Walmart search for query: \(query)")
-        // Network-first: search Walmart directly
-        do {
-            let walmartProducts = try await networkService.searchProductsOnWalmart(by: query)
-            print("Repository: Got \(walmartProducts.count) products from network service")
-            
-            // Convert Walmart products to GroceryItems and save to local cache
-            var groceryItems: [GroceryItem] = []
-            for walmartProduct in walmartProducts.prefix(10) { // Limit to first 10
-                let groceryItem = try await createProduct(
-                    id: UUID().uuidString,
-                    productName: walmartProduct.name,
-                    brand: nil, // API doesn't provide brand
-                    category: nil, // API doesn't provide category
-                    price: Double(walmartProduct.price.replacingOccurrences(of: "$", with: "")) ?? 0.0,
-                    currency: walmartProduct.currency,
-                    store: "Walmart",
-                    location: nil, // API doesn't provide location
-                    imageURL: walmartProduct.image,
-                    barcode: nil, // API doesn't provide barcode
-                    isInShoppingList: false,
-                    isOnSale: false
-                )
-                print("Repository: Created GroceryItem: '\(groceryItem.productName ?? "Unknown")'")
-                groceryItems.append(groceryItem)
-            }
-            
-            print("Repository: Returning \(groceryItems.count) GroceryItems")
-            return groceryItems
-        } catch {
-            print("Repository: Error in Walmart search: \(error)")
-            // If Walmart search fails, return empty array
-            return []
-        }
+        print("Repository: Walmart search disabled - returning empty array for query: \(query)")
+        // Local-only: return empty array (API calls disabled)
+        return []
     }
     
     func getPriceComparison(for shoppingList: [GroceryItem]) async throws -> PriceComparison {
@@ -313,24 +248,9 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                 guard let productName = item.productName else { continue }
                 
                 group.addTask {
-                    do {
-                        if let priceData = try await self.networkService.searchGroceryPrice(productName: productName, store: store) {
-                            // Debug: Print the raw price string
-                            print("Repository: Raw price string for \(productName): '\(priceData.price)'")
-                            
-                            // Convert string price to Double
-                            let cleanPrice = priceData.price.replacingOccurrences(of: "$", with: "").trimmingCharacters(in: .whitespaces)
-                            let price = Double(cleanPrice) ?? 0.0
-                            print("Repository: Found \(productName) at \(store.rawValue) for $\(price) (cleaned from '\(priceData.price)')")
-                            return (productName, price)
-                        } else {
-                            print("Repository: \(productName) not found at \(store.rawValue)")
-                            return (productName, nil)
-                        }
-                    } catch {
-                        print("Repository: Error searching for \(productName) at \(store.rawValue): \(error)")
-                        return (productName, nil)
-                    }
+                    // API calls disabled - return nil for all products
+                    print("Repository: Price search disabled for \(productName) at \(store.rawValue)")
+                    return (productName, nil)
                 }
             }
             
@@ -361,41 +281,9 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     // MARK: - Network Operations
     
     func fetchProductFromNetwork(by name: String) async throws -> GroceryItem? {
-        // Check cache first
-        let existingProducts = try await coreDataContainer.fetchAllProducts()
-        if let existingProduct = existingProducts.first(where: { $0.productName?.lowercased() == name.lowercased() }) {
-            return existingProduct
-        }
-        
-        // Network-second: fetch from API with retry logic
-        do {
-            let networkProduct = try await networkService.fetchProductWithRetry(by: name, retries: 3)
-            
-            guard let networkProduct = networkProduct else {
-                return nil
-            }
-            
-            // Save to local cache
-            let savedProduct = try await createProduct(
-                id: UUID().uuidString,
-                productName: networkProduct.name,
-                brand: nil, // API doesn't provide brand
-                category: nil, // API doesn't provide category
-                price: Double(networkProduct.price.replacingOccurrences(of: "$", with: "")) ?? 0.0,
-                currency: networkProduct.currency,
-                store: "Amazon", // Default to Amazon since this is from Amazon API
-                location: nil, // API doesn't provide location
-                imageURL: networkProduct.image,
-                barcode: nil, // API doesn't provide barcode
-                isInShoppingList: false,
-                isOnSale: false
-            )
-            
-            return savedProduct
-        } catch {
-            // Product not found in API, return nil
-            return nil
-        }
+        print("Repository: Network product fetch disabled - returning nil for: \(name)")
+        // Local-only: return nil (API calls disabled)
+        return nil
     }
     
     // MARK: - Tag Methods
