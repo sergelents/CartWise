@@ -321,7 +321,6 @@ struct ProductDetailView: View {
     
     // Dismissing the view
     @Environment(\.dismiss) private var dismiss
-    @State private var showingDeleteAlert = false
 
     var body: some View {
         NavigationView {
@@ -375,135 +374,10 @@ struct ProductDetailView: View {
             .navigationTitle("Product Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Delete") {
-                        deleteProduct()
-                    }
-                    .foregroundColor(.red)
-                }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
-                }
-            }
-        }
-        .alert("Delete Product", isPresented: $showingDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                performDelete()
-            }
-        } message: {
-            Text("Are you sure you want to delete '\(product.productName ?? "this product")'? This action cannot be undone.")
-        }
-    }
-    
-    private func deleteProduct() {
-        showingDeleteAlert = true
-    }
-    
-    private func performDelete() {
-        Task {
-            do {
-                let context = await CoreDataStack.shared.viewContext
-                
-                print("Attempting to delete product with ID: \(product.id ?? "nil")")
-                print("Product name: \(product.productName ?? "Unknown")")
-                print("Product barcode: \(product.barcode ?? "Unknown")")
-                
-                // Try to delete the product directly if it's in the same context
-                if product.managedObjectContext == context {
-                    print("Product is in the same context, deleting directly")
-                    
-                    // Remove tags from the product first
-                    if let tags = product.tags as? Set<Tag> {
-                        print("Removing \(tags.count) tags from product")
-                        product.tags = nil
-                    }
-                    
-                    // Delete associated location prices first
-                    let priceFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-                    priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@", product)
-                    
-                    let prices = try context.fetch(priceFetchRequest)
-                    print("Found \(prices.count) prices to delete")
-                    
-                    for price in prices {
-                        context.delete(price)
-                        print("Deleted price: $\(price.price) at \(price.location?.name ?? "Unknown")")
-                    }
-                    
-                    // Delete the product
-                    context.delete(product)
-                    print("Deleted product from context")
-                    
-                    try context.save()
-                    print("Context saved successfully")
-                    
-                    // Refresh the product list
-                    await productViewModel.loadProducts()
-                    
-                    await MainActor.run {
-                        dismiss()
-                    }
-                } else {
-                    print("Product is in different context, fetching by ID")
-                    
-                    // Get the product in the current context
-                    let fetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
-                    fetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
-                    fetchRequest.fetchLimit = 1
-                    
-                    let products = try context.fetch(fetchRequest)
-                    print("Found \(products.count) products to delete")
-                    
-                    if let productToDelete = products.first {
-                        print("Deleting product: \(productToDelete.productName ?? "Unknown")")
-                        
-                        // Remove tags from the product first
-                        if let tags = productToDelete.tags as? Set<Tag> {
-                            print("Removing \(tags.count) tags from product")
-                            productToDelete.tags = nil
-                        }
-                        
-                        // Delete associated location prices first
-                        let priceFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-                        priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@", productToDelete)
-                        
-                        let prices = try context.fetch(priceFetchRequest)
-                        print("Found \(prices.count) prices to delete")
-                        
-                        for price in prices {
-                            context.delete(price)
-                            print("Deleted price: $\(price.price) at \(price.location?.name ?? "Unknown")")
-                        }
-                        
-                        // Delete the product
-                        context.delete(productToDelete)
-                        print("Deleted product from context")
-                        
-                        try context.save()
-                        print("Context saved successfully")
-                        
-                        // Refresh the product list
-                        await productViewModel.loadProducts()
-                        
-                        await MainActor.run {
-                            dismiss()
-                        }
-                    } else {
-                        print("Product not found in context")
-                        await MainActor.run {
-                            dismiss()
-                        }
-                    }
-                }
-                
-            } catch {
-                print("Error deleting product: \(error)")
-                await MainActor.run {
-                    dismiss()
                 }
             }
         }
