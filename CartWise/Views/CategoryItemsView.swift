@@ -9,6 +9,7 @@
 
 import SwiftUI
 import CoreData
+import Foundation
 
 
 
@@ -405,7 +406,7 @@ struct ProductDetailView: View {
     private func performDelete() {
         Task {
             do {
-                let context = PersistenceController.shared.container.viewContext
+                let context = await CoreDataStack.shared.viewContext
                 
                 print("Attempting to delete product with ID: \(product.id ?? "nil")")
                 print("Product name: \(product.productName ?? "Unknown")")
@@ -630,9 +631,27 @@ struct ProductPriceView: View {
                 ProgressView()
                     .scaleEffect(0.8)
             } else if locationPrices.isEmpty {
-                Text("No location-specific prices")
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.gray)
+                VStack(spacing: 8) {
+                    Text("No location-specific prices")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(.gray)
+                    
+                    Button("Refresh") {
+                        Task {
+                            await loadLocationPrices()
+                        }
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppColors.accentGreen)
+                    
+                    Button("Add Test Price") {
+                        Task {
+                            await addTestLocationPrice()
+                        }
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppColors.accentGreen)
+                }
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Prices by Location")
@@ -655,18 +674,80 @@ struct ProductPriceView: View {
         .task {
             await loadLocationPrices()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
+            Task {
+                await loadLocationPrices()
+            }
+        }
+    }
+    
+    private func addTestLocationPrice() async {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            
+            // Get the first available location
+            let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+            let locations = try context.fetch(locationFetchRequest)
+            
+            if let firstLocation = locations.first {
+                print("Adding test price for product: \(product.productName ?? "Unknown")")
+                print("Using location: \(firstLocation.name ?? "Unknown")")
+                
+                // Fetch the product in the same context to avoid context mismatch
+                let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+                productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
+                productFetchRequest.fetchLimit = 1
+                
+                let products = try context.fetch(productFetchRequest)
+                
+                if let productInContext = products.first {
+                    print("Found product in context: \(productInContext.productName ?? "Unknown")")
+                    
+                    // Create a test price with the product from the same context
+                    let testPrice = GroceryItemPrice(
+                        context: context,
+                        id: UUID().uuidString,
+                        price: 4.99,
+                        currency: "USD",
+                        store: firstLocation.name, // Use location name as store
+                        groceryItem: productInContext,
+                        location: firstLocation
+                    )
+                    
+                    try context.save()
+                    print("Test price created successfully")
+                    
+                    // Refresh the prices
+                    await loadLocationPrices()
+                } else {
+                    print("Product not found in context")
+                }
+            } else {
+                print("No locations found in database")
+            }
+        } catch {
+            print("Error creating test price: \(error)")
+        }
     }
     
     private func loadLocationPrices() async {
         isLoading = true
         
         do {
-            let context = PersistenceController.shared.container.viewContext
+            let context = await CoreDataStack.shared.viewContext
             let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
             fetchRequest.predicate = NSPredicate(format: "groceryItem == %@", product)
             fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItemPrice.price, ascending: true)]
             
             let prices = try context.fetch(fetchRequest)
+            print("ProductPriceView: Found \(prices.count) location prices for product: \(product.productName ?? "Unknown")")
+            print("Product ID: \(product.id ?? "nil")")
+            
+            for price in prices {
+                print("Price: $\(price.price) at \(price.location?.name ?? "Unknown Location")")
+                print("Price ID: \(price.id ?? "nil")")
+                print("Price Product ID: \(price.groceryItem?.id ?? "nil")")
+            }
             
             await MainActor.run {
                 self.locationPrices = prices

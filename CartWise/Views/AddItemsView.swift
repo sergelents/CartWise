@@ -258,14 +258,23 @@ struct AddItemsView: View {
                 isOnSale: isOnSale
             )
             
+            print("handleBarcodeProcessing - newProduct created: \(newProduct?.productName ?? "nil")")
+            print("handleBarcodeProcessing - location: \(location?.name ?? "nil")")
+            print("handleBarcodeProcessing - priceValue: \(priceValue)")
+            
             // Associate tags with the new product
             if let newProduct = newProduct {
                 await productViewModel.addTagsToProduct(newProduct, tags: tags)
                 
                 // Create location-specific price if location is selected
                 if let location = location {
+                    print("Location selected: \(location.name ?? "Unknown")")
                     await createLocationPrice(for: newProduct, at: location, price: priceValue)
+                } else {
+                    print("No location selected")
                 }
+            } else {
+                print("newProduct is nil")
             }
             
             await MainActor.run {
@@ -288,92 +297,121 @@ struct AddItemsView: View {
     }
     
     private func createProductDirectly(barcode: String, productName: String, brand: String?, category: String?, price: Double, isOnSale: Bool) async -> GroceryItem? {
-        await MainActor.run {
-            do {
-                let context = PersistenceController.shared.container.viewContext
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            
+            // Check if product already exists with this barcode
+            let fetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "barcode == %@", barcode)
+            
+            let existingProducts = try context.fetch(fetchRequest)
+            if let existingProduct = existingProducts.first {
+                // Product exists, update it with new information and return it
+                print("Product with barcode '\(barcode)' already exists, updating...")
                 
-                // Check if product already exists with this barcode
-                let fetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
-                fetchRequest.predicate = NSPredicate(format: "barcode == %@", barcode)
-                
-                let existingProducts = try context.fetch(fetchRequest)
-                if !existingProducts.isEmpty {
-                    productViewModel.errorMessage = "Product with barcode '\(barcode)' already exists"
-                    return nil
+                // Update product information if provided
+                if !productName.isEmpty && productName != "Unknown Product" {
+                    existingProduct.productName = productName
                 }
-                
-                // Create new product
-                let newProduct = GroceryItem(
-                    context: context,
-                    id: UUID().uuidString,
-                    productName: productName,
-                    brand: brand,
-                    category: category,
-                    price: price,
-                    currency: "USD",
-                    store: nil,
-                    location: nil,
-                    imageURL: nil,
-                    barcode: barcode,
-                    isOnSale: isOnSale
-                )
+                if let brand = brand, !brand.isEmpty {
+                    existingProduct.brand = brand
+                }
+                if let category = category, !category.isEmpty {
+                    existingProduct.category = category
+                }
+                existingProduct.isOnSale = isOnSale
+                existingProduct.updatedAt = Date()
                 
                 try context.save()
-                print("Created product: \(productName) with barcode: \(barcode)")
-                return newProduct
-                
-            } catch {
-                print("Error creating product: \(error)")
-                productViewModel.errorMessage = error.localizedDescription
-                return nil
+                print("Updated existing product: \(existingProduct.productName ?? "Unknown") with barcode: \(barcode)")
+                return existingProduct
             }
+            
+            // Create new product if it doesn't exist
+            let newProduct = GroceryItem(
+                context: context,
+                id: UUID().uuidString,
+                productName: productName,
+                brand: brand,
+                category: category,
+                price: price,
+                currency: "USD",
+                store: nil,
+                location: nil,
+                imageURL: nil,
+                barcode: barcode,
+                isOnSale: isOnSale
+            )
+            
+            try context.save()
+            print("Created new product: \(productName) with barcode: \(barcode)")
+            return newProduct
+            
+        } catch {
+            print("Error creating/updating product: \(error)")
+            productViewModel.errorMessage = error.localizedDescription
+            return nil
         }
     }
     
     private func createLocationPrice(for product: GroceryItem, at location: Location, price: Double) async {
-        await MainActor.run {
-            do {
-                let context = PersistenceController.shared.container.viewContext
-                
-                // Get the product in the current context
-                let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
-                productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
-                productFetchRequest.fetchLimit = 1
-                
-                let products = try context.fetch(productFetchRequest)
-                guard let productInContext = products.first else {
-                    print("Product not found in context")
-                    return
-                }
-                
-                // Get the location in the current context
-                let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
-                locationFetchRequest.predicate = NSPredicate(format: "id == %@", location.id ?? "")
-                locationFetchRequest.fetchLimit = 1
-                
-                let locations = try context.fetch(locationFetchRequest)
-                guard let locationInContext = locations.first else {
-                    print("Location not found in context")
-                    return
-                }
-                
-                // Create new GroceryItemPrice with objects from the same context
-                let locationPrice = GroceryItemPrice(
-                    context: context,
-                    id: UUID().uuidString,
-                    price: price,
-                    currency: "USD",
-                    store: nil, // Can be added later
-                    groceryItem: productInContext,
-                    location: locationInContext
-                )
-                
-                try context.save()
-                print("Created location price: $\(price) at \(locationInContext.name ?? "Unknown")")
-                
-            } catch {
-                print("Error creating location price: \(error)")
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            
+            print("createLocationPrice called for product: \(product.productName ?? "Unknown")")
+            print("Product ID: \(product.id ?? "nil")")
+            print("Location: \(location.name ?? "Unknown")")
+            print("Price: $\(price)")
+            
+            // Get the product in the current context
+            let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
+            productFetchRequest.fetchLimit = 1
+            
+            let products = try context.fetch(productFetchRequest)
+            guard let productInContext = products.first else {
+                print("Product not found in context")
+                return
             }
+            print("Found product in context: \(productInContext.productName ?? "Unknown")")
+            
+            // Get the location in the current context
+            let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+            locationFetchRequest.predicate = NSPredicate(format: "id == %@", location.id ?? "")
+            locationFetchRequest.fetchLimit = 1
+            
+            let locations = try context.fetch(locationFetchRequest)
+            guard let locationInContext = locations.first else {
+                print("Location not found in context")
+                return
+            }
+            print("Found location in context: \(locationInContext.name ?? "Unknown")")
+            
+            // Create new GroceryItemPrice with objects from the same context
+            let locationPrice = GroceryItemPrice(
+                context: context,
+                id: UUID().uuidString,
+                price: price,
+                currency: "USD",
+                store: locationInContext.name, // Use location name as store
+                groceryItem: productInContext,
+                location: locationInContext
+            )
+            
+            try context.save()
+            print("Created location price: $\(price) at \(locationInContext.name ?? "Unknown")")
+            print("Location price ID: \(locationPrice.id ?? "nil")")
+            print("Product ID: \(productInContext.id ?? "nil")")
+            print("Location ID: \(locationInContext.id ?? "nil")")
+            
+            // Verify the relationship was created
+            let verifyFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
+            verifyFetchRequest.predicate = NSPredicate(format: "groceryItem == %@", productInContext)
+            let verifyPrices = try context.fetch(verifyFetchRequest)
+            print("Verification: Found \(verifyPrices.count) prices for this product after creation")
+            
+        } catch {
+            print("Error creating location price: \(error)")
         }
     }
     
