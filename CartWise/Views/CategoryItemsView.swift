@@ -9,6 +9,7 @@
 
 import SwiftUI
 import CoreData
+import Foundation
 
 
 
@@ -536,20 +537,200 @@ struct ProductPriceView: View {
     @ObservedObject var product: GroceryItem
     var lastUpdated: String
     var lastUpdatedBy: String
+    @State private var locationPrices: [GroceryItemPrice] = []
+    @State private var isLoading = true
 
     var body: some View {
-        VStack(alignment: .center, spacing: 10) {
+        VStack(alignment: .center, spacing: 16) {
+            // Main Price Display
             HStack {
                 Text("$\(String(format: "%.2f", product.price))")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.primary)
             }
+            
+            // Location-specific prices
+            if isLoading {
+                ProgressView()
+                    .scaleEffect(0.8)
+            } else if locationPrices.isEmpty {
+                VStack(spacing: 8) {
+                    Text("No location-specific prices")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(.gray)
+                    
+                    Button("Refresh") {
+                        Task {
+                            await loadLocationPrices()
+                        }
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppColors.accentGreen)
+                    
+                    Button("Add Test Price") {
+                        Task {
+                            await addTestLocationPrice()
+                        }
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppColors.accentGreen)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Prices by Location")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    ForEach(locationPrices, id: \.id) { price in
+                        LocationPriceRow(price: price)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            
             // Last updated by
             Text("Last updated: \(lastUpdated) \n By \(lastUpdatedBy)")
                 .font(.system(size: 12, weight: .regular))
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
         }
+        .task {
+            await loadLocationPrices()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
+            Task {
+                await loadLocationPrices()
+            }
+        }
+    }
+    
+    private func addTestLocationPrice() async {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            
+            // Get the first available location
+            let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+            let locations = try context.fetch(locationFetchRequest)
+            
+            if let firstLocation = locations.first {
+                print("Adding test price for product: \(product.productName ?? "Unknown")")
+                print("Using location: \(firstLocation.name ?? "Unknown")")
+                
+                // Fetch the product in the same context to avoid context mismatch
+                let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+                productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
+                productFetchRequest.fetchLimit = 1
+                
+                let products = try context.fetch(productFetchRequest)
+                
+                if let productInContext = products.first {
+                    print("Found product in context: \(productInContext.productName ?? "Unknown")")
+                    
+                    // Create a test price with the product from the same context
+                    let testPrice = GroceryItemPrice(
+                        context: context,
+                        id: UUID().uuidString,
+                        price: 4.99,
+                        currency: "USD",
+                        store: firstLocation.name, // Use location name as store
+                        groceryItem: productInContext,
+                        location: firstLocation
+                    )
+                    
+                    try context.save()
+                    print("Test price created successfully")
+                    
+                    // Refresh the prices
+                    await loadLocationPrices()
+                } else {
+                    print("Product not found in context")
+                }
+            } else {
+                print("No locations found in database")
+            }
+        } catch {
+            print("Error creating test price: \(error)")
+        }
+    }
+    
+    private func loadLocationPrices() async {
+        isLoading = true
+        
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@", product)
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItemPrice.price, ascending: true)]
+            
+            let prices = try context.fetch(fetchRequest)
+            print("ProductPriceView: Found \(prices.count) location prices for product: \(product.productName ?? "Unknown")")
+            print("Product ID: \(product.id ?? "nil")")
+            
+            for price in prices {
+                print("Price: $\(price.price) at \(price.location?.name ?? "Unknown Location")")
+                print("Price ID: \(price.id ?? "nil")")
+                print("Price Product ID: \(price.groceryItem?.id ?? "nil")")
+            }
+            
+            await MainActor.run {
+                self.locationPrices = prices
+                self.isLoading = false
+            }
+        } catch {
+            print("Error loading location prices: \(error)")
+            await MainActor.run {
+                self.isLoading = false
+            }
+        }
+    }
+}
+
+// Location Price Row
+struct LocationPriceRow: View {
+    let price: GroceryItemPrice
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Location Icon
+            ZStack {
+                Circle()
+                    .fill(AppColors.accentGreen.opacity(0.1))
+                    .frame(width: 32, height: 32)
+                
+                Image(systemName: "location.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(AppColors.accentGreen)
+            }
+            
+            // Location and Price Info
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(price.location?.name ?? "Unknown Location")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                    
+                    if let store = price.store, !store.isEmpty {
+                        Text("• \(store)")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(.gray)
+                    }
+                }
+                
+                if let lastUpdated = price.lastUpdated {
+                    Text("Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
+                        .font(.system(size: 10, weight: .regular))
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            Spacer()
+            
+            // Price
+            Text("$\(String(format: "%.2f", price.price))")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.primary)
+        }
+        .padding(.vertical, 4)
     }
 }
 

@@ -24,6 +24,8 @@ struct AddItemsView: View {
     @State private var pendingCategory: ProductCategory = .none
     @State private var pendingIsOnSale: Bool = false
     @State private var showCategoryPicker = false
+    @State private var pendingLocation: Location? = nil
+    @State private var showLocationPicker = false
     // Tag selection state
     @State private var selectedTags: [Tag] = []
     @State private var showingTagPicker = false
@@ -191,13 +193,15 @@ struct AddItemsView: View {
                     price: $pendingPrice,
                     selectedCategory: $pendingCategory,
                     isOnSale: $pendingIsOnSale,
+                    selectedLocation: $pendingLocation,
+                    showLocationPicker: $showLocationPicker,
                     showCategoryPicker: $showCategoryPicker,
                     availableTags: availableTags,
                     selectedTags: $selectedTags,
                     showingTagPicker: $showingTagPicker,
-                    onConfirm: { barcode, productName, company, price, category, isOnSale, tags in
+                    onConfirm: { barcode, productName, company, price, category, isOnSale, location, tags in
                         showingBarcodeConfirmation = false
-                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale, tags: tags)
+                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale, location: location, tags: tags)
                     },
                     onCancel: {
                         showingBarcodeConfirmation = false
@@ -213,6 +217,9 @@ struct AddItemsView: View {
                         selectedTags: $selectedTags,
                         onDone: { showingTagPicker = false }
                     )
+                }
+                .sheet(isPresented: $showLocationPicker) {
+                    LocationPickerView(selectedLocation: $pendingLocation)
                 }
             }
 
@@ -233,25 +240,34 @@ struct AddItemsView: View {
         showingBarcodeConfirmation = true
     }
     
-    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory, isOnSale: Bool, tags: [Tag]) {
+    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory, isOnSale: Bool, location: Location?, tags: [Tag]) {
         scannedBarcode = barcode
         isProcessing = true
         
         Task {
             // Convert price string to Double
             let priceValue = Double(price.replacingOccurrences(of: "$", with: "")) ?? 0.0
-            let newProduct = await productViewModel.createProductByBarcode(
-                barcode,
-                isOnSale: isOnSale,
+            
+            // Create product directly without API call
+            let newProduct = await createProductDirectly(
+                barcode: barcode,
                 productName: productName.isEmpty ? "Unknown Product" : productName,
                 brand: company.isEmpty ? nil : company,
                 category: category == .none ? nil : category.rawValue,
-                price: priceValue
+                price: priceValue,
+                isOnSale: isOnSale
             )
+            
             // Associate tags with the new product
             if let newProduct = newProduct {
                 await productViewModel.addTagsToProduct(newProduct, tags: tags)
+                
+                // Create location-specific price if location is selected
+                if let location = location {
+                    await createLocationPrice(for: newProduct, at: location, price: priceValue)
+                }
             }
+            
             await MainActor.run {
                 isProcessing = false
                 if let error = productViewModel.errorMessage {
@@ -271,6 +287,102 @@ struct AddItemsView: View {
         }
     }
     
+    private func createProductDirectly(barcode: String, productName: String, brand: String?, category: String?, price: Double, isOnSale: Bool) async -> GroceryItem? {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            
+            // Check if product already exists with this barcode
+            let fetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "barcode == %@", barcode)
+            
+            let existingProducts = try context.fetch(fetchRequest)
+            if let existingProduct = existingProducts.first {
+                // Product exists, update it with new information and return it
+                
+                // Update product information if provided
+                if !productName.isEmpty && productName != "Unknown Product" {
+                    existingProduct.productName = productName
+                }
+                if let brand = brand, !brand.isEmpty {
+                    existingProduct.brand = brand
+                }
+                if let category = category, !category.isEmpty {
+                    existingProduct.category = category
+                }
+                existingProduct.isOnSale = isOnSale
+                existingProduct.updatedAt = Date()
+                
+                try context.save()
+                return existingProduct
+            }
+            
+            // Create new product if it doesn't exist
+            let newProduct = GroceryItem(
+                context: context,
+                id: UUID().uuidString,
+                productName: productName,
+                brand: brand,
+                category: category,
+                price: price,
+                currency: "USD",
+                store: nil,
+                location: nil,
+                imageURL: nil,
+                barcode: barcode,
+                isOnSale: isOnSale
+            )
+            
+            try context.save()
+            return newProduct
+            
+        } catch {
+            productViewModel.errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+    
+    private func createLocationPrice(for product: GroceryItem, at location: Location, price: Double) async {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            
+            // Get the product in the current context
+            let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
+            productFetchRequest.fetchLimit = 1
+            
+            let products = try context.fetch(productFetchRequest)
+            guard let productInContext = products.first else {
+                return
+            }
+            
+            // Get the location in the current context
+            let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+            locationFetchRequest.predicate = NSPredicate(format: "id == %@", location.id ?? "")
+            locationFetchRequest.fetchLimit = 1
+            
+            let locations = try context.fetch(locationFetchRequest)
+            guard let locationInContext = locations.first else {
+                return
+            }
+            
+            // Create new GroceryItemPrice with objects from the same context
+            let locationPrice = GroceryItemPrice(
+                context: context,
+                id: UUID().uuidString,
+                price: price,
+                currency: "USD",
+                store: locationInContext.name, // Use location name as store
+                groceryItem: productInContext,
+                location: locationInContext
+            )
+            
+            try context.save()
+            
+        } catch {
+            // Handle error silently
+        }
+    }
+    
     private func resetPendingData() {
         pendingBarcode = ""
         pendingProductName = ""
@@ -278,6 +390,7 @@ struct AddItemsView: View {
         pendingPrice = ""
         pendingCategory = .none
         pendingIsOnSale = false
+        pendingLocation = nil
         selectedTags = []
     }
     
@@ -375,11 +488,13 @@ struct BarcodeConfirmationView: View {
     @Binding var price: String
     @Binding var selectedCategory: ProductCategory
     @Binding var isOnSale: Bool
+    @Binding var selectedLocation: Location?
+    @Binding var showLocationPicker: Bool
     @Binding var showCategoryPicker: Bool
     let availableTags: [Tag]
     @Binding var selectedTags: [Tag]
     @Binding var showingTagPicker: Bool
-    let onConfirm: (String, String, String, String, ProductCategory, Bool, [Tag]) -> Void
+    let onConfirm: (String, String, String, String, ProductCategory, Bool, Location?, [Tag]) -> Void
     let onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
     
@@ -483,6 +598,29 @@ struct BarcodeConfirmationView: View {
                                 .keyboardType(.decimalPad)
                         }
                         
+                        // Location Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Location")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            
+                            Button(action: {
+                                showLocationPicker = true
+                            }) {
+                                HStack {
+                                    Text(selectedLocation?.name ?? "Select location...")
+                                        .font(.body)
+                                        .foregroundColor(selectedLocation == nil ? .gray : .primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .foregroundColor(.gray)
+                                }
+                                .padding()
+                                .background(AppColors.backgroundSecondary)
+                                .cornerRadius(8)
+                            }
+                        }
+                        
                         // Sale Checkbox
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -552,7 +690,7 @@ struct BarcodeConfirmationView: View {
                     // Action Buttons
                     VStack(spacing: 12) {
                         Button(action: {
-                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedTags)
+                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedLocation, selectedTags)
                         }) {
                             Text("Add Item")
                                 .fontWeight(.semibold)

@@ -19,7 +19,13 @@ extension UserEntity {
     @NSManaged public var updates: Int32
     @NSManaged public var level: String?
     @NSManaged public var createdAt: Date?
+    @NSManaged public var locations: NSSet?
 }
 
 extension UserEntity : Identifiable {
+    // Computed property for easier access to locations
+    var locationArray: [Location] {
+        let set = locations as? Set<Location> ?? []
+        return Array(set)
+    }
 }

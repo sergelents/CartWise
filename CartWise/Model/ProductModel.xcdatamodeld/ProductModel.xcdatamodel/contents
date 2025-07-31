@@ -19,6 +19,34 @@
         <attribute name="store" optional="YES" attributeType="String"/>
         <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="tags" optional="YES" toMany="YES" deletionRule="Deny" destinationEntity="Tag" inverseName="products" inverseEntity="Tag"/>
+        <relationship name="locations" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Location" inverseName="groceryItems" inverseEntity="Location"/>
+        <relationship name="prices" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="GroceryItemPrice" inverseName="groceryItem" inverseEntity="GroceryItemPrice"/>
+    </entity>
+    <entity name="Location" representedClassName="Location" syncable="YES">
+        <attribute name="address" optional="YES" attributeType="String"/>
+        <attribute name="city" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="favorited" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="isDefault" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="state" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="zipCode" optional="YES" attributeType="String"/>
+        <relationship name="groceryItems" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="GroceryItem" inverseName="locations" inverseEntity="GroceryItem"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="UserEntity" inverseName="locations" inverseEntity="UserEntity"/>
+        <relationship name="prices" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="GroceryItemPrice" inverseName="location" inverseEntity="GroceryItemPrice"/>
+    </entity>
+    <entity name="GroceryItemPrice" representedClassName="GroceryItemPrice" syncable="YES">
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="currency" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="lastUpdated" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="price" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="store" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="groceryItem" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="GroceryItem" inverseName="prices" inverseEntity="GroceryItem"/>
+        <relationship name="location" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Location" inverseName="prices" inverseEntity="Location"/>
     </entity>
     <entity name="Tag" representedClassName="Tag" syncable="YES">
         <attribute name="color" optional="YES" attributeType="String"/>
@@ -35,5 +63,6 @@
         <attribute name="password" optional="YES" attributeType="String"/>
         <attribute name="updates" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="username" optional="YES" attributeType="String"/>
+        <relationship name="locations" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Location" inverseName="user" inverseEntity="Location"/>
     </entity>
 </model>

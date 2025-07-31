@@ -13,6 +13,7 @@ struct MyProfileView: View {
     @EnvironmentObject var productViewModel: ProductViewModel
     @State private var currentUsername: String = ""
     @State private var isLoadingUser: Bool = true
+    @State private var showAddLocation: Bool = false
     
     var body: some View {
         NavigationView {
@@ -87,6 +88,11 @@ struct MyProfileView: View {
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
                         
+                        // Locations Section
+                        LocationsSectionView()
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                        
                         // Enhanced Log Out Button
                         Button(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -129,6 +135,10 @@ struct MyProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 await loadCurrentUser()
+            }
+            .sheet(isPresented: $showAddLocation) {
+                AddLocationView()
+                    .environmentObject(productViewModel)
             }
         }
     }
