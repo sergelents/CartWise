@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreData
+import SwiftUI
 
 protocol CoreDataContainerProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
@@ -31,6 +32,8 @@ protocol CoreDataContainerProtocol: Sendable {
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func initializeDefaultTags() async throws
+    
+
 }
 
 final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
@@ -285,4 +288,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try TagSeedData.seedTags(in: context)
         }
     }
+    
+
 } 

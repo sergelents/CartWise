@@ -11,13 +11,17 @@ struct PriceComparisonView: View {
     let priceComparison: PriceComparison?
     let isLoading: Bool
     let onRefresh: () async -> Void
+    let onLocalComparison: () async -> Void
+    
+    @State private var selectedStores: Set<String> = ["Amazon", "Walmart"]
+    @State private var availableStores = ["Amazon", "Walmart", "Target", "Kroger", "Safeway", "Whole Foods"]
     
     var body: some View {
         VStack(spacing: 12) {
             // Header
             HStack {
                 Text("Price Comparison")
-                    .font(.poppins(size:15, weight: .regular))
+                    .font(.system(size: 15, weight: .regular))
                     .foregroundColor(.gray)
                 
                 Spacer()
@@ -41,6 +45,49 @@ struct PriceComparisonView: View {
 
             Divider()
                 .padding(.horizontal)
+            
+            // Store Selection
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Select Stores to Compare:")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                    ForEach(availableStores, id: \.self) { store in
+                        StoreToggleButton(
+                            store: store,
+                            isSelected: selectedStores.contains(store),
+                            onToggle: { isSelected in
+                                if isSelected {
+                                    selectedStores.insert(store)
+                                } else {
+                                    selectedStores.remove(store)
+                                }
+                            }
+                        )
+                    }
+                }
+                
+                HStack {
+                    Button("Compare Local Prices") {
+                        Task {
+                            await onLocalComparison()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(selectedStores.isEmpty)
+                    
+                    Spacer()
+                    
+                    Button("Clear Selection") {
+                        selectedStores.removeAll()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(selectedStores.isEmpty)
+                }
+            }
+            .padding(.horizontal)
             
             if let comparison = priceComparison {
                 // Best store summary
@@ -101,7 +148,7 @@ struct PriceComparisonView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    Text("Add items to your shopping list to see price comparisons")
+                    Text("Add items to your shopping list and select stores to see price comparisons")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -110,9 +157,37 @@ struct PriceComparisonView: View {
             }
         }
         .padding(.vertical, 8)
-        .background(Color(.systemBackground))
+        .background(Color(uiColor: .systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+    }
+}
+
+struct StoreToggleButton: View {
+    let store: String
+    let isSelected: Bool
+    let onToggle: (Bool) -> Void
+    
+    var body: some View {
+        Button(action: {
+            onToggle(!isSelected)
+        }) {
+            HStack {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isSelected ? .blue : .gray)
+                
+                Text(store)
+                    .font(.caption)
+                    .foregroundColor(isSelected ? .primary : .secondary)
+                
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(isSelected ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
+            .cornerRadius(8)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -196,10 +271,11 @@ struct StorePriceRow: View {
         availableItems: 9
     )
     
-    return PriceComparisonView(
+    PriceComparisonView(
         priceComparison: sampleComparison,
         isLoading: false,
-        onRefresh: {}
+        onRefresh: {},
+        onLocalComparison: {}
     )
     .padding()
 } 

@@ -393,6 +393,65 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
+    func loadLocalPriceComparison(stores: [String] = ["Amazon", "Walmart"]) async {
+        // Get the current shopping list products specifically
+        let shoppingListProducts = try? await repository.fetchListProducts()
+        
+        guard let shoppingList = shoppingListProducts, !shoppingList.isEmpty else {
+            await MainActor.run {
+                priceComparison = nil
+            }
+            return
+        }
+        
+        await MainActor.run {
+            isLoadingPriceComparison = true
+            errorMessage = nil
+        }
+        
+        do {
+            print("ViewModel: Starting local price comparison for shopping list with \(shoppingList.count) items")
+            
+            // Use the repository to get local price comparison
+            let localComparison = try await repository.getLocalPriceComparison(for: shoppingList, stores: stores)
+            
+            // Convert LocalPriceComparisonResult to PriceComparison for compatibility
+            let storePrices = localComparison.storePrices.map { localStorePrice in
+                StorePrice(
+                    store: Store(rawValue: localStorePrice.store) ?? .amazon,
+                    totalPrice: localStorePrice.totalPrice,
+                    currency: localStorePrice.currency,
+                    availableItems: localStorePrice.availableItems,
+                    unavailableItems: localStorePrice.unavailableItems,
+                    itemPrices: localStorePrice.itemPrices
+                )
+            }
+            
+            let comparison = PriceComparison(
+                storePrices: storePrices,
+                bestStore: localComparison.bestStore != nil ? Store(rawValue: localComparison.bestStore!) : nil,
+                bestTotalPrice: localComparison.bestTotalPrice,
+                bestCurrency: localComparison.bestCurrency,
+                totalItems: localComparison.totalItems,
+                availableItems: localComparison.availableItems
+            )
+            
+            await MainActor.run {
+                priceComparison = comparison
+                print("ViewModel: Local price comparison loaded successfully")
+            }
+        } catch {
+            await MainActor.run {
+                print("ViewModel: Error loading local price comparison: \(error)")
+                errorMessage = "Failed to load local price comparison: \(error.localizedDescription)"
+            }
+        }
+        
+        await MainActor.run {
+            isLoadingPriceComparison = false
+        }
+    }
+    
 }
 
 extension ProductViewModel {

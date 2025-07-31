@@ -24,7 +24,7 @@ struct YourListView: View {
     @State private var duplicateProductName = ""
     @State private var showingCheckAllConfirmation = false
     
-        var body: some View {
+    var body: some View {
         NavigationStack {
             MainContentView(
                 isEditing: $isEditing,
@@ -36,11 +36,11 @@ struct YourListView: View {
                 showingRatingPrompt: $showingRatingPrompt,
                 showingAddProductModal: $showingAddProductModal,
                 showingCheckAllConfirmation: $showingCheckAllConfirmation
-        )
+            )
             .navigationTitle("Your Shopping List")
-        .sheet(isPresented: $showingRatingPrompt) {
-            RatingPromptView()
-        }
+            .sheet(isPresented: $showingRatingPrompt) {
+                RatingPromptView()
+            }
             .sheet(isPresented: $showingAddProductModal) {
                 SmartAddProductModal(onAdd: addProductToSystem)
                     .presentationDetents([.large])
@@ -142,6 +142,9 @@ struct MainContentView: View {
                     isLoading: productViewModel.isLoadingPriceComparison,
                     onRefresh: {
                         await productViewModel.refreshPriceComparison()
+                    },
+                    onLocalComparison: {
+                        await productViewModel.loadLocalPriceComparison()
                     }
                 )
                 .padding(.horizontal)
@@ -1279,6 +1282,8 @@ struct AmazonPriceResultRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
+
+
 
 #Preview {
     YourListView()
