@@ -393,7 +393,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func loadLocalPriceComparison(stores: [String] = ["Amazon", "Walmart"]) async {
+    func loadLocalPriceComparison() async {
         // Get the current shopping list products specifically
         let shoppingListProducts = try? await repository.fetchListProducts()
         
@@ -413,7 +413,7 @@ final class ProductViewModel: ObservableObject {
             print("ViewModel: Starting local price comparison for shopping list with \(shoppingList.count) items")
             
             // Use the repository to get local price comparison
-            let localComparison = try await repository.getLocalPriceComparison(for: shoppingList, stores: stores)
+            let localComparison = try await repository.getLocalPriceComparison(for: shoppingList)
             
             // Convert LocalPriceComparisonResult to PriceComparison for compatibility
             let storePrices = localComparison.storePrices.map { localStorePrice in

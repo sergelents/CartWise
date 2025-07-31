@@ -7,6 +7,7 @@
 
 import Foundation
 import CoreData
+import CartWise
 
 protocol ProductRepositoryProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
@@ -27,7 +28,7 @@ protocol ProductRepositoryProtocol: Sendable {
     func searchProductsOnWalmart(by query: String) async throws -> [GroceryItem]
     func fetchProductFromNetwork(by name: String) async throws -> GroceryItem?
     func getPriceComparison(for shoppingList: [GroceryItem]) async throws -> PriceComparison
-    func getLocalPriceComparison(for shoppingList: [GroceryItem], stores: [String]) async throws -> LocalPriceComparisonResult
+    func getLocalPriceComparison(for shoppingList: [GroceryItem]) async throws -> LocalPriceComparisonResult
     
     // Tag-related methods
     func fetchAllTags() async throws -> [Tag]
@@ -300,34 +301,40 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
         }
     }
     
-    func getLocalPriceComparison(for shoppingList: [GroceryItem], stores: [String]) async throws -> LocalPriceComparisonResult {
+    func getLocalPriceComparison(for shoppingList: [GroceryItem]) async throws -> LocalPriceComparisonResult {
         print("Repository: Starting local price comparison for \(shoppingList.count) items")
-        print("Repository: Checking stores: \(stores)")
-        
+        let availableStores = Set(shoppingList.compactMap { $0.store }.filter { !$0.isEmpty })
+        print("Repository: Found stores in shopping list: \(availableStores)")
+        guard !availableStores.isEmpty else {
+            print("Repository: No stores found in shopping list")
+            return LocalPriceComparisonResult(
+                storePrices: [],
+                bestStore: nil,
+                bestTotalPrice: 0.0,
+                bestCurrency: "USD",
+                totalItems: shoppingList.count,
+                availableItems: 0
+            )
+        }
         var storePrices: [LocalStorePrice] = []
-        
-        // For each store, calculate the total price based on existing product data
-        for store in stores {
+        for store in availableStores {
             var totalPrice: Double = 0.0
             var availableItems = 0
             var unavailableItems = 0
             var itemPrices: [String: Double] = [:]
-            
-            for item in shoppingList {
+            let storeItems = shoppingList.filter { $0.store == store }
+            for item in storeItems {
                 guard let productName = item.productName else { continue }
-                
-                // Use existing product prices if available
                 if item.price > 0 {
                     totalPrice += item.price
                     availableItems += 1
                     itemPrices[productName] = item.price
-                    print("Repository: Using existing price for \(productName): $\(item.price)")
+                    print("Repository: Found \(productName) at \(store) for $\(item.price)")
                 } else {
                     unavailableItems += 1
-                    print("Repository: No price for \(productName)")
+                    print("Repository: \(productName) at \(store) has no price")
                 }
             }
-            
             let storePrice = LocalStorePrice(
                 store: store,
                 totalPrice: totalPrice,
@@ -336,17 +343,13 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                 unavailableItems: unavailableItems,
                 itemPrices: itemPrices
             )
-            
             storePrices.append(storePrice)
-            print("Repository: Store \(store) total: $\(totalPrice), available: \(availableItems)/\(shoppingList.count)")
+            print("Repository: Store \(store) total: $\(totalPrice), available: \(availableItems)/\(storeItems.count)")
         }
-        
-        // Find the best store
         let bestStorePrice = storePrices.min { $0.totalPrice < $1.totalPrice }
         let bestStore = bestStorePrice?.store
         let bestTotalPrice = bestStorePrice?.totalPrice ?? 0.0
         let bestCurrency = bestStorePrice?.currency ?? "USD"
-        
         let comparison = LocalPriceComparisonResult(
             storePrices: storePrices,
             bestStore: bestStore,
@@ -355,7 +358,6 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             totalItems: shoppingList.count,
             availableItems: storePrices.map { $0.availableItems }.max() ?? 0
         )
-        
         print("Repository: Local price comparison complete. Best store: \(bestStore ?? "None"), Total: $\(bestTotalPrice)")
         return comparison
     }
