@@ -17,6 +17,8 @@ struct SearchItemsView: View {
     @State private var selectedCategory: ProductCategory? = nil
     @State private var selectedTag: Tag? = nil
     @State private var showingTagPicker = false
+    @State private var selectedLocation: Location? = nil
+    @State private var userLocations: [Location] = []
 
     @EnvironmentObject var viewModel: ProductViewModel
     
@@ -91,6 +93,7 @@ struct SearchItemsView: View {
                 Task {
                     await viewModel.loadProducts()
                     await viewModel.loadTags()
+                    await loadUserLocations()
                 }
             }
         }
@@ -173,7 +176,7 @@ struct SearchItemsView: View {
     
     private var searchResultsView: some View {
         List(searchResults, id: \.id) { product in
-            NavigationLink(destination: ProductDetailView(product: product, selectedLocation: nil)) {
+            NavigationLink(destination: ProductDetailView(product: product, selectedLocation: selectedLocation)) {
                 SearchResultRowView(product: product)
             }
             .buttonStyle(PlainButtonStyle())
@@ -209,7 +212,7 @@ struct SearchItemsView: View {
                 .padding(.horizontal, 40)
             } else {
                 List(tagFilteredResults, id: \.id) { product in
-                    NavigationLink(destination: ProductDetailView(product: product, selectedLocation: nil)) {
+                    NavigationLink(destination: ProductDetailView(product: product, selectedLocation: selectedLocation)) {
                         SearchResultRowView(product: product)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -328,6 +331,15 @@ struct SearchItemsView: View {
         Task {
             await performSearch()
         }
+    }
+    
+    // MARK: - Helper Functions
+    private func loadUserLocations() async {
+        await viewModel.loadLocations()
+        userLocations = viewModel.locations
+        
+        // Set selected location to default or first favorited location
+        selectedLocation = userLocations.first { $0.isDefault } ?? userLocations.first { $0.favorited } ?? userLocations.first
     }
 }
 
