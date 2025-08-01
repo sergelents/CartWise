@@ -35,7 +35,7 @@ struct FavoriteItemsView: View {
                         .font(.system(size: 18, weight: .medium))
                 }
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("My Favorite Items")
                         .font(.poppins(size: 20, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
