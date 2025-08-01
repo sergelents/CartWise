@@ -184,7 +184,7 @@ struct SearchItemsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(tagFilteredResults, id: \.id) { product in
-                    NavigationLink(destination: ProductDetailView(product: product)) {
+                    NavigationLink(destination: ProductDetailView(product: product, selectedLocation: nil)) {
                         SearchResultRowView(product: product)
                     }
                     .buttonStyle(PlainButtonStyle())
