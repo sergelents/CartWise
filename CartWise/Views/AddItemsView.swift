@@ -323,10 +323,6 @@ struct AddItemsView: View {
                 productName: productName,
                 brand: brand,
                 category: category,
-                price: price,
-                currency: "USD",
-                store: nil,
-                location: nil,
                 imageURL: nil,
                 barcode: barcode,
                 isOnSale: isOnSale

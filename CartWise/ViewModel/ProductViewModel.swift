@@ -220,9 +220,6 @@ final class ProductViewModel: ObservableObject {
                 print("    Name: \(product.productName ?? "Unknown")")
                 print("    Brand: \(product.brand ?? "Unknown")")
                 print("    Category: \(product.category ?? "Unknown")")
-                print("    Price: $\(product.price)")
-                print("    Store: \(product.store ?? "Unknown")")
-                print("    Location: \(product.location ?? "Unknown")")
                 print("    Image URL: \(product.imageURL ?? "None")")
                 print("    Barcode: \(product.barcode ?? "None")")
                 print("    ---")
@@ -285,7 +282,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, price: Double = 0.0, isOnSale: Bool = false) async {
+    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, isOnSale: Bool = false) async {
         do {
             if await isDuplicateProduct(name: name) {
                 errorMessage = "Product '\(name)' already exists in your list"
@@ -298,7 +295,7 @@ final class ProductViewModel: ObservableObject {
                 productName: name,
                 brand: brand,
                 category: category,
-                price: price,
+                price: 0.0, // Default price - will be stored in GroceryItemPrice if > 0
                 currency: "USD",
                 store: nil,
                 location: nil,

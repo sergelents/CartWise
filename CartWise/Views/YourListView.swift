@@ -90,9 +90,9 @@ struct YourListView: View {
             
             // Proceed with creation if no duplicate
             if let brand = brand, !brand.isEmpty {
-                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category, price: price ?? 0.0)
+                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category)
             } else {
-                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category, price: price ?? 0.0)
+                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
             }
         }
     }
