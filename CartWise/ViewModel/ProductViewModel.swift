@@ -197,11 +197,18 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-
-  
     func searchProducts(by name: String) async {
         do {
             products = try await repository.searchProducts(by: name)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func searchProductsByTag(_ tag: Tag) async {
+        do {
+            products = try await repository.searchProductsByTag(tag)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
