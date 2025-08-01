@@ -35,10 +35,16 @@ struct FavoriteItemsView: View {
                         .font(.system(size: 18, weight: .medium))
                 }
                 
-                Text("My Favorite Items")
-                    .font(.poppins(size: 22, weight: .bold))
-                    .foregroundColor(.primary)
-                    .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("My Favorite Items")
+                        .font(.poppins(size: 22, weight: .bold))
+                        .foregroundColor(.primary)
+                        .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
+                    
+                    Text("Manage your favorite shopping items")
+                        .font(.poppins(size: 14, weight: .regular))
+                        .foregroundColor(.gray)
+                }
                 
                 Spacer()
                 
@@ -54,6 +60,12 @@ struct FavoriteItemsView: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
+            
+            // Divider line
+            Divider()
+                .background(Color.gray.opacity(0.3))
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
             
             // Enhanced Favorites List
             if productViewModel.favoriteProducts.isEmpty {
