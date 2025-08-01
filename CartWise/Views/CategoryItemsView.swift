@@ -395,8 +395,8 @@ struct ProductDetailView: View {
                             // Update the product's lastUpdated
                             product.lastUpdated = updatedAt
                             
-                            // Create or update a GroceryItemPrice for this product
-                            await updateProductPrice(product: product, newPrice: newPrice)
+                            // Create or update a GroceryItemPrice for this product at the current location
+                            await updateProductPrice(product: product, newPrice: newPrice, location: currentSelectedLocation ?? selectedLocation)
                             
                             await productViewModel.updateProduct(product)
                             await productViewModel.loadProducts()
@@ -465,7 +465,7 @@ struct ProductDetailView: View {
         }
     }
     
-    private func updateProductPrice(product: GroceryItem, newPrice: Double) async {
+    private func updateProductPrice(product: GroceryItem, newPrice: Double, location: Location?) async {
         do {
             let context = await CoreDataStack.shared.viewContext
             
@@ -480,48 +480,52 @@ struct ProductDetailView: View {
                 return
             }
             
-            // Check if there's an existing price for this product
+            // Use the provided location or return if no location is selected
+            guard let location = location else {
+                print("Error: No location selected for price update")
+                return
+            }
+            
+            // Get the location in the current context
+            let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+            locationFetchRequest.predicate = NSPredicate(format: "id == %@", location.id ?? "")
+            locationFetchRequest.fetchLimit = 1
+            
+            let locations = try context.fetch(locationFetchRequest)
+            guard let locationInContext = locations.first else {
+                print("Error: Could not find location in context")
+                return
+            }
+            
+            // Check if there's an existing price for this product and location
             let priceFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@", productInContext)
+            priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", productInContext, locationInContext.id ?? "")
             priceFetchRequest.fetchLimit = 1
             
             let existingPrices = try context.fetch(priceFetchRequest)
             
             if let existingPrice = existingPrices.first {
-                // Update existing price
+                // Update existing price for this location
                 existingPrice.price = newPrice
                 existingPrice.lastUpdated = Date()
+                print("Updated existing price for location: \(locationInContext.name ?? "Unknown")")
             } else {
-                // Create new price - we need a default location
-                let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
-                locationFetchRequest.fetchLimit = 1
-                
-                let locations = try context.fetch(locationFetchRequest)
-                let location = locations.first ?? {
-                    // Create a default location if none exists
-                    let defaultLocation = Location(context: context)
-                    defaultLocation.id = UUID().uuidString
-                    defaultLocation.name = "Default Store"
-                    defaultLocation.createdAt = Date()
-                    defaultLocation.updatedAt = Date()
-                    return defaultLocation
-                }()
-                
-                // Create new price entity
+                // Create new price for this specific location
                 let newPrice = GroceryItemPrice(
                     context: context,
                     id: UUID().uuidString,
                     price: newPrice,
                     currency: "USD",
-                    store: location.name,
+                    store: locationInContext.name,
                     groceryItem: productInContext,
-                    location: location,
+                    location: locationInContext,
                     updatedBy: await getCurrentUsername()
                 )
+                print("Created new price for location: \(locationInContext.name ?? "Unknown")")
             }
             
             try context.save()
-            print("Successfully updated product price to $\(newPrice)")
+            print("Successfully updated product price to $\(newPrice) for location: \(locationInContext.name ?? "Unknown")")
             
         } catch {
             print("Error updating product price: \(error)")
