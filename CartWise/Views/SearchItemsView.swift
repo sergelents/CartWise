@@ -417,28 +417,52 @@ struct SingleTagPickerView: View {
     @Binding var selectedTag: Tag?
     let tags: [Tag]
     @Environment(\.dismiss) private var dismiss
+    @State private var searchText = ""
+    
+    // Search tags
+    var filteredTags: [Tag] {
+        if searchText.isEmpty {
+            return tags
+        } else {
+            return tags.filter { tag in
+                tag.displayName.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(tags, id: \.id) { tag in
-                    Button(action: {
-                        selectedTag = tag
-                        dismiss()
-                    }) {
-                        HStack {
-                            Text(tag.displayName)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if selectedTag?.id == tag.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
+            VStack {
+                // Search bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gray)
+                    TextField("Search tags...", text: $searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+                .padding(.horizontal)
+                .padding(.top)
+                
+                List {
+                    ForEach(filteredTags, id: \.id) { tag in
+                        Button(action: {
+                            selectedTag = tag
+                            dismiss()
+                        }) {
+                            HStack {
+                                Text(tag.displayName)
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
+                                
+                                if selectedTag?.id == tag.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
                             }
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .buttonStyle(PlainButtonStyle())
                 }
             }
             .navigationTitle("Select Tag")
