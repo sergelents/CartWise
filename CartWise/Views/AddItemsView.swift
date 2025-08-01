@@ -268,6 +268,9 @@ struct AddItemsView: View {
                 
                 // Add to shopping list for price comparison
                 await productViewModel.addBarcodeProductToShoppingList(barcode: barcode)
+                
+                // Refresh price comparison after adding product
+                await productViewModel.loadLocalPriceComparison()
             }
             
             await MainActor.run {

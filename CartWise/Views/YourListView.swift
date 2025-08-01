@@ -103,6 +103,9 @@ struct YourListView: View {
             } else {
                 await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category, price: price ?? 0.0)
             }
+            
+            // Refresh price comparison after adding product
+            await productViewModel.loadLocalPriceComparison()
         }
     }
 }
