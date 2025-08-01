@@ -23,8 +23,14 @@ struct SearchItemsView: View {
     // Computed property for search results that updates automatically
     private var searchResults: [GroceryItem] {
         guard !searchText.isEmpty else { return [] }
-        // Filter viewModel products to match search text
-        let filtered = viewModel.products.filter { product in
+        
+        // If a tag is selected, filter from products that have that tag
+        let productsToSearch = selectedTag != nil ? 
+            viewModel.products.filter { $0.tagArray.contains(selectedTag!) } :
+            viewModel.products
+        
+        // Filter products to match search text
+        let filtered = productsToSearch.filter { product in
             guard let name = product.productName?.lowercased() else { return false }
             return name.contains(searchText.lowercased())
         }
@@ -33,7 +39,14 @@ struct SearchItemsView: View {
     
     // Computed property for tag-filtered results
     private var tagFilteredResults: [GroceryItem] {
-        guard let selectedTag = selectedTag else { return viewModel.products }
+        guard let selectedTag = selectedTag else { return [] }
+        
+        // If we have search text, use searchResults (which already respects the tag)
+        if !searchText.isEmpty {
+            return searchResults
+        }
+        
+        // Otherwise filter from all products
         return viewModel.products.filter { product in
             product.tagArray.contains(selectedTag)
         }
@@ -90,6 +103,10 @@ struct SearchItemsView: View {
             HStack {
                 TextField("Search products...", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .onChange(of: searchText) { _, newValue in
+                        // Real-time filtering is handled by computed properties
+                        // No need to call performSearch() as searchResults updates automatically
+                    }
                     .onSubmit {
                         Task {
                             await performSearch()
@@ -167,21 +184,29 @@ struct SearchItemsView: View {
     private var tagFilteredResultsView: some View {
         VStack {
             if tagFilteredResults.isEmpty {
-                VStack(spacing: 16) {
+                VStack(spacing: 20) {
+                    Spacer()
+                    
                     Image(systemName: "tag")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 60, height: 60)
                         .foregroundColor(.gray.opacity(0.7))
+                    
                     Text("No products found with tag '\(selectedTag?.displayName ?? "Unknown")'")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                    
                     Text("Try selecting a different tag or adding tags to products")
                         .font(.system(size: 14))
                         .foregroundColor(.gray.opacity(0.7))
                         .multilineTextAlignment(.center)
+                    
+                    Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 40)
             } else {
                 List(tagFilteredResults, id: \.id) { product in
                     NavigationLink(destination: ProductDetailView(product: product, selectedLocation: nil)) {
@@ -328,12 +353,6 @@ struct SearchResultRowView: View {
                 
                 if let brand = product.brand, !brand.isEmpty {
                     Text(brand)
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                }
-                
-                if let store = product.store, !store.isEmpty {
-                    Text(store)
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -347,12 +366,6 @@ struct SearchResultRowView: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 4) {
-                if product.price > 0 {
-                    Text("$\(String(format: "%.2f", product.price))")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                }
-                
                 if let category = product.category {
                     Text(category)
                         .font(.system(size: 12))
