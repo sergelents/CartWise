@@ -300,19 +300,7 @@ struct ProductCard: View {
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: 4) {
-                    if product.price > 0 {
-                        Text("$\(String(format: "%.2f", product.price))")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
-                    }
-                    
-                    if let category = product.category {
-                        Text(category)
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                }
+
             }
             .padding()
             .frame(height: 100) // Increased height for bigger cards
@@ -609,12 +597,7 @@ struct ProductPriceView: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: 16) {
-            // Main Price Display
-            HStack {
-                Text("$\(String(format: "%.2f", product.price))")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.primary)
-            }
+            // No main price display since prices vary by store
             
             // Location-specific prices
             if isLoading {
@@ -995,12 +978,7 @@ struct UpdatePriceView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 10)
                 
-                // Current price
-                HStack {
-                    Text("$\(String(format: "%.2f", product.price))")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.primary)
-                }
+                // No current price display since prices vary by store
                 .padding(.bottom, 18)
                 
                 // New price input
