@@ -162,67 +162,10 @@ struct SearchItemsView: View {
         isSearching = true
         defer { isSearching = false }
         
-        // First, search Core Data for existing products
+        // Search Core Data for existing products only (offline-first)
         await viewModel.searchProducts(by: searchText)
-        let coreDataResults = viewModel.products
         
-        // Then search Amazon API for new products
-        await viewModel.searchProducts(by: searchText)
-        let apiResults = viewModel.products
-        
-        // Combine results, avoiding duplicates
-        var combinedResults: [GroceryItem] = []
-        var seenNames = Set<String>()
-        
-        // Add Core Data results first
-        for product in coreDataResults {
-            if let name = product.productName?.lowercased() {
-                seenNames.insert(name)
-                combinedResults.append(product)
-            }
-        }
-        
-        // Add API results that aren't duplicates
-        for product in apiResults {
-            if let name = product.productName?.lowercased() {
-                if !seenNames.contains(name) {
-                    seenNames.insert(name)
-                    combinedResults.append(product)
-                }
-            }
-        }
-        
-        // Update the viewModel products with combined results
-        // Note: We need to update the viewModel products directly
-        print("Search completed: \(coreDataResults.count) Core Data results, \(apiResults.count) API results, \(combinedResults.count) total")
-    }
-    
-    // Helper function to enhance search query with category keywords
-    private func createEnhancedQuery(searchText: String, category: ProductCategory?) -> String {
-        guard let category = category else {
-            return searchText
-        }
-        
-        switch category {
-        case .none:
-            return searchText
-        case .meat:
-            return "\(searchText) meat seafood"
-        case .dairy:
-            return "\(searchText) dairy eggs milk cheese"
-        case .bakery:
-            return "\(searchText) bakery bread pastry"
-        case .produce:
-            return "\(searchText) fresh produce vegetables fruits"
-        case .pantry:
-            return "\(searchText) pantry staples canned goods"
-        case .beverages:
-            return "\(searchText) beverages drinks"
-        case .frozen:
-            return "\(searchText) frozen foods"
-        case .household:
-            return "\(searchText) household personal care"
-        }
+        print("Search completed: \(viewModel.products.count) local results")
     }
     
     private func selectCategory(_ category: ProductCategory) {
