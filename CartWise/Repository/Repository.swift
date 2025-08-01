@@ -128,12 +128,12 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     func getLocalPriceComparison(for shoppingList: [GroceryItem]) async throws -> LocalPriceComparisonResult {
         print("Repository: Starting local price comparison for \(shoppingList.count) items")
         
-        // Only include stores that actually have items in the shopping list
-        let availableStores = Set(shoppingList.compactMap { $0.store }.filter { !$0.isEmpty })
-        print("Repository: Found stores in shopping list: \(availableStores)")
+        // Get all available stores from the database
+        let allStores = try await getAllStores()
+        print("Repository: Found \(allStores.count) stores in database: \(allStores)")
         
-        guard !availableStores.isEmpty else {
-            print("Repository: No stores found in shopping list")
+        guard !allStores.isEmpty else {
+            print("Repository: No stores found in database")
             return LocalPriceComparisonResult(
                 storePrices: [],
                 bestStore: nil,
@@ -146,27 +146,28 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
         
         var storePrices: [LocalStorePrice] = []
         
-        // Calculate prices for each store that has items
-        for store in availableStores {
+        // Calculate prices for each store
+        for store in allStores {
             var totalPrice: Double = 0.0
             var availableItems = 0
             var unavailableItems = 0
             var itemPrices: [String: Double] = [:]
             
-            // Get items that belong to this specific store
-            let storeItems = shoppingList.filter { $0.store == store }
-            
-            for item in storeItems {
+            // For each item in the shopping list, find its price at this store
+            for item in shoppingList {
                 guard let productName = item.productName else { continue }
                 
-                if item.price > 0 {
-                    totalPrice += item.price
+                // Find the price for this item at this store
+                let itemPrice = try await getItemPriceAtStore(item: item, store: store)
+                
+                if let price = itemPrice, price > 0 {
+                    totalPrice += price
                     availableItems += 1
-                    itemPrices[productName] = item.price
-                    print("Repository: Found \(productName) at \(store) for $\(item.price)")
+                    itemPrices[productName] = price
+                    print("Repository: Found \(productName) at \(store) for $\(price)")
                 } else {
                     unavailableItems += 1
-                    print("Repository: \(productName) at \(store) has no price")
+                    print("Repository: \(productName) not available at \(store)")
                 }
             }
             
@@ -181,7 +182,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     itemPrices: itemPrices
                 )
                 storePrices.append(storePrice)
-                print("Repository: Store \(store) total: $\(totalPrice), available: \(availableItems)/\(storeItems.count)")
+                print("Repository: Store \(store) total: $\(totalPrice), available: \(availableItems)/\(shoppingList.count)")
             }
         }
         
@@ -205,6 +206,16 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
         
         print("Repository: Local price comparison complete. Top 3 stores: \(top3StorePrices.map { "\($0.store): $\($0.totalPrice)" }.joined(separator: ", "))")
         return comparison
+    }
+    
+    // Helper method to get all stores from the database
+    private func getAllStores() async throws -> [String] {
+        return try await coreDataContainer.getAllStores()
+    }
+    
+    // Helper method to get the price of an item at a specific store
+    private func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double? {
+        return try await coreDataContainer.getItemPriceAtStore(item: item, store: store)
     }
     
     // MARK: - Tag Methods

@@ -26,6 +26,10 @@ protocol CoreDataContainerProtocol: Sendable {
     func searchProductsByTag(_ tag: Tag) async throws -> [GroceryItem]
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
     
+    // Price comparison methods
+    func getAllStores() async throws -> [String]
+    func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double?
+    
     // Tag-related methods
     func fetchAllTags() async throws -> [Tag]
     func createTag(id: String, name: String, color: String) async throws -> Tag
@@ -368,6 +372,30 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         // Use the new seeded data approach
         try await coreDataStack.performBackgroundTask { context in
             try TagSeedData.seedTags(in: context)
+        }
+    }
+    
+    func getAllStores() async throws -> [String] {
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            let request: NSFetchRequest<Location> = Location.fetchRequest()
+            let locations = try context.fetch(request)
+            return locations.compactMap { $0.name }.filter { !$0.isEmpty }
+        }
+    }
+    
+    func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double? {
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            // Get all prices for this item
+            let prices = item.priceArray
+            
+            // Find the price for this specific store
+            let storePrice = prices.first { price in
+                price.store == store
+            }
+            
+            return storePrice?.price
         }
     }
     
