@@ -105,24 +105,6 @@ struct AddItemsView: View {
                         .cornerRadius(12)
                     }
                     .padding(.horizontal)
-                    
-                    // Manual Entry Button
-                    Button(action: {
-                        showingManualEntry = true
-                    }) {
-                        HStack {
-                            Image(systemName: "keyboard")
-                                .font(.system(size: 18))
-                            Text("Enter Barcode Manually")
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundColor(AppColors.accentGreen)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(AppColors.accentGreen.opacity(0.1))
-                        .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
                 }
                 
                 // Processing Indicator
@@ -323,10 +305,6 @@ struct AddItemsView: View {
                 productName: productName,
                 brand: brand,
                 category: category,
-                price: price,
-                currency: "USD",
-                store: nil,
-                location: nil,
                 imageURL: nil,
                 barcode: barcode,
                 isOnSale: isOnSale

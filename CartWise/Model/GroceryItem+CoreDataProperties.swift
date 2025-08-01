@@ -18,10 +18,6 @@ extension GroceryItem {
     @NSManaged public var productName: String?
     @NSManaged public var brand: String?
     @NSManaged public var category: String?
-    @NSManaged public var price: Double
-    @NSManaged public var currency: String?
-    @NSManaged public var store: String?
-    @NSManaged public var location: String?
     @NSManaged public var lastUpdated: Date?
     @NSManaged public var imageURL: String?
     @NSManaged public var barcode: String?
@@ -38,16 +34,12 @@ extension GroceryItem {
 }
 
 extension GroceryItem {
-    convenience init(context: NSManagedObjectContext, id: String, productName: String, brand: String? = nil, category: String? = nil, price: Double = 0.0, currency: String = "USD", store: String? = nil, location: String? = nil, imageURL: String? = nil, barcode: String? = nil, isOnSale: Bool = false) {
+    convenience init(context: NSManagedObjectContext, id: String, productName: String, brand: String? = nil, category: String? = nil, imageURL: String? = nil, barcode: String? = nil, isOnSale: Bool = false) {
         self.init(context: context)
         self.id = id
         self.productName = productName
         self.brand = brand
         self.category = category
-        self.price = price
-        self.currency = currency
-        self.store = store
-        self.location = location
         self.imageURL = imageURL
         self.barcode = barcode
         self.isCompleted = false
@@ -77,5 +69,42 @@ extension GroceryItem : Identifiable {
     var priceArray: [GroceryItemPrice] {
         let set = prices as? Set<GroceryItemPrice> ?? []
         return Array(set)
+    }
+    
+    // Helper method to get the current price at a specific location
+    func getPrice(at location: Location) -> GroceryItemPrice? {
+        return priceArray.first { $0.location == location }
+    }
+    
+    // Helper method to get all prices across all locations
+    func getAllPrices() -> [GroceryItemPrice] {
+        return priceArray
+    }
+    
+    // Helper method to get the lowest price
+    func getLowestPrice() -> GroceryItemPrice? {
+        return priceArray.min { $0.price < $1.price }
+    }
+    
+    // Helper method to get the highest price
+    func getHighestPrice() -> GroceryItemPrice? {
+        return priceArray.max { $0.price < $1.price }
+    }
+    
+    // Backward compatibility properties
+    var price: Double {
+        return getLowestPrice()?.price ?? 0.0
+    }
+    
+    var store: String? {
+        return getLowestPrice()?.store
+    }
+    
+    var location: String? {
+        return getLowestPrice()?.location?.name
+    }
+    
+    var currency: String? {
+        return getLowestPrice()?.currency
     }
 } 

@@ -84,10 +84,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 productName: productName,
                 brand: brand,
                 category: category,
-                price: price,
-                currency: currency,
-                store: store,
-                location: location,
                 imageURL: imageURL,
                 barcode: barcode,
                 isOnSale: isOnSale
@@ -95,6 +91,25 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             
             // Set shopping list status based on parameter
             product.isInShoppingList = isInShoppingList
+            
+            // If we have price information, create a GroceryItemPrice
+            if price > 0 {
+                // Find or create the location
+                let locationEntity = try self.findOrCreateLocation(context: context, name: store ?? "Unknown Store", address: location)
+                
+                // Create the price entity
+                let priceEntity = GroceryItemPrice(
+                    context: context,
+                    id: UUID().uuidString,
+                    price: price,
+                    currency: currency,
+                    store: store,
+                    groceryItem: product,
+                    location: locationEntity
+                )
+                
+                // The relationships will be automatically set up through the convenience initializer
+            }
             
             try context.save()
             return product.objectID
@@ -105,6 +120,28 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         return try await viewContext.perform {
             return try viewContext.existingObject(with: objectID) as! GroceryItem
         }
+    }
+    
+    // Helper method to find or create a location
+    private func findOrCreateLocation(context: NSManagedObjectContext, name: String, address: String?) throws -> Location {
+        let request: NSFetchRequest<Location> = Location.fetchRequest()
+        request.predicate = NSPredicate(format: "name == %@", name)
+        request.fetchLimit = 1
+        
+        let existingLocations = try context.fetch(request)
+        if let existingLocation = existingLocations.first {
+            return existingLocation
+        }
+        
+        // Create new location
+        let newLocation = Location(context: context)
+        newLocation.id = UUID().uuidString
+        newLocation.name = name
+        newLocation.address = address
+        newLocation.createdAt = Date()
+        newLocation.updatedAt = Date()
+        
+        return newLocation
     }
     
     func updateProduct(_ product: GroceryItem) async throws {

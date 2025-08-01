@@ -300,19 +300,7 @@ struct ProductCard: View {
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: 4) {
-                    if product.price > 0 {
-                        Text("$\(String(format: "%.2f", product.price))")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.primary)
-                    }
-                    
-                    if let category = product.category {
-                        Text(category)
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                }
+
             }
             .padding()
             .frame(height: 100) // Increased height for bigger cards
@@ -376,8 +364,12 @@ struct ProductDetailView: View {
                         // Need to get username from user
                         userName: "username",
                         onUpdatePrice: { newPrice, updatedBy, updatedAt in
-                            product.price = newPrice
+                            // Update the product's lastUpdated
                             product.lastUpdated = updatedAt
+                            
+                            // Create or update a GroceryItemPrice for this product
+                            await updateProductPrice(product: product, newPrice: newPrice)
+                            
                             await productViewModel.updateProduct(product)
                             await productViewModel.loadProducts()
                         },
@@ -429,6 +421,69 @@ struct ProductDetailView: View {
             dismiss()
         } catch {
             print("Error deleting product: \(error)")
+        }
+    }
+    
+    private func updateProductPrice(product: GroceryItem, newPrice: Double) async {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            
+            // Get the product in the current context
+            let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
+            productFetchRequest.fetchLimit = 1
+            
+            let products = try context.fetch(productFetchRequest)
+            guard let productInContext = products.first else {
+                print("Error: Could not find product in context")
+                return
+            }
+            
+            // Check if there's an existing price for this product
+            let priceFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
+            priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@", productInContext)
+            priceFetchRequest.fetchLimit = 1
+            
+            let existingPrices = try context.fetch(priceFetchRequest)
+            
+            if let existingPrice = existingPrices.first {
+                // Update existing price
+                existingPrice.price = newPrice
+                existingPrice.updatedAt = Date()
+                existingPrice.lastUpdated = Date()
+            } else {
+                // Create new price - we need a default location
+                let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+                locationFetchRequest.fetchLimit = 1
+                
+                let locations = try context.fetch(locationFetchRequest)
+                let location = locations.first ?? {
+                    // Create a default location if none exists
+                    let defaultLocation = Location(context: context)
+                    defaultLocation.id = UUID().uuidString
+                    defaultLocation.name = "Default Store"
+                    defaultLocation.createdAt = Date()
+                    defaultLocation.updatedAt = Date()
+                    return defaultLocation
+                }()
+                
+                // Create new price entity
+                let newPrice = GroceryItemPrice(
+                    context: context,
+                    id: UUID().uuidString,
+                    price: newPrice,
+                    currency: "USD",
+                    store: location.name,
+                    groceryItem: productInContext,
+                    location: location
+                )
+            }
+            
+            try context.save()
+            print("Successfully updated product price to $\(newPrice)")
+            
+        } catch {
+            print("Error updating product price: \(error)")
         }
     }
 }
@@ -542,12 +597,7 @@ struct ProductPriceView: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: 16) {
-            // Main Price Display
-            HStack {
-                Text("$\(String(format: "%.2f", product.price))")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.primary)
-            }
+            // No main price display since prices vary by store
             
             // Location-specific prices
             if isLoading {
@@ -928,12 +978,7 @@ struct UpdatePriceView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 10)
                 
-                // Current price
-                HStack {
-                    Text("$\(String(format: "%.2f", product.price))")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.primary)
-                }
+                // No current price display since prices vary by store
                 .padding(.bottom, 18)
                 
                 // New price input
