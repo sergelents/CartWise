@@ -19,6 +19,12 @@ struct CategoryItemsView: View {
     @State private var selectedItemsToAdd: Set<String> = []
     @State private var isLoading = false
     @State private var hasSearched = false
+    
+    // Location management
+    @State private var userLocations: [Location] = []
+    @State private var selectedLocation: Location?
+    @State private var isLoadingLocations = false
+    @State private var showingLocationPicker = false
 
     
     private var categoryProducts: [GroceryItem] {
@@ -150,7 +156,8 @@ struct CategoryItemsView: View {
                                             selectedItemsToAdd.insert(productId)
                                         }
                                     }
-                                }
+                                },
+                                selectedLocation: selectedLocation
                             )
                         }
                     }
@@ -159,11 +166,19 @@ struct CategoryItemsView: View {
             }
         }
         .navigationTitle(category.rawValue)
+        .sheet(isPresented: $showingLocationPicker) {
+            LocationPickerModal(
+                locations: userLocations,
+                selectedLocation: $selectedLocation,
+                onDismiss: { showingLocationPicker = false }
+            )
+        }
         .onAppear {
             // Load existing products and search for new ones in this category when view appears
             Task {
                 isLoading = true
                 hasSearched = false // Reset search flag
+                await loadUserLocations() // Add location loading
                 await loadCategoryProducts()
                 await searchProductsForCategory()
                 isLoading = false
@@ -242,6 +257,14 @@ struct CategoryItemsView: View {
         await viewModel.loadProducts()
     }
     
+    private func loadUserLocations() async {
+        await viewModel.loadLocations()
+        userLocations = viewModel.locations
+        
+        // Set selected location to default or first favorited location
+        selectedLocation = userLocations.first { $0.isDefault } ?? userLocations.first { $0.favorited } ?? userLocations.first
+    }
+
     // private func clearDatabase() async {
     //     // Delete all products from the database
     //     for product in viewModel.products {
@@ -258,6 +281,7 @@ struct ProductCard: View {
     @EnvironmentObject var productViewModel: ProductViewModel
     let isSelected: Bool
     let onToggle: () -> Void
+    let selectedLocation: Location?
 
     // Display product details when tapped
     @State private var showingDetail = false
@@ -290,12 +314,7 @@ struct ProductCard: View {
                             .lineLimit(1)
                     }
                     
-                    if let store = product.store {
-                        Text(store)
-                            .font(.system(size: 14))
-                            .foregroundColor(.blue)
-                            .lineLimit(1)
-                    }
+                    // Store info removed since we removed store from GroceryItem
                 }
                 
                 Spacer()
@@ -310,7 +329,7 @@ struct ProductCard: View {
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
-            ProductDetailView(product: product)
+            ProductDetailView(product: product, selectedLocation: selectedLocation)
         }
     }
 }
@@ -319,12 +338,18 @@ struct ProductCard: View {
 struct ProductDetailView: View {
     @ObservedObject var product: GroceryItem // Use ObservedObject for live updates
     @EnvironmentObject var productViewModel: ProductViewModel
+    let selectedLocation: Location?
     
     // Dismissing the view
     @Environment(\.dismiss) private var dismiss
     
     // State for delete confirmation
     @State private var showDeleteConfirmation = false
+    
+    // Location picker state
+    @State private var userLocations: [Location] = []
+    @State private var currentSelectedLocation: Location?
+    @State private var showingLocationPicker = false
 
     var body: some View {
         NavigationView {
@@ -332,9 +357,12 @@ struct ProductDetailView: View {
                 VStack(alignment: .center, spacing: 16) {
                     
                     // Store View
-                    if let store = product.store {
-                        StoreView(store: store, storeAddress: product.location ?? "Address not available")
-                    }
+                    StoreView(
+                        selectedLocation: currentSelectedLocation ?? selectedLocation,
+                        onTap: {
+                            showingLocationPicker = true
+                        }
+                    )
 
                     // Product Name View
                     ProductNameView(product: product)
@@ -406,6 +434,18 @@ struct ProductDetailView: View {
             } message: {
                 Text("Are you sure you want to delete this product? This action cannot be undone.")
             }
+            .onAppear {
+                Task {
+                    await loadLocationsForDetail()
+                }
+            }
+        }
+        .sheet(isPresented: $showingLocationPicker) {
+            LocationPickerModal(
+                locations: userLocations,
+                selectedLocation: $currentSelectedLocation,
+                onDismiss: { showingLocationPicker = false }
+            )
         }
     }
     
@@ -486,31 +526,65 @@ struct ProductDetailView: View {
             print("Error updating product price: \(error)")
         }
     }
+    
+    private func loadLocationsForDetail() async {
+        await productViewModel.loadLocations()
+        userLocations = productViewModel.locations
+        currentSelectedLocation = selectedLocation
+    }
 }
 
 // Store view
 struct StoreView: View {
-    let store: String
-    let storeAddress: String
+    let selectedLocation: Location?
+    let onTap: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: "mappin.circle")
-                .foregroundColor(.blue)
-            Text(store)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.black)
-            Spacer()
-            Text(storeAddress)
-                .font(.system(size: 12, weight: .regular))
-                .foregroundColor(.gray)
+        Button(action: onTap) {
+            HStack(alignment: .center, spacing: 10) {
+                Image(systemName: "mappin.circle")
+                    .foregroundColor(.blue)
+                Text(selectedLocation?.name ?? "Select Location")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.black)
+                Spacer()
+                Text(formatAddress(selectedLocation))
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(.gray)
+                
+                // Add chevron to indicate it's tappable
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12))
+                    .foregroundColor(.gray)
+            }
+            .frame(maxWidth: .infinity, maxHeight: 10, alignment: .center)
+            .padding()
+            .background(Color.gray.opacity(0.12))
+            .cornerRadius(20)
+            .shadow(color: Color.black.opacity(0.07), radius: 3, x: 0, y: 2)
+            .padding(.horizontal)
         }
-        .frame(maxWidth: .infinity, maxHeight: 10, alignment: .center)
-        .padding()
-        .background(Color.gray.opacity(0.12))
-        .cornerRadius(20)
-        .shadow(color: Color.black.opacity(0.07), radius: 3, x: 0, y: 2)
-        .padding(.horizontal)
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private func formatAddress(_ location: Location?) -> String {
+        guard let location = location else { return "No location selected" }
+        
+        var components: [String] = []
+        
+        if let city = location.city, !city.isEmpty {
+            components.append(city)
+        }
+        
+        if let state = location.state, !state.isEmpty {
+            components.append(state)
+        }
+        
+        if let zipCode = location.zipCode, !zipCode.isEmpty {
+            components.append(zipCode)
+        }
+        
+        return components.isEmpty ? "No address" : components.joined(separator: ", ")
     }
 }
 
@@ -528,12 +602,7 @@ struct ProductNameView: View {
                         .font(.system(size: 16))
                         .foregroundColor(.secondary)
                 }
-                // Store
-                if let store = product.store {
-                    Text(store)
-                        .font(.system(size: 14,weight: .bold))
-                        .foregroundColor(.blue)
-                }
+                // Store info removed since we removed store from GroceryItem
             }
 
             // Product Name
@@ -1054,6 +1123,164 @@ struct UpdatePriceView: View {
         }
         .padding()
         }
+    }
+}
+
+// Location Picker Modal
+struct LocationPickerModal: View {
+    let locations: [Location]
+    @Binding var selectedLocation: Location?
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 16) {
+                // Header
+                VStack(spacing: 8) {
+                    Text("Select Location")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.primary)
+                    
+                    Text("Choose from your favorite locations to see different prices")
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 20)
+                .padding(.horizontal, 20)
+                
+                // Locations List
+                if locations.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "mappin.slash")
+                            .font(.system(size: 40))
+                            .foregroundColor(.gray.opacity(0.7))
+                        Text("No locations found")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.gray)
+                        Text("Add locations in your profile to see them here")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 20)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(locations, id: \.id) { location in
+                                LocationPickerRowView(
+                                    location: location,
+                                    isSelected: selectedLocation?.id == location.id,
+                                    onTap: {
+                                        selectedLocation = location
+                                        onDismiss()
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                    }
+                }
+                
+                Spacer()
+            }
+            .padding(.bottom, 20)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        onDismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Location Row View for the picker
+struct LocationPickerRowView: View {
+    let location: Location
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Location Icon
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? AppColors.accentGreen.opacity(0.2) : Color.gray.opacity(0.1))
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "mappin.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(isSelected ? AppColors.accentGreen : .gray)
+                }
+                
+                // Location Info
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(location.name ?? "Unknown Location")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        if location.isDefault {
+                            Text("Default")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(AppColors.accentGreen)
+                                .cornerRadius(4)
+                        }
+                    }
+                    
+                    Text(formatAddress(location))
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(AppColors.accentGreen)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(isSelected ? AppColors.accentGreen.opacity(0.1) : Color(.systemBackground))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? AppColors.accentGreen : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+    }
+    
+    private func formatAddress(_ location: Location) -> String {
+        var components: [String] = []
+        
+        if let city = location.city, !city.isEmpty {
+            components.append(city)
+        }
+        
+        if let state = location.state, !state.isEmpty {
+            components.append(state)
+        }
+        
+        if let zipCode = location.zipCode, !zipCode.isEmpty {
+            components.append(zipCode)
+        }
+        
+        return components.isEmpty ? "No address" : components.joined(separator: ", ")
     }
 }
 
