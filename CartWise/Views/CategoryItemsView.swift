@@ -166,13 +166,6 @@ struct CategoryItemsView: View {
             }
         }
         .navigationTitle(category.rawValue)
-        .sheet(isPresented: $showingLocationPicker) {
-            LocationPickerModal(
-                locations: userLocations,
-                selectedLocation: $selectedLocation,
-                onDismiss: { showingLocationPicker = false }
-            )
-        }
         .onAppear {
             // Load existing products and search for new ones in this category when view appears
             Task {
@@ -444,6 +437,7 @@ struct ProductDetailView: View {
         .sheet(isPresented: $showingLocationPicker) {
             LocationPickerModal(
                 locations: userLocations,
+                product: product,
                 selectedLocation: $currentSelectedLocation,
                 onDismiss: { showingLocationPicker = false }
             )
@@ -1141,6 +1135,7 @@ struct UpdatePriceView: View {
 // Location Picker Modal
 struct LocationPickerModal: View {
     let locations: [Location]
+    let product: GroceryItem
     @Binding var selectedLocation: Location?
     let onDismiss: () -> Void
     
@@ -1183,6 +1178,7 @@ struct LocationPickerModal: View {
                             ForEach(locations, id: \.id) { location in
                                 LocationPickerRowView(
                                     location: location,
+                                    product: product,
                                     isSelected: selectedLocation?.id == location.id,
                                     onTap: {
                                         selectedLocation = location
@@ -1214,8 +1210,11 @@ struct LocationPickerModal: View {
 // Location Row View for the picker
 struct LocationPickerRowView: View {
     let location: Location
+    let product: GroceryItem
     let isSelected: Bool
     let onTap: () -> Void
+    @State private var locationPrice: GroceryItemPrice?
+    @State private var isLoading = true
     
     var body: some View {
         Button(action: onTap) {
@@ -1257,10 +1256,26 @@ struct LocationPickerRowView: View {
                 
                 Spacer()
                 
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(AppColors.accentGreen)
+                // Price display
+                VStack(alignment: .trailing, spacing: 2) {
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                    } else if let locationPrice = locationPrice {
+                        Text("$\(String(format: "%.2f", locationPrice.price))")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(isSelected ? AppColors.accentGreen : .primary)
+                    } else {
+                        Text("No price")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.gray)
+                    }
+                    
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(AppColors.accentGreen)
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -1275,6 +1290,9 @@ struct LocationPickerRowView: View {
         .buttonStyle(PlainButtonStyle())
         .padding(.horizontal, 4)
         .padding(.vertical, 2)
+        .task {
+            await loadPriceForLocation()
+        }
     }
     
     private func formatAddress(_ location: Location) -> String {
@@ -1293,6 +1311,31 @@ struct LocationPickerRowView: View {
         }
         
         return components.isEmpty ? "No address" : components.joined(separator: ", ")
+    }
+    
+    private func loadPriceForLocation() async {
+        isLoading = true
+        
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
+            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", product, location.id ?? "")
+            fetchRequest.fetchLimit = 1
+            
+            let prices = try context.fetch(fetchRequest)
+            let price = prices.first
+            
+            await MainActor.run {
+                self.locationPrice = price
+                self.isLoading = false
+            }
+        } catch {
+            print("Error loading price for location: \(error)")
+            await MainActor.run {
+                self.locationPrice = nil
+                self.isLoading = false
+            }
+        }
     }
 }
 
