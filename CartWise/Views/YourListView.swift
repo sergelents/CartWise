@@ -90,9 +90,9 @@ struct YourListView: View {
             
             // Proceed with creation if no duplicate
             if let brand = brand, !brand.isEmpty {
-                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category, price: price ?? 0.0)
+                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category)
             } else {
-                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category, price: price ?? 0.0)
+                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
             }
         }
     }
@@ -799,24 +799,10 @@ struct SearchResultRow: View {
                 
                 Spacer()
                 
-                // Price display - always on the right
-                HStack(spacing: 8) {
-                    if product.price > 0 {
-                        Text("$\(String(format: "%.2f", product.price))")
-                            .font(.poppins(size: 14, weight: .semibold))
-                            .foregroundColor(AppColors.accentGreen)
-                            .frame(minWidth: 50, alignment: .trailing)
-                    } else {
-                        // Empty space to maintain alignment
-                        Text("")
-                            .font(.poppins(size: 14, weight: .semibold))
-                            .frame(minWidth: 50, alignment: .trailing)
-                    }
-                    
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundColor(AppColors.accentGreen)
-                        .font(.system(size: 20))
-                }
+                // Add button - no price display since prices vary by store
+                Image(systemName: "plus.circle.fill")
+                    .foregroundColor(AppColors.accentGreen)
+                    .font(.system(size: 20))
             }
             .padding()
             .background(Color(.systemGray6))
@@ -919,13 +905,7 @@ struct ShoppingListItemRow: View {
             
             Spacer()
             
-            // Price display - always on the right
-            if product.price > 0 {
-                Text("$\(String(format: "%.2f", product.price))")
-                    .font(.poppins(size:14, weight: .semibold))
-                    .foregroundColor(product.isCompleted ? .gray : AppColors.accentGreen)
-                    .frame(minWidth: 50, alignment: .trailing)
-            }
+            // No price display since prices vary by store
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
