@@ -22,6 +22,7 @@ protocol CoreDataContainerProtocol: Sendable {
     func removeProductFromFavorites(_ product: GroceryItem) async throws
     func toggleProductFavorite(_ product: GroceryItem) async throws
     func searchProducts(by name: String) async throws -> [GroceryItem]
+    func searchProductsByTag(_ tag: Tag) async throws -> [GroceryItem]
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
     
     // Tag-related methods
@@ -338,6 +339,17 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             productInContext.tags = NSSet(set: newTags)
             
             try context.save()
+        }
+    }
+
+        func searchProductsByTag(_ tag: Tag) async throws -> [GroceryItem] {
+        // Use viewContext through the actor
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            request.predicate = NSPredicate(format: "ANY tags == %@", tag)
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.productName, ascending: true)]
+            return try context.fetch(request)
         }
     }
     

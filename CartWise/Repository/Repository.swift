@@ -23,6 +23,7 @@ protocol ProductRepositoryProtocol: Sendable {
     func removeProductFromFavorites(_ product: GroceryItem) async throws
     func toggleProductFavorite(_ product: GroceryItem) async throws
     func searchProducts(by name: String) async throws -> [GroceryItem]
+    func searchProductsByTag(_ tag: Tag) async throws -> [GroceryItem]
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryItem]
     func searchProductsOnWalmart(by query: String) async throws -> [GroceryItem]
     func fetchProductFromNetwork(by name: String) async throws -> GroceryItem?
@@ -182,6 +183,11 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
 //            // If network fails, return empty array (cache-first approach)
 //            return []
 //        }
+    }
+    
+    func searchProductsByTag(_ tag: Tag) async throws -> [GroceryItem] {
+        // Cache-first: search local data by tag
+        return try await coreDataContainer.searchProductsByTag(tag)
     }
     
     func searchProductsOnAmazon(by query: String) async throws -> [GroceryItem] {

@@ -15,18 +15,43 @@ struct SearchItemsView: View {
     @State private var searchText = ""
     @State private var isSearching = false
     @State private var selectedCategory: ProductCategory? = nil
+    @State private var selectedTag: Tag? = nil
+    @State private var showingTagPicker = false
+    @State private var selectedLocation: Location? = nil
+    @State private var userLocations: [Location] = []
 
     @EnvironmentObject var viewModel: ProductViewModel
     
     // Computed property for search results that updates automatically
     private var searchResults: [GroceryItem] {
         guard !searchText.isEmpty else { return [] }
-        // Filter viewModel products to match search text
-        let filtered = viewModel.products.filter { product in
+        
+        // If a tag is selected, filter from products that have that tag
+        let productsToSearch = selectedTag != nil ? 
+            viewModel.products.filter { $0.tagArray.contains(selectedTag!) } :
+            viewModel.products
+        
+        // Filter products to match search text
+        let filtered = productsToSearch.filter { product in
             guard let name = product.productName?.lowercased() else { return false }
             return name.contains(searchText.lowercased())
         }
         return filtered
+    }
+    
+    // Computed property for tag-filtered results
+    private var tagFilteredResults: [GroceryItem] {
+        guard let selectedTag = selectedTag else { return [] }
+        
+        // If we have search text, use searchResults (which already respects the tag)
+        if !searchText.isEmpty {
+            return searchResults
+        }
+        
+        // Otherwise filter from all products
+        return viewModel.products.filter { product in
+            product.tagArray.contains(selectedTag)
+        }
     }
 
     // Returns categories matching search text, or all if search is empty
@@ -57,6 +82,8 @@ struct SearchItemsView: View {
                 
                 if !searchText.isEmpty && !searchResults.isEmpty {
                     searchResultsView
+                } else if selectedTag != nil {
+                    tagFilteredResultsView
                 } else {
                     categoryGridView
                 }
@@ -65,6 +92,8 @@ struct SearchItemsView: View {
             .onAppear {
                 Task {
                     await viewModel.loadProducts()
+                    await viewModel.loadTags()
+                    await loadUserLocations()
                 }
             }
         }
@@ -77,6 +106,10 @@ struct SearchItemsView: View {
             HStack {
                 TextField("Search products...", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .onChange(of: searchText) { _, newValue in
+                        // Real-time filtering is handled by computed properties
+                        // No need to call performSearch() as searchResults updates automatically
+                    }
                     .onSubmit {
                         Task {
                             await performSearch()
@@ -95,6 +128,25 @@ struct SearchItemsView: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.gray)
                             .font(.system(size: 18))
+                    }
+                }
+                
+                // Tag filter button
+                Button(action: {
+                    showingTagPicker = true
+                }) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .foregroundColor(selectedTag != nil ? .blue : .gray)
+                        .font(.system(size: 20))
+                }
+                
+                if selectedTag != nil {
+                    Button(action: {
+                        selectedTag = nil
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.system(size: 16))
                     }
                 }
             }
@@ -117,16 +169,57 @@ struct SearchItemsView: View {
                 .padding(.bottom, 8)
             }
         }
+        .sheet(isPresented: $showingTagPicker) {
+            SingleTagPickerView(selectedTag: $selectedTag, tags: viewModel.tags)
+        }
     }
     
     private var searchResultsView: some View {
         List(searchResults, id: \.id) { product in
-            NavigationLink(destination: ProductDetailView(product: product, selectedLocation: nil)) {
+            NavigationLink(destination: ProductDetailView(product: product, selectedLocation: selectedLocation)) {
                 SearchResultRowView(product: product)
             }
             .buttonStyle(PlainButtonStyle())
         }
         .listStyle(PlainListStyle())
+    }
+    
+    private var tagFilteredResultsView: some View {
+        VStack {
+            if tagFilteredResults.isEmpty {
+                VStack(spacing: 20) {
+                    Spacer()
+                    
+                    Image(systemName: "tag")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 60, height: 60)
+                        .foregroundColor(.gray.opacity(0.7))
+                    
+                    Text("No products found with tag '\(selectedTag?.displayName ?? "Unknown")'")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("Try selecting a different tag or adding tags to products")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                    
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.horizontal, 40)
+            } else {
+                List(tagFilteredResults, id: \.id) { product in
+                    NavigationLink(destination: ProductDetailView(product: product, selectedLocation: selectedLocation)) {
+                        SearchResultRowView(product: product)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .listStyle(PlainListStyle())
+            }
+        }
     }
     
     private var categoryGridView: some View {
@@ -159,8 +252,15 @@ struct SearchItemsView: View {
             return
         }
         
-        isSearching = true
-        defer { isSearching = false }
+        await MainActor.run {
+            isSearching = true
+        }
+        
+        defer {
+            Task { @MainActor in
+                isSearching = false
+            }
+        }
         
         // First, search Core Data for existing products
         await viewModel.searchProducts(by: searchText)
@@ -232,6 +332,15 @@ struct SearchItemsView: View {
             await performSearch()
         }
     }
+    
+    // MARK: - Helper Functions
+    private func loadUserLocations() async {
+        await viewModel.loadLocations()
+        userLocations = viewModel.locations
+        
+        // Set selected location to default or first favorited location
+        selectedLocation = userLocations.first { $0.isDefault } ?? userLocations.first { $0.favorited } ?? userLocations.first
+    }
 }
 
 // MARK: - Search Result Row
@@ -256,26 +365,19 @@ struct SearchResultRowView: View {
                 
                 if let brand = product.brand, !brand.isEmpty {
                     Text(brand)
-                        .font(.system(size: 14))
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
                 
-                if let store = product.store, !store.isEmpty {
-                    Text(store)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                // Show tags if they exist
+                if !product.tagArray.isEmpty {
+                    TagDisplayView(tags: product.tagArray)
                 }
             }
             
             Spacer()
             
             VStack(alignment: .trailing, spacing: 4) {
-                if product.price > 0 {
-                    Text("$\(String(format: "%.2f", product.price))")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.primary)
-                }
-                
                 if let category = product.category {
                     Text(category)
                         .font(.system(size: 12))
@@ -334,6 +436,102 @@ struct CategoryCard: View {
     }
 }
 
+
+// MARK: - Single Tag Picker View
+struct SingleTagPickerView: View {
+    @Binding var selectedTag: Tag?
+    let tags: [Tag]
+    @Environment(\.dismiss) private var dismiss
+    @State private var searchText = ""
+    
+    // Search tags
+    var filteredTags: [Tag] {
+        if searchText.isEmpty {
+            return tags
+        } else {
+            return tags.filter { tag in
+                tag.displayName.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                // Search bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gray)
+                    TextField("Search tags...", text: $searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+                .padding(.horizontal)
+                .padding(.top)
+                
+                List {
+                    ForEach(filteredTags, id: \.id) { tag in
+                        Button(action: {
+                            selectedTag = tag
+                            dismiss()
+                        }) {
+                            HStack {
+                                Text(tag.displayName)
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
+                                
+                                if selectedTag?.id == tag.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+            }
+            .navigationTitle("Select Tag")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Tag Display View - contains the individual tag chips
+struct TagDisplayView: View {
+    let tags: [Tag]
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 4) {
+                ForEach(tags, id: \.id) { tag in
+                    SearchTagChipView(tag: tag)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Individual Tag Chip View
+struct SearchTagChipView: View {
+    let tag: Tag
+    
+    var body: some View {
+        Text(tag.displayName)
+            .font(.system(size: 10))
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
+    }
+}
 
 #Preview {
     SearchItemsView()
