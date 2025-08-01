@@ -52,15 +52,6 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    // func loadRecentProducts(limit: Int = 10) async {
-    //     do {
-    //         recentProducts = try await repository.fetchRecentProducts(limit: limit)
-    //         errorMessage = nil
-    //     } catch {
-    //         errorMessage = error.localizedDescription
-    //     }
-    // }
-    
     func updateProduct(_ product: GroceryItem) async {
         do {
             try await repository.updateProduct(product)
@@ -208,89 +199,6 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func searchProductsByTag(_ tag: Tag) async {
-        do {
-            products = try await repository.searchProductsByTag(tag)
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-    
-    func searchProductsOnAmazon(by query: String) async {
-        print("ViewModel: Searching Amazon for query: \(query)")
-        do {
-            products = try await repository.searchProductsOnAmazon(by: query)
-            print("ViewModel: Received \(products.count) products from API")
-            
-            // Print details of each product
-            for (index, product) in products.enumerated() {
-                print("  Product \(index + 1):")
-                print("    Name: \(product.productName ?? "Unknown")")
-                print("    Brand: \(product.brand ?? "Unknown")")
-                print("    Category: \(product.category ?? "Unknown")")
-                print("    Image URL: \(product.imageURL ?? "None")")
-                print("    Barcode: \(product.barcode ?? "None")")
-                print("    ---")
-            }
-            
-            errorMessage = nil
-        } catch {
-            print("ViewModel: Error searching Amazon: \(error)")
-            errorMessage = error.localizedDescription
-        }
-    }
-    
-    func searchProductsOnWalmart(by query: String) async {
-        print("ViewModel: Searching Walmart for query: \(query)")
-        do {
-            products = try await repository.searchProductsOnWalmart(by: query)
-            print("ViewModel: Received \(products.count) products from API")
-            errorMessage = nil
-        } catch {
-            print("ViewModel: Error searching Walmart: \(error)")
-            errorMessage = error.localizedDescription
-        }
-    }
-    
-    func loadPriceComparison() async {
-        // Get the current shopping list products specifically
-        let shoppingListProducts = try? await repository.fetchListProducts()
-        
-        guard let shoppingList = shoppingListProducts, !shoppingList.isEmpty else {
-            priceComparison = nil
-            return
-        }
-        
-        isLoadingPriceComparison = true
-        errorMessage = nil
-        
-        do {
-            print("ViewModel: Starting price comparison for shopping list with \(shoppingList.count) items")
-            let comparison = try await repository.getPriceComparison(for: shoppingList)
-            priceComparison = comparison
-            print("ViewModel: Price comparison loaded successfully")
-        } catch {
-            print("ViewModel: Error loading price comparison: \(error)")
-            errorMessage = "Failed to load price comparison: \(error.localizedDescription)"
-        }
-        
-        isLoadingPriceComparison = false
-    }
-    
-    func refreshPriceComparison() async {
-        await loadPriceComparison()
-    }
-    
-    func searchProductsByBarcode(_ barcode: String) async {
-        do {
-            products = try await repository.searchProducts(by: barcode)
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-    
     func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, isOnSale: Bool = false) async {
         do {
             if await isDuplicateProduct(name: name) {
@@ -345,48 +253,6 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Barcode-specific methods for future implementation
-    
-    func createProductByBarcode(_ barcode: String, isOnSale: Bool = false, productName: String? = nil, brand: String? = nil, category: String? = nil, price: Double = 0.0, store: String? = nil) async -> GroceryItem? {
-        do {
-            // Check if product already exists with this barcode
-            if await isDuplicateBarcode(barcode) {
-                errorMessage = "Product with barcode '\(barcode)' already exists in your list"
-                return nil
-            }
-            // Try to fetch product from API using barcode
-            if let apiProduct = try await repository.fetchProductFromNetwork(by: barcode) {
-                // Product found in API, add to shopping list with sale status
-                apiProduct.isOnSale = isOnSale
-                await addExistingProductToShoppingList(apiProduct)
-                errorMessage = nil
-                return apiProduct
-            } else {
-                // Product not found in API, create entry with user-provided data
-                let id = UUID().uuidString
-                let savedProduct = try await repository.createProduct(
-                    id: id,
-                    productName: productName ?? "Product (Barcode: \(barcode))",
-                    brand: brand,
-                    category: category,
-                    price: price,
-                    currency: "USD",
-                    store: store,
-                    location: nil,
-                    imageURL: nil,
-                    barcode: barcode,
-                    isInShoppingList: false,
-                    isOnSale: isOnSale
-                )
-                await loadShoppingListProducts()
-                errorMessage = nil
-                return savedProduct
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-            return nil
-        }
-    }
     
     func isDuplicateBarcode(_ barcode: String) async -> Bool {
         do {
@@ -399,6 +265,179 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
+    func createProductByBarcode(barcode: String, productName: String, brand: String?, category: String?, price: Double, store: String, isOnSale: Bool = false) async -> GroceryItem? {
+        do {
+            print("ProductViewModel: Creating product with barcode: \(barcode)")
+            print("ProductViewModel: Store value: '\(store)'")
+            
+            // Check if product already exists with this barcode
+            if await isDuplicateBarcode(barcode) {
+                errorMessage = "Product with barcode '\(barcode)' already exists"
+                return nil
+            }
+            
+            let id = UUID().uuidString
+            let savedProduct = try await repository.createProduct(
+                id: id,
+                productName: productName,
+                brand: brand,
+                category: category,
+                price: price,
+                currency: "USD",
+                store: store, // Set store for price comparison
+                location: nil,
+                imageURL: nil,
+                barcode: barcode,
+                isInShoppingList: false, // Don't automatically add to shopping list
+                isOnSale: isOnSale
+            )
+            
+            print("ProductViewModel: Product created successfully")
+            print("ProductViewModel: Saved product store: '\(savedProduct.store ?? "nil")'")
+            
+            await loadShoppingListProducts()
+            errorMessage = nil
+            return savedProduct
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+    
+    func updateProductByBarcode(barcode: String, productName: String?, brand: String?, category: String?, price: Double?, store: String?, isOnSale: Bool?) async -> GroceryItem? {
+        do {
+            print("ProductViewModel: Updating product with barcode: \(barcode)")
+            print("ProductViewModel: Update store value: '\(store ?? "nil")'")
+            
+            let existingProducts = try await repository.searchProducts(by: barcode)
+            guard let existingProduct = existingProducts.first(where: { $0.barcode?.lowercased() == barcode.lowercased() }) else {
+                errorMessage = "Product with barcode '\(barcode)' not found"
+                return nil
+            }
+            
+            print("ProductViewModel: Found existing product, current store: '\(existingProduct.store ?? "nil")'")
+            
+            // Update only provided values
+            if let productName = productName {
+                existingProduct.productName = productName
+            }
+            if let brand = brand {
+                existingProduct.brand = brand
+            }
+            if let category = category {
+                existingProduct.category = category
+            }
+            if let isOnSale = isOnSale {
+                existingProduct.isOnSale = isOnSale
+            }
+            
+            // Note: price and store are now handled through GroceryItemPrice relationships
+            // and will be set when creating/updating the product through the repository
+            
+            try await repository.updateProduct(existingProduct)
+            print("ProductViewModel: Product updated successfully")
+            print("ProductViewModel: Final product store: '\(existingProduct.store ?? "nil")'")
+            
+            await loadShoppingListProducts()
+            errorMessage = nil
+            return existingProduct
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+    
+    func addBarcodeProductToShoppingList(barcode: String) async -> GroceryItem? {
+        do {
+            let existingProducts = try await repository.searchProducts(by: barcode)
+            guard let existingProduct = existingProducts.first(where: { $0.barcode?.lowercased() == barcode.lowercased() }) else {
+                errorMessage = "Product with barcode '\(barcode)' not found"
+                return nil
+            }
+            
+            // Add to shopping list
+            try await repository.addProductToShoppingList(existingProduct)
+            await loadShoppingListProducts()
+            errorMessage = nil
+            return existingProduct
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+    
+    func loadLocalPriceComparison() async {
+        // Get the current shopping list products specifically
+        let shoppingListProducts = try? await repository.fetchListProducts()
+        
+        print("ProductViewModel: Starting local price comparison")
+        print("ProductViewModel: Shopping list products count: \(shoppingListProducts?.count ?? 0)")
+        
+        guard let shoppingList = shoppingListProducts, !shoppingList.isEmpty else {
+            print("ProductViewModel: No shopping list products found")
+            await MainActor.run {
+                priceComparison = nil
+            }
+            return
+        }
+        
+        // Print details of each shopping list item
+        for (index, item) in shoppingList.enumerated() {
+            print("ProductViewModel: Item \(index + 1): \(item.productName ?? "Unknown") - Store: \(item.store ?? "None") - Price: $\(item.price)")
+        }
+        
+        await MainActor.run {
+            isLoadingPriceComparison = true
+            errorMessage = nil
+        }
+        
+        do {
+            print("ViewModel: Starting local price comparison for shopping list with \(shoppingList.count) items")
+            
+            // Use the repository to get local price comparison
+            let localComparison = try await repository.getLocalPriceComparison(for: shoppingList)
+            
+            print("ProductViewModel: Local comparison result - \(localComparison.storePrices.count) stores")
+            for storePrice in localComparison.storePrices {
+                print("ProductViewModel: Store \(storePrice.store): $\(storePrice.totalPrice)")
+            }
+            
+            // Convert LocalPriceComparisonResult to PriceComparison for compatibility
+            let storePrices = localComparison.storePrices.map { localStorePrice in
+                StorePrice(
+                    store: localStorePrice.store, // Now using String directly
+                    totalPrice: localStorePrice.totalPrice,
+                    currency: localStorePrice.currency,
+                    availableItems: localStorePrice.availableItems,
+                    unavailableItems: localStorePrice.unavailableItems,
+                    itemPrices: localStorePrice.itemPrices
+                )
+            }
+            
+            let comparison = PriceComparison(
+                storePrices: storePrices,
+                bestStore: localComparison.bestStore, // Now using String directly
+                bestTotalPrice: localComparison.bestTotalPrice,
+                bestCurrency: localComparison.bestCurrency,
+                totalItems: localComparison.totalItems,
+                availableItems: localComparison.availableItems
+            )
+            
+            await MainActor.run {
+                priceComparison = comparison
+                print("ViewModel: Local price comparison loaded successfully")
+            }
+        } catch {
+            await MainActor.run {
+                print("ViewModel: Error loading local price comparison: \(error)")
+                errorMessage = "Failed to load local price comparison: \(error.localizedDescription)"
+            }
+        }
+        
+        await MainActor.run {
+            isLoadingPriceComparison = false
+        }
+    }
 }
 
 extension ProductViewModel {

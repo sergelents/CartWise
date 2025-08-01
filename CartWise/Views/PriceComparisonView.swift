@@ -6,18 +6,20 @@
 //
 
 import SwiftUI
+import Foundation
 
 struct PriceComparisonView: View {
     let priceComparison: PriceComparison?
     let isLoading: Bool
     let onRefresh: () async -> Void
+    let onLocalComparison: () async -> Void
     
     var body: some View {
         VStack(spacing: 12) {
             // Header
             HStack {
                 Text("Price Comparison")
-                    .font(.poppins(size:15, weight: .regular))
+                    .font(.system(size: 15, weight: .regular))
                     .foregroundColor(.gray)
                 
                 Spacer()
@@ -28,7 +30,7 @@ struct PriceComparisonView: View {
                 } else {
                     Button(action: {
                         Task {
-                            await onRefresh()
+                            await onLocalComparison()
                         }
                     }) {
                         Image(systemName: "arrow.clockwise")
@@ -38,70 +40,62 @@ struct PriceComparisonView: View {
             }
             .padding(.horizontal)
             .padding(.top, 8)
-
-            Divider()
-                .padding(.horizontal)
             
+            // Price comparison content
             if let comparison = priceComparison {
-                // Best store summary
-                if let bestStore = comparison.bestStore {
+                if comparison.storePrices.isEmpty {
                     VStack(spacing: 8) {
-                        HStack {
-                            Text("Best Price:")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text("\(bestStore.rawValue)")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.green)
+                        Text("No price data available")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Text("Add items with store information to see price comparisons")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                } else {
+                    VStack(spacing: 8) {
+                        // Best store summary
+                        if let bestStore = comparison.bestStore {
+                            HStack {
+                                Text("Best: \(bestStore)")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.green)
+                                
+                                Spacer()
+                                
+                                Text("$\(String(format: "%.2f", comparison.bestTotalPrice))")
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.green)
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                            .background(Color.green.opacity(0.1))
+                            .cornerRadius(8)
                         }
                         
-                        HStack {
-                            Text("Total:")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text("$\(String(format: "%.2f", comparison.bestTotalPrice))")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                        }
-                        
-                        HStack {
-                            Text("Items Available:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text("\(comparison.availableItems)/\(comparison.totalItems)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        // Store rankings
+                        ForEach(Array(comparison.storePrices.enumerated()), id: \.offset) { index, storePrice in
+                            StorePriceRow(
+                                storePrice: storePrice,
+                                isBest: storePrice.store == comparison.bestStore,
+                                rank: index + 1
+                            )
                         }
                     }
                     .padding(.horizontal)
                 }
-                
-                // Store breakdown
-                VStack(spacing: 8) {
-                    ForEach(comparison.storePrices, id: \.store) { storePrice in
-                        StorePriceRow(storePrice: storePrice, isBest: storePrice.store == comparison.bestStore)
-                    }
-                }
-                .padding(.horizontal)
             } else {
-                // No comparison available
                 VStack(spacing: 8) {
                     Text("No price comparison available")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    Text("Add items to your shopping list to see price comparisons")
+                    Text("Scan barcodes to add items with store information")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -110,7 +104,7 @@ struct PriceComparisonView: View {
             }
         }
         .padding(.vertical, 8)
-        .background(Color(.systemBackground))
+        .background(Color.gray.opacity(0.1))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
@@ -119,16 +113,19 @@ struct PriceComparisonView: View {
 struct StorePriceRow: View {
     let storePrice: StorePrice
     let isBest: Bool
+    let rank: Int
     
     var body: some View {
         HStack {
-            // Store icon
-            Image(systemName: storeIcon)
-                .foregroundColor(storeColor)
-                .frame(width: 24, height: 24)
+            // Rank
+            Text("\(rank).")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+                .frame(width: 20, alignment: .leading)
             
             // Store name
-            Text(storePrice.store.rawValue)
+            Text(storePrice.store)
                 .font(.subheadline)
                 .fontWeight(isBest ? .semibold : .regular)
                 .foregroundColor(isBest ? .green : .primary)
@@ -149,57 +146,4 @@ struct StorePriceRow: View {
         }
         .padding(.vertical, 4)
     }
-    
-    private var storeIcon: String {
-        switch storePrice.store {
-        case .amazon:
-            return "cart.fill"
-        case .walmart:
-            return "building.2.fill"
-        }
-    }
-    
-    private var storeColor: Color {
-        switch storePrice.store {
-        case .amazon:
-            return .orange
-        case .walmart:
-            return .blue
-        }
-    }
 }
-
-#Preview {
-    let sampleComparison = PriceComparison(
-        storePrices: [
-            StorePrice(
-                store: .amazon,
-                totalPrice: 45.67,
-                currency: "USD",
-                availableItems: 8,
-                unavailableItems: 2,
-                itemPrices: [:]
-            ),
-            StorePrice(
-                store: .walmart,
-                totalPrice: 42.99,
-                currency: "USD",
-                availableItems: 9,
-                unavailableItems: 1,
-                itemPrices: [:]
-            )
-        ],
-        bestStore: .walmart,
-        bestTotalPrice: 42.99,
-        bestCurrency: "USD",
-        totalItems: 10,
-        availableItems: 9
-    )
-    
-    return PriceComparisonView(
-        priceComparison: sampleComparison,
-        isLoading: false,
-        onRefresh: {}
-    )
-    .padding()
-} 

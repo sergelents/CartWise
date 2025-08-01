@@ -24,7 +24,7 @@ struct YourListView: View {
     @State private var duplicateProductName = ""
     @State private var showingCheckAllConfirmation = false
     
-        var body: some View {
+    var body: some View {
         NavigationStack {
             MainContentView(
                 isEditing: $isEditing,
@@ -36,11 +36,11 @@ struct YourListView: View {
                 showingRatingPrompt: $showingRatingPrompt,
                 showingAddProductModal: $showingAddProductModal,
                 showingCheckAllConfirmation: $showingCheckAllConfirmation
-        )
+            )
             .navigationTitle("Your Shopping List")
-        .sheet(isPresented: $showingRatingPrompt) {
-            RatingPromptView()
-        }
+            .sheet(isPresented: $showingRatingPrompt) {
+                RatingPromptView()
+            }
             .sheet(isPresented: $showingAddProductModal) {
                 SmartAddProductModal(onAdd: addProductToSystem)
                     .presentationDetents([.large])
@@ -73,7 +73,16 @@ struct YourListView: View {
             .onAppear {
                 Task {
                     await productViewModel.loadShoppingListProducts()
-                    await productViewModel.loadPriceComparison()
+                    print("YourListView: Loaded \(productViewModel.products.count) shopping list products")
+                    
+                    await productViewModel.loadLocalPriceComparison()
+                    print("YourListView: Price comparison loaded: \(productViewModel.priceComparison?.storePrices.count ?? 0) stores")
+                    if let comparison = productViewModel.priceComparison {
+                        print("YourListView: Best store: \(comparison.bestStore ?? "None"), Total: $\(comparison.bestTotalPrice)")
+                        for storePrice in comparison.storePrices {
+                            print("YourListView: Store \(storePrice.store): $\(storePrice.totalPrice)")
+                        }
+                    }
                 }
             }
         }
@@ -94,6 +103,9 @@ struct YourListView: View {
             } else {
                 await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
             }
+            
+            // Refresh price comparison after adding product
+            await productViewModel.loadLocalPriceComparison()
         }
     }
 }
@@ -141,7 +153,10 @@ struct MainContentView: View {
                     priceComparison: productViewModel.priceComparison,
                     isLoading: productViewModel.isLoadingPriceComparison,
                     onRefresh: {
-                        await productViewModel.refreshPriceComparison()
+                        await productViewModel.loadLocalPriceComparison()
+                    },
+                    onLocalComparison: {
+                        await productViewModel.loadLocalPriceComparison()
                     }
                 )
                 .padding(.horizontal)
@@ -1259,6 +1274,8 @@ struct AmazonPriceResultRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
+
+
 
 #Preview {
     YourListView()
