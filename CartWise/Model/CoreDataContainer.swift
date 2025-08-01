@@ -76,6 +76,9 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     
     // createProduct was creating GroceryItem objects in background Core Data context, but ViewModel expecting objects from main context.
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false, isOnSale: Bool = false) async throws -> GroceryItem {
+        // Get username before entering background task
+        let username = await getCurrentUsername()
+        
         // Create in background context first
         let objectID = try await coreDataStack.performBackgroundTask { context in
             let product = GroceryItem(
@@ -105,7 +108,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                     currency: currency,
                     store: store,
                     groceryItem: product,
-                    location: locationEntity
+                    location: locationEntity,
+                    updatedBy: username
                 )
                 
                 // The relationships will be automatically set up through the convenience initializer
@@ -142,6 +146,27 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         newLocation.updatedAt = Date()
         
         return newLocation
+    }
+    
+    // Helper method to get current username
+    private func getCurrentUsername() async -> String {
+        do {
+            let context = await coreDataStack.viewContext
+            return try await context.perform {
+                let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+                fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+                fetchRequest.fetchLimit = 1
+                
+                let users = try context.fetch(fetchRequest)
+                if let currentUser = users.first, let username = currentUser.username {
+                    return username
+                }
+                return "Unknown User"
+            }
+        } catch {
+            print("Error getting current username: \(error)")
+            return "Unknown User"
+        }
     }
     
     func updateProduct(_ product: GroceryItem) async throws {

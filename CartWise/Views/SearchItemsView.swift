@@ -156,7 +156,7 @@ struct SearchItemsView: View {
     
     private var searchResultsView: some View {
         List(searchResults, id: \.id) { product in
-            NavigationLink(destination: ProductDetailView(product: product)) {
+            NavigationLink(destination: ProductDetailView(product: product, selectedLocation: nil)) {
                 SearchResultRowView(product: product)
             }
             .buttonStyle(PlainButtonStyle())
