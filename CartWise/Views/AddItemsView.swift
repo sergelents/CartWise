@@ -351,7 +351,8 @@ struct AddItemsView: View {
                 currency: "USD",
                 store: locationInContext.name, // Use location name as store
                 groceryItem: productInContext,
-                location: locationInContext
+                location: locationInContext,
+                updatedBy: await getCurrentUsername() // TODO: Get actual username from user
             )
             
             try context.save()
@@ -370,6 +371,23 @@ struct AddItemsView: View {
         pendingIsOnSale = false
         pendingLocation = nil
         selectedTags = []
+    }
+    
+    private func getCurrentUsername() async -> String {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            fetchRequest.fetchLimit = 1
+            
+            let users = try context.fetch(fetchRequest)
+            if let currentUser = users.first, let username = currentUser.username {
+                return username
+            }
+        } catch {
+            print("Error getting current username: \(error)")
+        }
+        return "Unknown User"
     }
     
     private func handleError(_ error: String) {

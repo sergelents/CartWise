@@ -124,7 +124,7 @@ struct FavoriteItemsView: View {
         .padding(.vertical, 16)
         .sheet(isPresented: $showingProductDetail) {
             if let product = selectedProduct {
-                ProductDetailView(product: product)
+                ProductDetailView(product: product, selectedLocation: nil)
             }
         }
         .task {
