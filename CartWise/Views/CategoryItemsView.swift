@@ -25,7 +25,7 @@ struct CategoryItemsView: View {
     @State private var selectedLocation: Location?
     @State private var isLoadingLocations = false
     @State private var showingLocationPicker = false
-
+    @State private var currentUsername: String = "Unknown User"
     
     private var categoryProducts: [GroceryItem] {
         // First, load all existing products from Core Data
@@ -350,6 +350,7 @@ struct ProductDetailView: View {
     @State private var userLocations: [Location] = []
     @State private var currentSelectedLocation: Location?
     @State private var showingLocationPicker = false
+    @State private var currentUsername: String = "Unknown User"
 
     var body: some View {
         NavigationView {
@@ -374,8 +375,7 @@ struct ProductDetailView: View {
                     // TODO: Need to update data model to include last updated info?
                     ProductPriceView(
                         product: product,
-                        lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
-                        lastUpdatedBy: "-"
+                        currentSelectedLocation: currentSelectedLocation ?? selectedLocation
                     )
 
                     // Add to Shopping List and Add to Favorites View
@@ -389,8 +389,8 @@ struct ProductDetailView: View {
                     // Update Price View
                     UpdatePriceView(
                         product: product,
-                        // Need to get username from user
-                        userName: "username",
+                        // Get actual username from user
+                        userName: currentUsername,
                         onUpdatePrice: { newPrice, updatedBy, updatedAt in
                             // Update the product's lastUpdated
                             product.lastUpdated = updatedAt
@@ -437,6 +437,7 @@ struct ProductDetailView: View {
             .onAppear {
                 Task {
                     await loadLocationsForDetail()
+                    currentUsername = await getCurrentUsername()
                 }
             }
         }
@@ -489,7 +490,6 @@ struct ProductDetailView: View {
             if let existingPrice = existingPrices.first {
                 // Update existing price
                 existingPrice.price = newPrice
-                existingPrice.updatedAt = Date()
                 existingPrice.lastUpdated = Date()
             } else {
                 // Create new price - we need a default location
@@ -515,7 +515,8 @@ struct ProductDetailView: View {
                     currency: "USD",
                     store: location.name,
                     groceryItem: productInContext,
-                    location: location
+                    location: location,
+                    updatedBy: await getCurrentUsername()
                 )
             }
             
@@ -531,6 +532,23 @@ struct ProductDetailView: View {
         await productViewModel.loadLocations()
         userLocations = productViewModel.locations
         currentSelectedLocation = selectedLocation
+    }
+    
+    private func getCurrentUsername() async -> String {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            fetchRequest.fetchLimit = 1
+            
+            let users = try context.fetch(fetchRequest)
+            if let currentUser = users.first, let username = currentUser.username {
+                return username
+            }
+        } catch {
+            print("Error getting current username: \(error)")
+        }
+        return "Unknown User"
     }
 }
 
@@ -659,145 +677,97 @@ struct ProductImageView: View {
 // Product Price View
 struct ProductPriceView: View {
     @ObservedObject var product: GroceryItem
-    var lastUpdated: String
-    var lastUpdatedBy: String
-    @State private var locationPrices: [GroceryItemPrice] = []
+    let currentSelectedLocation: Location?
+    @State private var locationPrice: GroceryItemPrice?
     @State private var isLoading = true
 
     var body: some View {
         VStack(alignment: .center, spacing: 16) {
-            // No main price display since prices vary by store
-            
-            // Location-specific prices
             if isLoading {
                 ProgressView()
                     .scaleEffect(0.8)
-            } else if locationPrices.isEmpty {
+            } else if let locationPrice = locationPrice {
+                // Show price for selected location
                 VStack(spacing: 8) {
-                    Text("No location-specific prices")
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(.gray)
-                    
-                    Button("Refresh") {
-                        Task {
-                            await loadLocationPrices()
-                        }
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(AppColors.accentGreen)
-                    
-                    Button("Add Test Price") {
-                        Task {
-                            await addTestLocationPrice()
-                        }
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(AppColors.accentGreen)
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Prices by Location")
-                        .font(.system(size: 16, weight: .semibold))
+                    Text("$\(String(format: "%.2f", locationPrice.price))")
+                        .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.primary)
                     
-                    ForEach(locationPrices, id: \.id) { price in
-                        LocationPriceRow(price: price)
+                    Text("at \(currentSelectedLocation?.name ?? "Unknown Location")")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                    
+                    // Last updated info from GroceryItemPrice
+                    if let lastUpdated = locationPrice.lastUpdated {
+                        VStack(spacing: 2) {
+                            Text("Last Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(.gray)
+                            
+                            if let updatedBy = locationPrice.updatedBy {
+                                Text("By: \(updatedBy)")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .foregroundColor(.gray)
+                            }
+                        }
                     }
                 }
-                .padding(.horizontal)
+            } else {
+                // No price available for selected location
+                VStack(spacing: 8) {
+                    Text("No price available")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.gray)
+                    
+                    Text("at \(currentSelectedLocation?.name ?? "Unknown Location")")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                    
+                    Text("Tap 'Update Price' to add a price for this location")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gray.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                }
             }
-            
-            // Last updated by
-            Text("Last updated: \(lastUpdated) \n By \(lastUpdatedBy)")
-                .font(.system(size: 12, weight: .regular))
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
         }
         .task {
-            await loadLocationPrices()
+            await loadPriceForSelectedLocation()
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
             Task {
-                await loadLocationPrices()
+                await loadPriceForSelectedLocation()
             }
         }
     }
     
-    private func addTestLocationPrice() async {
-        do {
-            let context = await CoreDataStack.shared.viewContext
-            
-            // Get the first available location
-            let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
-            let locations = try context.fetch(locationFetchRequest)
-            
-            if let firstLocation = locations.first {
-                print("Adding test price for product: \(product.productName ?? "Unknown")")
-                print("Using location: \(firstLocation.name ?? "Unknown")")
-                
-                // Fetch the product in the same context to avoid context mismatch
-                let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
-                productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
-                productFetchRequest.fetchLimit = 1
-                
-                let products = try context.fetch(productFetchRequest)
-                
-                if let productInContext = products.first {
-                    print("Found product in context: \(productInContext.productName ?? "Unknown")")
-                    
-                    // Create a test price with the product from the same context
-                    let testPrice = GroceryItemPrice(
-                        context: context,
-                        id: UUID().uuidString,
-                        price: 4.99,
-                        currency: "USD",
-                        store: firstLocation.name, // Use location name as store
-                        groceryItem: productInContext,
-                        location: firstLocation
-                    )
-                    
-                    try context.save()
-                    print("Test price created successfully")
-                    
-                    // Refresh the prices
-                    await loadLocationPrices()
-                } else {
-                    print("Product not found in context")
-                }
-            } else {
-                print("No locations found in database")
-            }
-        } catch {
-            print("Error creating test price: \(error)")
-        }
-    }
-    
-    private func loadLocationPrices() async {
+    private func loadPriceForSelectedLocation() async {
         isLoading = true
+        
+        guard let currentSelectedLocation = currentSelectedLocation else {
+            await MainActor.run {
+                self.locationPrice = nil
+                self.isLoading = false
+            }
+            return
+        }
         
         do {
             let context = await CoreDataStack.shared.viewContext
             let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@", product)
-            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItemPrice.price, ascending: true)]
+            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location == %@", product, currentSelectedLocation)
+            fetchRequest.fetchLimit = 1
             
             let prices = try context.fetch(fetchRequest)
-            print("ProductPriceView: Found \(prices.count) location prices for product: \(product.productName ?? "Unknown")")
-            print("Product ID: \(product.id ?? "nil")")
-            
-            for price in prices {
-                print("Price: $\(price.price) at \(price.location?.name ?? "Unknown Location")")
-                print("Price ID: \(price.id ?? "nil")")
-                print("Price Product ID: \(price.groceryItem?.id ?? "nil")")
-            }
+            let price = prices.first
             
             await MainActor.run {
-                self.locationPrices = prices
+                self.locationPrice = price
                 self.isLoading = false
             }
         } catch {
-            print("Error loading location prices: \(error)")
+            print("Error loading price for selected location: \(error)")
             await MainActor.run {
+                self.locationPrice = nil
                 self.isLoading = false
             }
         }
@@ -835,10 +805,19 @@ struct LocationPriceRow: View {
                     }
                 }
                 
+                // Last updated info from GroceryItemPrice
                 if let lastUpdated = price.lastUpdated {
-                    Text("Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
-                        .font(.system(size: 10, weight: .regular))
-                        .foregroundColor(.gray)
+                    VStack(spacing: 2) {
+                        Text("Last Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(.gray)
+                        
+                        if let updatedBy = price.updatedBy {
+                            Text("By: \(updatedBy)")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(.gray)
+                        }
+                    }
                 }
             }
             
@@ -1283,5 +1262,7 @@ struct LocationPickerRowView: View {
         return components.isEmpty ? "No address" : components.joined(separator: ", ")
     }
 }
+
+
 
 
