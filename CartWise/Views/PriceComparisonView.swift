@@ -39,9 +39,6 @@ struct PriceComparisonView: View {
             }
             .padding(.horizontal)
             .padding(.top, 8)
-
-            Divider()
-                .padding(.horizontal)
             
             if let comparison = priceComparison {
                 // Best store summary
@@ -54,7 +51,7 @@ struct PriceComparisonView: View {
                             
                             Spacer()
                             
-                            Text("\(bestStore.rawValue)")
+                            Text(bestStore)
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.green)
@@ -90,8 +87,12 @@ struct PriceComparisonView: View {
                 
                 // Store breakdown
                 VStack(spacing: 8) {
-                    ForEach(comparison.storePrices, id: \.store) { storePrice in
-                        StorePriceRow(storePrice: storePrice, isBest: storePrice.store == comparison.bestStore)
+                    ForEach(Array(comparison.storePrices.enumerated()), id: \.element.store) { index, storePrice in
+                        StorePriceRow(
+                            storePrice: storePrice, 
+                            isBest: storePrice.store == comparison.bestStore,
+                            rank: index + 1
+                        )
                     }
                 }
                 .padding(.horizontal)
@@ -102,7 +103,7 @@ struct PriceComparisonView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    Text("Add items to your shopping list to see price comparisons")
+                    Text("Add items with store information to your shopping list to see price comparisons")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -117,19 +118,50 @@ struct PriceComparisonView: View {
     }
 }
 
+struct StoreToggleButton: View {
+    let store: String
+    let isSelected: Bool
+    let onToggle: (Bool) -> Void
+    
+    var body: some View {
+        Button(action: {
+            onToggle(!isSelected)
+        }) {
+            HStack {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isSelected ? .blue : .gray)
+                
+                Text(store)
+                    .font(.caption)
+                    .foregroundColor(isSelected ? .primary : .secondary)
+                
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(isSelected ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
+            .cornerRadius(8)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
 struct StorePriceRow: View {
     let storePrice: StorePrice
     let isBest: Bool
+    let rank: Int
     
     var body: some View {
         HStack {
-            // Store icon
-            Image(systemName: storeIcon)
-                .foregroundColor(storeColor)
-                .frame(width: 24, height: 24)
+            // Rank
+            Text("\(rank).")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+                .frame(width: 20, alignment: .leading)
             
             // Store name
-            Text(storePrice.store.rawValue)
+            Text(storePrice.store)
                 .font(.subheadline)
                 .fontWeight(isBest ? .semibold : .regular)
                 .foregroundColor(isBest ? .green : .primary)
@@ -150,80 +182,4 @@ struct StorePriceRow: View {
         }
         .padding(.vertical, 4)
     }
-    
-    private var storeIcon: String {
-        let storeName = storePrice.store.rawValue.lowercased()
-        switch storeName {
-        case "amazon":
-            return "cart.fill"
-        case "walmart":
-            return "building.2.fill"
-        case "target":
-            return "target"
-        case "kroger":
-            return "building"
-        case "safeway":
-            return "building.2"
-        case "whole foods":
-            return "leaf.fill"
-        default:
-            return "storefront"
-        }
-    }
-    
-    private var storeColor: Color {
-        let storeName = storePrice.store.rawValue.lowercased()
-        switch storeName {
-        case "amazon":
-            return .orange
-        case "walmart":
-            return .blue
-        case "target":
-            return .red
-        case "kroger":
-            return .blue
-        case "safeway":
-            return .green
-        case "whole foods":
-            return .green
-        default:
-            return .gray
-        }
-    }
 }
-
-#Preview {
-    let sampleComparison = PriceComparison(
-        storePrices: [
-            StorePrice(
-                store: .amazon,
-                totalPrice: 45.67,
-                currency: "USD",
-                availableItems: 8,
-                unavailableItems: 2,
-                itemPrices: [:]
-            ),
-            StorePrice(
-                store: .walmart,
-                totalPrice: 42.99,
-                currency: "USD",
-                availableItems: 9,
-                unavailableItems: 1,
-                itemPrices: [:]
-            )
-        ],
-        bestStore: .walmart,
-        bestTotalPrice: 42.99,
-        bestCurrency: "USD",
-        totalItems: 10,
-        availableItems: 9
-    )
-    
-    PriceComparisonView(
-        priceComparison: sampleComparison,
-        isLoading: false,
-        onRefresh: {},
-        onLocalComparison: {}
-    )
-    .padding()
-} 

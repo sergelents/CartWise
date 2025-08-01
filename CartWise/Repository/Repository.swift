@@ -41,7 +41,7 @@ protocol ProductRepositoryProtocol: Sendable {
 
 // Price comparison models
 struct StorePrice: Codable, Sendable {
-    let store: Store
+    let store: String // Changed from Store enum to String for dynamic store names
     let totalPrice: Double
     let currency: String
     let availableItems: Int
@@ -51,7 +51,7 @@ struct StorePrice: Codable, Sendable {
 
 struct PriceComparison: Codable, Sendable {
     let storePrices: [StorePrice]
-    let bestStore: Store?
+    let bestStore: String? // Changed from Store? to String? for dynamic store names
     let bestTotalPrice: Double
     let bestCurrency: String
     let totalItems: Int
@@ -266,7 +266,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
         
         // Use TaskGroup for concurrent price fetching
         return try await withTaskGroup(of: StorePrice.self) { group in
-            let stores: [Store] = [.amazon]
+            let stores: [String] = Set(shoppingList.compactMap { $0.store }).filter { !$0.isEmpty }
             
             // Add tasks for each store
             for store in stores {
@@ -296,15 +296,18 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                 availableItems: storePrices.map { $0.availableItems }.max() ?? 0
             )
             
-            print("Repository: Price comparison complete. Best store: \(bestStore?.rawValue ?? "None"), Total: $\(bestTotalPrice)")
+            print("Repository: Price comparison complete. Best store: \(bestStore ?? "None"), Total: $\(bestTotalPrice)")
             return comparison
         }
     }
     
     func getLocalPriceComparison(for shoppingList: [GroceryItem]) async throws -> LocalPriceComparisonResult {
         print("Repository: Starting local price comparison for \(shoppingList.count) items")
+        
+        // Only include stores that actually have items in the shopping list
         let availableStores = Set(shoppingList.compactMap { $0.store }.filter { !$0.isEmpty })
         print("Repository: Found stores in shopping list: \(availableStores)")
+        
         guard !availableStores.isEmpty else {
             print("Repository: No stores found in shopping list")
             return LocalPriceComparisonResult(
@@ -316,15 +319,22 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                 availableItems: 0
             )
         }
+        
         var storePrices: [LocalStorePrice] = []
+        
+        // Calculate prices for each store that has items
         for store in availableStores {
             var totalPrice: Double = 0.0
             var availableItems = 0
             var unavailableItems = 0
             var itemPrices: [String: Double] = [:]
+            
+            // Get items that belong to this specific store
             let storeItems = shoppingList.filter { $0.store == store }
+            
             for item in storeItems {
                 guard let productName = item.productName else { continue }
+                
                 if item.price > 0 {
                     totalPrice += item.price
                     availableItems += 1
@@ -335,79 +345,66 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     print("Repository: \(productName) at \(store) has no price")
                 }
             }
-            let storePrice = LocalStorePrice(
-                store: store,
-                totalPrice: totalPrice,
-                currency: "USD",
-                availableItems: availableItems,
-                unavailableItems: unavailableItems,
-                itemPrices: itemPrices
-            )
-            storePrices.append(storePrice)
-            print("Repository: Store \(store) total: $\(totalPrice), available: \(availableItems)/\(storeItems.count)")
+            
+            // Only include stores that have at least one item with a price
+            if availableItems > 0 {
+                let storePrice = LocalStorePrice(
+                    store: store,
+                    totalPrice: totalPrice,
+                    currency: "USD",
+                    availableItems: availableItems,
+                    unavailableItems: unavailableItems,
+                    itemPrices: itemPrices
+                )
+                storePrices.append(storePrice)
+                print("Repository: Store \(store) total: $\(totalPrice), available: \(availableItems)/\(storeItems.count)")
+            }
         }
-        let bestStorePrice = storePrices.min { $0.totalPrice < $1.totalPrice }
-        let bestStore = bestStorePrice?.store
-        let bestTotalPrice = bestStorePrice?.totalPrice ?? 0.0
-        let bestCurrency = bestStorePrice?.currency ?? "USD"
+        
+        // Sort by total price (cheapest first) and take top 3
+        let sortedStorePrices = storePrices.sorted { $0.totalPrice < $1.totalPrice }
+        let top3StorePrices = Array(sortedStorePrices.prefix(3))
+        
+        // Find the best store (cheapest)
+        let bestStore = top3StorePrices.first?.store
+        let bestTotalPrice = top3StorePrices.first?.totalPrice ?? 0.0
+        let bestCurrency = top3StorePrices.first?.currency ?? "USD"
+        
         let comparison = LocalPriceComparisonResult(
-            storePrices: storePrices,
+            storePrices: top3StorePrices,
             bestStore: bestStore,
             bestTotalPrice: bestTotalPrice,
             bestCurrency: bestCurrency,
             totalItems: shoppingList.count,
-            availableItems: storePrices.map { $0.availableItems }.max() ?? 0
+            availableItems: top3StorePrices.map { $0.availableItems }.max() ?? 0
         )
-        print("Repository: Local price comparison complete. Best store: \(bestStore ?? "None"), Total: $\(bestTotalPrice)")
+        
+        print("Repository: Local price comparison complete. Top 3 stores: \(top3StorePrices.map { "\($0.store): $\($0.totalPrice)" }.joined(separator: ", "))")
         return comparison
     }
     
     // Helper method for fetching store prices using TaskGroup
-    private func fetchStorePrices(for store: Store, shoppingList: [GroceryItem]) async -> StorePrice {
-        print("Repository: Checking prices at \(store.rawValue)")
+    private func fetchStorePrices(for store: String, shoppingList: [GroceryItem]) async -> StorePrice {
+        print("Repository: Checking prices at \(store)")
         var totalPrice: Double = 0.0
         var availableItems = 0
         var unavailableItems = 0
         var itemPrices: [String: Double] = [:]
         
-        // Use TaskGroup for concurrent item price fetching
-        await withTaskGroup(of: (String, Double?).self) { group in
-            for item in shoppingList {
-                guard let productName = item.productName else { continue }
-                
-                group.addTask {
-                    do {
-                        if let priceData = try await self.networkService.searchGroceryPrice(productName: productName, store: store) {
-                            // Debug: Print the raw price string
-                            print("Repository: Raw price string for \(productName): '\(priceData.price)'")
-                            
-                            // Convert string price to Double
-                            let cleanPrice = priceData.price.replacingOccurrences(of: "$", with: "").trimmingCharacters(in: .whitespaces)
-                            let price = Double(cleanPrice) ?? 0.0
-                            print("Repository: Found \(productName) at \(store.rawValue) for $\(price) (cleaned from '\(priceData.price)')")
-                            return (productName, price)
-                        } else {
-                            print("Repository: \(productName) not found at \(store.rawValue)")
-                            return (productName, nil)
-                        }
-                    } catch {
-                        print("Repository: Error searching for \(productName) at \(store.rawValue): \(error)")
-                        return (productName, nil)
-                    }
-                }
-            }
+        // Get items that belong to this specific store
+        let storeItems = shoppingList.filter { $0.store == store }
+        
+        for item in storeItems {
+            guard let productName = item.productName else { continue }
             
-            // Collect results
-            for await (productName, price) in group {
-                if let price = price {
-                    totalPrice += price
-                    availableItems += 1
-                    itemPrices[productName] = price
-                    print("Repository: Added \(productName) price $\(price) to total. Running total: $\(totalPrice)")
-                } else {
-                    unavailableItems += 1
-                    print("Repository: No price found for \(productName)")
-                }
+            if item.price > 0 {
+                totalPrice += item.price
+                availableItems += 1
+                itemPrices[productName] = item.price
+                print("Repository: Found \(productName) at \(store) for $\(item.price)")
+            } else {
+                unavailableItems += 1
+                print("Repository: \(productName) at \(store) has no price")
             }
         }
         

@@ -418,7 +418,7 @@ final class ProductViewModel: ObservableObject {
             // Convert LocalPriceComparisonResult to PriceComparison for compatibility
             let storePrices = localComparison.storePrices.map { localStorePrice in
                 StorePrice(
-                    store: Store(rawValue: localStorePrice.store) ?? .amazon,
+                    store: localStorePrice.store, // Now using String directly
                     totalPrice: localStorePrice.totalPrice,
                     currency: localStorePrice.currency,
                     availableItems: localStorePrice.availableItems,
@@ -429,7 +429,7 @@ final class ProductViewModel: ObservableObject {
             
             let comparison = PriceComparison(
                 storePrices: storePrices,
-                bestStore: localComparison.bestStore != nil ? Store(rawValue: localComparison.bestStore!) : nil,
+                bestStore: localComparison.bestStore, // Now using String directly
                 bestTotalPrice: localComparison.bestTotalPrice,
                 bestCurrency: localComparison.bestCurrency,
                 totalItems: localComparison.totalItems,

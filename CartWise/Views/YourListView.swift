@@ -73,7 +73,7 @@ struct YourListView: View {
             .onAppear {
                 Task {
                     await productViewModel.loadShoppingListProducts()
-                    await productViewModel.loadPriceComparison()
+                    await productViewModel.loadLocalPriceComparison()
                 }
             }
         }
@@ -141,7 +141,7 @@ struct MainContentView: View {
                     priceComparison: productViewModel.priceComparison,
                     isLoading: productViewModel.isLoadingPriceComparison,
                     onRefresh: {
-                        await productViewModel.refreshPriceComparison()
+                        await productViewModel.loadLocalPriceComparison()
                     },
                     onLocalComparison: {
                         await productViewModel.loadLocalPriceComparison()
