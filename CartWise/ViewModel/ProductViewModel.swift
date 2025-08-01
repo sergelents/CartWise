@@ -263,15 +263,129 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
+    func createProductByBarcode(barcode: String, productName: String, brand: String?, category: String?, price: Double, store: String, isOnSale: Bool = false) async -> GroceryItem? {
+        do {
+            print("ProductViewModel: Creating product with barcode: \(barcode)")
+            print("ProductViewModel: Store value: '\(store)'")
+            
+            // Check if product already exists with this barcode
+            if await isDuplicateBarcode(barcode) {
+                errorMessage = "Product with barcode '\(barcode)' already exists"
+                return nil
+            }
+            
+            let id = UUID().uuidString
+            let savedProduct = try await repository.createProduct(
+                id: id,
+                productName: productName,
+                brand: brand,
+                category: category,
+                price: price,
+                currency: "USD",
+                store: store, // Set store for price comparison
+                location: nil,
+                imageURL: nil,
+                barcode: barcode,
+                isInShoppingList: false, // Don't automatically add to shopping list
+                isOnSale: isOnSale
+            )
+            
+            print("ProductViewModel: Product created successfully")
+            print("ProductViewModel: Saved product store: '\(savedProduct.store ?? "nil")'")
+            
+            await loadShoppingListProducts()
+            errorMessage = nil
+            return savedProduct
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+    
+    func updateProductByBarcode(barcode: String, productName: String?, brand: String?, category: String?, price: Double?, store: String?, isOnSale: Bool?) async -> GroceryItem? {
+        do {
+            print("ProductViewModel: Updating product with barcode: \(barcode)")
+            print("ProductViewModel: Update store value: '\(store ?? "nil")'")
+            
+            let existingProducts = try await repository.searchProducts(by: barcode)
+            guard let existingProduct = existingProducts.first(where: { $0.barcode?.lowercased() == barcode.lowercased() }) else {
+                errorMessage = "Product with barcode '\(barcode)' not found"
+                return nil
+            }
+            
+            print("ProductViewModel: Found existing product, current store: '\(existingProduct.store ?? "nil")'")
+            
+            // Update only provided values
+            if let productName = productName {
+                existingProduct.productName = productName
+            }
+            if let brand = brand {
+                existingProduct.brand = brand
+            }
+            if let category = category {
+                existingProduct.category = category
+            }
+            if let price = price {
+                existingProduct.price = price
+            }
+            if let store = store {
+                existingProduct.store = store
+                print("ProductViewModel: Updated store to: '\(store)'")
+            }
+            if let isOnSale = isOnSale {
+                existingProduct.isOnSale = isOnSale
+            }
+            
+            try await repository.updateProduct(existingProduct)
+            print("ProductViewModel: Product updated successfully")
+            print("ProductViewModel: Final product store: '\(existingProduct.store ?? "nil")'")
+            
+            await loadShoppingListProducts()
+            errorMessage = nil
+            return existingProduct
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+    
+    func addBarcodeProductToShoppingList(barcode: String) async -> GroceryItem? {
+        do {
+            let existingProducts = try await repository.searchProducts(by: barcode)
+            guard let existingProduct = existingProducts.first(where: { $0.barcode?.lowercased() == barcode.lowercased() }) else {
+                errorMessage = "Product with barcode '\(barcode)' not found"
+                return nil
+            }
+            
+            // Add to shopping list
+            try await repository.addProductToShoppingList(existingProduct)
+            await loadShoppingListProducts()
+            errorMessage = nil
+            return existingProduct
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+    
     func loadLocalPriceComparison() async {
         // Get the current shopping list products specifically
         let shoppingListProducts = try? await repository.fetchListProducts()
         
+        print("ProductViewModel: Starting local price comparison")
+        print("ProductViewModel: Shopping list products count: \(shoppingListProducts?.count ?? 0)")
+        
         guard let shoppingList = shoppingListProducts, !shoppingList.isEmpty else {
+            print("ProductViewModel: No shopping list products found")
             await MainActor.run {
                 priceComparison = nil
             }
             return
+        }
+        
+        // Print details of each shopping list item
+        for (index, item) in shoppingList.enumerated() {
+            print("ProductViewModel: Item \(index + 1): \(item.productName ?? "Unknown") - Store: \(item.store ?? "None") - Price: $\(item.price)")
         }
         
         await MainActor.run {
@@ -284,6 +398,11 @@ final class ProductViewModel: ObservableObject {
             
             // Use the repository to get local price comparison
             let localComparison = try await repository.getLocalPriceComparison(for: shoppingList)
+            
+            print("ProductViewModel: Local comparison result - \(localComparison.storePrices.count) stores")
+            for storePrice in localComparison.storePrices {
+                print("ProductViewModel: Store \(storePrice.store): $\(storePrice.totalPrice)")
+            }
             
             // Convert LocalPriceComparisonResult to PriceComparison for compatibility
             let storePrices = localComparison.storePrices.map { localStorePrice in

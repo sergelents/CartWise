@@ -248,13 +248,17 @@ struct AddItemsView: View {
             // Convert price string to Double
             let priceValue = Double(price.replacingOccurrences(of: "$", with: "")) ?? 0.0
             
-            // Create product directly without API call
-            let newProduct = await createProductDirectly(
+            // Get store name from location or use a default
+            let storeName = location?.name ?? "Unknown Store"
+            
+            // Use ViewModel to create or update product
+            let newProduct = await createOrUpdateProductByBarcode(
                 barcode: barcode,
                 productName: productName.isEmpty ? "Unknown Product" : productName,
                 brand: company.isEmpty ? nil : company,
                 category: category == .none ? nil : category.rawValue,
                 price: priceValue,
+                store: storeName,
                 isOnSale: isOnSale
             )
             
@@ -262,10 +266,8 @@ struct AddItemsView: View {
             if let newProduct = newProduct {
                 await productViewModel.addTagsToProduct(newProduct, tags: tags)
                 
-                // Create location-specific price if location is selected
-                if let location = location {
-                    await createLocationPrice(for: newProduct, at: location, price: priceValue)
-                }
+                // Add to shopping list for price comparison
+                await productViewModel.addBarcodeProductToShoppingList(barcode: barcode)
             }
             
             await MainActor.run {
@@ -287,100 +289,30 @@ struct AddItemsView: View {
         }
     }
     
-    private func createProductDirectly(barcode: String, productName: String, brand: String?, category: String?, price: Double, isOnSale: Bool) async -> GroceryItem? {
-        do {
-            let context = await CoreDataStack.shared.viewContext
-            
-            // Check if product already exists with this barcode
-            let fetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "barcode == %@", barcode)
-            
-            let existingProducts = try context.fetch(fetchRequest)
-            if let existingProduct = existingProducts.first {
-                // Product exists, update it with new information and return it
-                
-                // Update product information if provided
-                if !productName.isEmpty && productName != "Unknown Product" {
-                    existingProduct.productName = productName
-                }
-                if let brand = brand, !brand.isEmpty {
-                    existingProduct.brand = brand
-                }
-                if let category = category, !category.isEmpty {
-                    existingProduct.category = category
-                }
-                existingProduct.isOnSale = isOnSale
-                existingProduct.updatedAt = Date()
-                
-                try context.save()
-                return existingProduct
-            }
-            
-            // Create new product if it doesn't exist
-            let newProduct = GroceryItem(
-                context: context,
-                id: UUID().uuidString,
-                productName: productName,
-                brand: brand,
-                category: category,
-                price: price,
-                currency: "USD",
-                store: nil,
-                location: nil,
-                imageURL: nil,
-                barcode: barcode,
-                isOnSale: isOnSale
-            )
-            
-            try context.save()
-            return newProduct
-            
-        } catch {
-            productViewModel.errorMessage = error.localizedDescription
-            return nil
+    private func createOrUpdateProductByBarcode(barcode: String, productName: String, brand: String?, category: String?, price: Double, store: String, isOnSale: Bool) async -> GroceryItem? {
+        // First try to update existing product
+        if let updatedProduct = await productViewModel.updateProductByBarcode(
+            barcode: barcode,
+            productName: productName,
+            brand: brand,
+            category: category,
+            price: price,
+            store: store,
+            isOnSale: isOnSale
+        ) {
+            return updatedProduct
         }
-    }
-    
-    private func createLocationPrice(for product: GroceryItem, at location: Location, price: Double) async {
-        do {
-            let context = await CoreDataStack.shared.viewContext
-            
-            // Get the product in the current context
-            let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
-            productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
-            productFetchRequest.fetchLimit = 1
-            
-            let products = try context.fetch(productFetchRequest)
-            guard let productInContext = products.first else {
-                return
-            }
-            
-            // Get the location in the current context
-            let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
-            locationFetchRequest.predicate = NSPredicate(format: "id == %@", location.id ?? "")
-            locationFetchRequest.fetchLimit = 1
-            
-            let locations = try context.fetch(locationFetchRequest)
-            guard let locationInContext = locations.first else {
-                return
-            }
-            
-            // Create new GroceryItemPrice with objects from the same context
-            let locationPrice = GroceryItemPrice(
-                context: context,
-                id: UUID().uuidString,
-                price: price,
-                currency: "USD",
-                store: locationInContext.name, // Use location name as store
-                groceryItem: productInContext,
-                location: locationInContext
-            )
-            
-            try context.save()
-            
-        } catch {
-            // Handle error silently
-        }
+        
+        // If update fails (product doesn't exist), create new product
+        return await productViewModel.createProductByBarcode(
+            barcode: barcode,
+            productName: productName,
+            brand: brand,
+            category: category,
+            price: price,
+            store: store,
+            isOnSale: isOnSale
+        )
     }
     
     private func resetPendingData() {

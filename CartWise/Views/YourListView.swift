@@ -73,7 +73,16 @@ struct YourListView: View {
             .onAppear {
                 Task {
                     await productViewModel.loadShoppingListProducts()
+                    print("YourListView: Loaded \(productViewModel.products.count) shopping list products")
+                    
                     await productViewModel.loadLocalPriceComparison()
+                    print("YourListView: Price comparison loaded: \(productViewModel.priceComparison?.storePrices.count ?? 0) stores")
+                    if let comparison = productViewModel.priceComparison {
+                        print("YourListView: Best store: \(comparison.bestStore ?? "None"), Total: $\(comparison.bestTotalPrice)")
+                        for storePrice in comparison.storePrices {
+                            print("YourListView: Store \(storePrice.store): $\(storePrice.totalPrice)")
+                        }
+                    }
                 }
             }
         }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Foundation
 
 struct PriceComparisonView: View {
     let priceComparison: PriceComparison?
@@ -40,70 +41,61 @@ struct PriceComparisonView: View {
             .padding(.horizontal)
             .padding(.top, 8)
             
+            // Price comparison content
             if let comparison = priceComparison {
-                // Best store summary
-                if let bestStore = comparison.bestStore {
+                if comparison.storePrices.isEmpty {
                     VStack(spacing: 8) {
-                        HStack {
-                            Text("Best Price:")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text(bestStore)
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.green)
+                        Text("No price data available")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Text("Add items with store information to see price comparisons")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                } else {
+                    VStack(spacing: 8) {
+                        // Best store summary
+                        if let bestStore = comparison.bestStore {
+                            HStack {
+                                Text("Best: \(bestStore)")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.green)
+                                
+                                Spacer()
+                                
+                                Text("$\(String(format: "%.2f", comparison.bestTotalPrice))")
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.green)
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                            .background(Color.green.opacity(0.1))
+                            .cornerRadius(8)
                         }
                         
-                        HStack {
-                            Text("Total:")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text("$\(String(format: "%.2f", comparison.bestTotalPrice))")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                        }
-                        
-                        HStack {
-                            Text("Items Available:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Text("\(comparison.availableItems)/\(comparison.totalItems)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        // Store rankings
+                        ForEach(Array(comparison.storePrices.enumerated()), id: \.offset) { index, storePrice in
+                            StorePriceRow(
+                                storePrice: storePrice,
+                                isBest: storePrice.store == comparison.bestStore,
+                                rank: index + 1
+                            )
                         }
                     }
                     .padding(.horizontal)
                 }
-                
-                // Store breakdown
-                VStack(spacing: 8) {
-                    ForEach(Array(comparison.storePrices.enumerated()), id: \.element.store) { index, storePrice in
-                        StorePriceRow(
-                            storePrice: storePrice, 
-                            isBest: storePrice.store == comparison.bestStore,
-                            rank: index + 1
-                        )
-                    }
-                }
-                .padding(.horizontal)
             } else {
-                // No comparison available
                 VStack(spacing: 8) {
                     Text("No price comparison available")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    Text("Add items with store information to your shopping list to see price comparisons")
+                    Text("Scan barcodes to add items with store information")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -112,37 +104,9 @@ struct PriceComparisonView: View {
             }
         }
         .padding(.vertical, 8)
-        .background(Color(uiColor: .systemBackground))
+        .background(Color.gray.opacity(0.1))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-    }
-}
-
-struct StoreToggleButton: View {
-    let store: String
-    let isSelected: Bool
-    let onToggle: (Bool) -> Void
-    
-    var body: some View {
-        Button(action: {
-            onToggle(!isSelected)
-        }) {
-            HStack {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? .blue : .gray)
-                
-                Text(store)
-                    .font(.caption)
-                    .foregroundColor(isSelected ? .primary : .secondary)
-                
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(isSelected ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1))
-            .cornerRadius(8)
-        }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 

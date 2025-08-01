@@ -33,25 +33,6 @@ protocol ProductRepositoryProtocol: Sendable {
     func initializeDefaultTags() async throws
 }
 
-// Price comparison models
-struct StorePrice: Codable, Sendable {
-    let store: String // Changed from Store enum to String for dynamic store names
-    let totalPrice: Double
-    let currency: String
-    let availableItems: Int
-    let unavailableItems: Int
-    let itemPrices: [String: Double] // productName -> price
-}
-
-struct PriceComparison: Codable, Sendable {
-    let storePrices: [StorePrice]
-    let bestStore: String? // Changed from Store? to String? for dynamic store names
-    let bestTotalPrice: Double
-    let bestCurrency: String
-    let totalItems: Int
-    let availableItems: Int
-}
-
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     private let coreDataContainer: CoreDataContainerProtocol
     
@@ -72,8 +53,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     }
     
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false, isOnSale: Bool = false) async throws -> GroceryItem {
+        print("Repository: Creating product with store: '\(store ?? "nil")'")
+        
         // Create locally first
-        return try await coreDataContainer.createProduct(
+        let product = try await coreDataContainer.createProduct(
             id: id,
             productName: productName,
             brand: brand,
@@ -87,6 +70,9 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             isInShoppingList: isInShoppingList,
             isOnSale: isOnSale
         )
+        
+        print("Repository: Product created, final store: '\(product.store ?? "nil")'")
+        return product
     }
     
     func updateProduct(_ product: GroceryItem) async throws {

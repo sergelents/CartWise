@@ -100,3 +100,22 @@ struct LocalPriceComparisonResult: Codable, Sendable {
     let totalItems: Int
     let availableItems: Int
 }
+
+// Price comparison models for UI
+struct StorePrice: Codable, Sendable {
+    let store: String
+    let totalPrice: Double
+    let currency: String
+    let availableItems: Int
+    let unavailableItems: Int
+    let itemPrices: [String: Double] // productName -> price
+}
+
+struct PriceComparison: Codable, Sendable {
+    let storePrices: [StorePrice]
+    let bestStore: String?
+    let bestTotalPrice: Double
+    let bestCurrency: String
+    let totalItems: Int
+    let availableItems: Int
+}
