@@ -14,6 +14,12 @@ struct MyProfileView: View {
     @State private var currentUsername: String = ""
     @State private var isLoadingUser: Bool = true
     @State private var showAddLocation: Bool = false
+    @State private var selectedTab: ProfileTab = .favorites
+    
+    enum ProfileTab: String, CaseIterable {
+        case favorites = "Favorites"
+        case locations = "Locations"
+    }
     
     var body: some View {
         NavigationView {
@@ -30,13 +36,8 @@ struct MyProfileView: View {
                             isLoadingUser: isLoadingUser
                         )
                         
-                        // Favorites Section
-                        FavoriteItemsView()
-                            .padding(.horizontal)
-                        
-                        // Locations Section
-                        LocationsSectionView()
-                            .padding(.horizontal)
+                        // Tabbed Content
+                        TabbedContentView(selectedTab: $selectedTab)
                         
                         // Logout Button
                         LogoutButton(action: {
@@ -100,6 +101,70 @@ struct MyProfileView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Tabbed Content View
+struct TabbedContentView: View {
+    @Binding var selectedTab: MyProfileView.ProfileTab
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Tab Selector
+            TabSelector(selectedTab: $selectedTab)
+            
+            // Tab Content
+            VStack(spacing: 0) {
+                if selectedTab == .favorites {
+                    FavoriteItemsView()
+                        .transition(.opacity)
+                } else if selectedTab == .locations {
+                    LocationsSectionView()
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: selectedTab)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+        )
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Tab Selector
+struct TabSelector: View {
+    @Binding var selectedTab: MyProfileView.ProfileTab
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(MyProfileView.ProfileTab.allCases, id: \.self) { tab in
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTab = tab
+                    }
+                }) {
+                    VStack(spacing: 8) {
+                        Text(tab.rawValue)
+                            .font(.poppins(size: 16, weight: selectedTab == tab ? .semibold : .medium))
+                            .foregroundColor(selectedTab == tab ? AppColors.accentGreen : .gray)
+                        
+                        // Underline indicator
+                        Rectangle()
+                            .fill(selectedTab == tab ? AppColors.accentGreen : Color.clear)
+                            .frame(height: 2)
+                            .cornerRadius(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
     }
 }
 
