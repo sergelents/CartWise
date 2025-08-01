@@ -12,10 +12,15 @@ struct AddItemsView: View {
     @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
     let availableTags: [Tag] // Pass tags as parameter
     
-    @State private var scannedBarcode: String = ""
-    @State private var manualBarcode: String = ""
     @State private var showingCamera = false
-    @State private var showingManualEntry = false
+    @State private var showingSuccess = false
+    @State private var showingError = false
+    @State private var isProcessing = false
+    @State private var scannedBarcode = ""
+    @State private var errorMessage = ""
+    @State private var successMessage = ""
+    
+    // Barcode confirmation state
     @State private var showingBarcodeConfirmation = false
     @State private var pendingBarcode: String = ""
     @State private var pendingProductName: String = ""
@@ -26,14 +31,8 @@ struct AddItemsView: View {
     @State private var showCategoryPicker = false
     @State private var pendingLocation: Location? = nil
     @State private var showLocationPicker = false
-    // Tag selection state
     @State private var selectedTags: [Tag] = []
     @State private var showingTagPicker = false
-    @State private var errorMessage: String?
-    @State private var showingError = false
-    @State private var isProcessing = false
-    @State private var showingSuccess = false
-    @State private var successMessage = ""
     
     var body: some View {
         NavigationView {
@@ -105,24 +104,6 @@ struct AddItemsView: View {
                         .cornerRadius(12)
                     }
                     .padding(.horizontal)
-                    
-                    // Manual Entry Button
-                    Button(action: {
-                        showingManualEntry = true
-                    }) {
-                        HStack {
-                            Image(systemName: "keyboard")
-                                .font(.system(size: 18))
-                            Text("Enter Barcode Manually")
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundColor(AppColors.accentGreen)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(AppColors.accentGreen.opacity(0.1))
-                        .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
                 }
                 
                 // Processing Indicator
@@ -175,16 +156,6 @@ struct AddItemsView: View {
             .onAppear {
                 // Tags are now passed as parameter, no need to fetch
             }
-            .sheet(isPresented: $showingManualEntry) {
-                ManualBarcodeEntryView(
-                    barcode: $manualBarcode,
-                    onBarcodeEntered: { barcode in
-                        pendingBarcode = barcode
-                        showingBarcodeConfirmation = true
-                        showingManualEntry = false
-                    }
-                )
-            }
             .sheet(isPresented: $showingBarcodeConfirmation) {
                 BarcodeConfirmationView(
                     barcode: $pendingBarcode,
@@ -226,10 +197,10 @@ struct AddItemsView: View {
             .alert("Error", isPresented: $showingError) {
                 Button("OK") {
                     showingError = false
-                    errorMessage = nil
+                    errorMessage = ""
                 }
             } message: {
-                Text(errorMessage ?? "An unknown error occurred")
+                Text(errorMessage.isEmpty ? "An unknown error occurred" : errorMessage)
             }
         }
     }

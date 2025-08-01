@@ -7,6 +7,7 @@
 //
 import SwiftUI
 import Combine
+import CoreData
 
 @MainActor
 final class ProductViewModel: ObservableObject {
@@ -16,6 +17,7 @@ final class ProductViewModel: ObservableObject {
     @Published var priceComparison: PriceComparison?
     @Published var isLoadingPriceComparison = false
     @Published var tags: [Tag] = []
+    @Published var locations: [Location] = []
     var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
@@ -197,7 +199,7 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
-    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, price: Double = 0.0, isOnSale: Bool = false) async {
+    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, isOnSale: Bool = false) async {
         do {
             if await isDuplicateProduct(name: name) {
                 errorMessage = "Product '\(name)' already exists in your list"
@@ -210,7 +212,7 @@ final class ProductViewModel: ObservableObject {
                 productName: name,
                 brand: brand,
                 category: category,
-                price: price,
+                price: 0.0, // Default price - will be stored in GroceryItemPrice if > 0
                 currency: "USD",
                 store: nil,
                 location: nil,
@@ -325,16 +327,12 @@ final class ProductViewModel: ObservableObject {
             if let category = category {
                 existingProduct.category = category
             }
-            if let price = price {
-                existingProduct.price = price
-            }
-            if let store = store {
-                existingProduct.store = store
-                print("ProductViewModel: Updated store to: '\(store)'")
-            }
             if let isOnSale = isOnSale {
                 existingProduct.isOnSale = isOnSale
             }
+            
+            // Note: price and store are now handled through GroceryItemPrice relationships
+            // and will be set when creating/updating the product through the repository
             
             try await repository.updateProduct(existingProduct)
             print("ProductViewModel: Product updated successfully")
@@ -467,6 +465,40 @@ extension ProductViewModel {
             try await repository.addTagsToProduct(product, tags: tags)
         } catch {
             // Optionally handle error
+        }
+    }
+    
+    // MARK: - Location Management
+    
+    @MainActor
+    func loadLocations() async {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            
+            // Get current user
+            let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            fetchRequest.fetchLimit = 1
+            
+            let users = try context.fetch(fetchRequest)
+            guard let currentUser = users.first else { return }
+            
+            // Fetch user's locations
+            let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+            locationFetchRequest.predicate = NSPredicate(format: "user == %@", currentUser)
+            locationFetchRequest.sortDescriptors = [
+                NSSortDescriptor(keyPath: \Location.isDefault, ascending: false),
+                NSSortDescriptor(keyPath: \Location.favorited, ascending: false),
+                NSSortDescriptor(keyPath: \Location.name, ascending: true)
+            ]
+            
+            let fetchedLocations = try context.fetch(locationFetchRequest)
+            
+            // Update on main thread since we're already @MainActor
+            self.locations = fetchedLocations
+        } catch {
+            print("Error loading locations: \(error)")
+            self.locations = []
         }
     }
 }

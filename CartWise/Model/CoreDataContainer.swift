@@ -23,6 +23,7 @@ protocol CoreDataContainerProtocol: Sendable {
     func removeProductFromFavorites(_ product: GroceryItem) async throws
     func toggleProductFavorite(_ product: GroceryItem) async throws
     func searchProducts(by name: String) async throws -> [GroceryItem]
+    func searchProductsByTag(_ tag: Tag) async throws -> [GroceryItem]
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
     
     // Tag-related methods
@@ -95,10 +96,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 productName: productName,
                 brand: brand,
                 category: category,
-                price: price,
-                currency: currency,
-                store: store,
-                location: location,
                 imageURL: imageURL,
                 barcode: barcode,
                 isOnSale: isOnSale
@@ -108,6 +105,24 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             
             // Set shopping list status based on parameter
             product.isInShoppingList = isInShoppingList
+            
+            // If we have price and store information, create a GroceryItemPrice
+            if price > 0, let store = store {
+                // Find or create the location
+                let locationEntity = try self.findOrCreateLocation(context: context, name: store, address: location)
+                
+                // Create the price entity
+                let priceEntity = GroceryItemPrice(
+                    context: context,
+                    id: UUID().uuidString,
+                    price: price,
+                    currency: currency,
+                    store: store,
+                    groceryItem: product,
+                    location: locationEntity,
+                    updatedBy: "System" // Default user for now
+                )
+            }
             
             try context.save()
             print("CoreDataContainer: Context saved, final store: '\(product.store ?? "nil")'")
@@ -120,6 +135,48 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             let fetchedProduct = try viewContext.existingObject(with: objectID) as! GroceryItem
             print("CoreDataContainer: Fetched product from main context, store: '\(fetchedProduct.store ?? "nil")'")
             return fetchedProduct
+        }
+    }
+    
+    // Helper method to find or create a location
+    private func findOrCreateLocation(context: NSManagedObjectContext, name: String, address: String?) throws -> Location {
+        let request: NSFetchRequest<Location> = Location.fetchRequest()
+        request.predicate = NSPredicate(format: "name == %@", name)
+        request.fetchLimit = 1
+        
+        let existingLocations = try context.fetch(request)
+        if let existingLocation = existingLocations.first {
+            return existingLocation
+        }
+        
+        // Create new location
+        let newLocation = Location(context: context)
+        newLocation.id = UUID().uuidString
+        newLocation.name = name
+        newLocation.address = address
+        newLocation.createdAt = Date()
+        newLocation.updatedAt = Date()
+        
+        return newLocation
+    }
+    
+    // Helper method to get current username
+    private func getCurrentUsername() async -> String {
+        do {
+            let context = await coreDataStack.viewContext
+            return try await context.perform {
+                let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+                fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+                fetchRequest.fetchLimit = 1
+                
+                let users = try context.fetch(fetchRequest)
+                if let currentUser = users.first, let username = currentUser.username {
+                    return username
+                }
+                return "Unknown User"
+            }
+        } catch {
+            return "Unknown User"
         }
     }
     
@@ -293,6 +350,17 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             productInContext.tags = NSSet(set: newTags)
             
             try context.save()
+        }
+    }
+
+        func searchProductsByTag(_ tag: Tag) async throws -> [GroceryItem] {
+        // Use viewContext through the actor
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            request.predicate = NSPredicate(format: "ANY tags == %@", tag)
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.productName, ascending: true)]
+            return try context.fetch(request)
         }
     }
     
