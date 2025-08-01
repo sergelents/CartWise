@@ -31,7 +31,7 @@
         <attribute name="zipCode" optional="YES" attributeType="String"/>
         <relationship name="groceryItems" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="GroceryItem" inverseName="locations" inverseEntity="GroceryItem"/>
         <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="UserEntity" inverseName="locations" inverseEntity="UserEntity"/>
-        <relationship name="prices" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="GroceryItemPrice" inverseName="location" inverseEntity="GroceryItemPrice"/>
+        <relationship name="prices" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="GroceryItemPrice" inverseName="location" inverseEntity="GroceryItemPrice"/>
     </entity>
     <entity name="GroceryItemPrice" representedClassName="GroceryItemPrice" syncable="YES">
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>

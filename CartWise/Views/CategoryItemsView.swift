@@ -738,12 +738,20 @@ struct ProductPriceView: View {
                 await loadPriceForSelectedLocation()
             }
         }
+        .onChange(of: currentSelectedLocation) { newLocation in
+            Task {
+                print("ProductPriceView: Location changed to: \(newLocation?.name ?? "nil")")
+                await loadPriceForSelectedLocation(newLocation: newLocation)
+            }
+        }
     }
     
-    private func loadPriceForSelectedLocation() async {
+    private func loadPriceForSelectedLocation(newLocation: Location? = nil) async {
         isLoading = true
         
-        guard let currentSelectedLocation = currentSelectedLocation else {
+        let locationToSearch = newLocation ?? currentSelectedLocation
+        
+        guard let locationToSearch = locationToSearch else {
             await MainActor.run {
                 self.locationPrice = nil
                 self.isLoading = false
@@ -754,14 +762,35 @@ struct ProductPriceView: View {
         do {
             let context = await CoreDataStack.shared.viewContext
             let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location == %@", product, currentSelectedLocation)
+            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", product, locationToSearch.id ?? "")
+            
+            // Debug: Let's also check what prices exist for this product
+            let allPricesFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
+            allPricesFetchRequest.predicate = NSPredicate(format: "groceryItem == %@", product)
+            let allPrices = try context.fetch(allPricesFetchRequest)
+            print("ProductPriceView: All prices for this product:")
+            for price in allPrices {
+                print("  - Location: \(price.location?.name ?? "nil"), ID: \(price.location?.id ?? "nil"), Price: $\(price.price)")
+            }
             fetchRequest.fetchLimit = 1
+            
+            print("ProductPriceView: Searching for location ID: \(locationToSearch.id ?? "nil")")
+            print("ProductPriceView: Searching for location name: \(locationToSearch.name ?? "nil")")
             
             let prices = try context.fetch(fetchRequest)
             let price = prices.first
             
+            print("ProductPriceView: Found \(prices.count) prices for location \(locationToSearch.name ?? "Unknown")")
+            
             await MainActor.run {
-                self.locationPrice = price
+                // Only set locationPrice if we actually found a price
+                if let price = price {
+                    print("ProductPriceView: Setting price to $\(price.price)")
+                    self.locationPrice = price
+                } else {
+                    print("ProductPriceView: No price found, setting locationPrice to nil")
+                    self.locationPrice = nil
+                }
                 self.isLoading = false
             }
         } catch {
