@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct SocialFeedView: View {
     @StateObject private var viewModel = SocialFeedViewModel()
@@ -183,11 +184,23 @@ struct ExperienceCardView: View {
 struct AddExperienceView: View {
     @ObservedObject var viewModel: SocialFeedViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var viewContext
     
     @State private var comment = ""
     @State private var rating: Int16 = 0
     @State private var selectedType = "general"
     @State private var showingTypePicker = false
+    
+    // Optional fields for additional information
+    @State private var selectedProduct: GroceryItem?
+    @State private var selectedLocation: Location?
+    @State private var price: String = ""
+    @State private var showingProductPicker = false
+    @State private var showingLocationPicker = false
+    
+    // Available products and locations
+    @State private var availableProducts: [GroceryItem] = []
+    @State private var availableLocations: [Location] = []
     
     private let types = [
         ("general", "General Comment"),
@@ -229,6 +242,82 @@ struct AddExperienceView: View {
                     }
                 }
                 
+                // Optional Product Information
+                if selectedType == "product_review" || selectedType == "price_update" {
+                    Section("Product Information (Optional)") {
+                        Button(action: {
+                            loadAvailableProducts()
+                            showingProductPicker = true
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Product")
+                                        .font(.headline)
+                                    Text(selectedProduct?.productName ?? "Select a product")
+                                        .font(.subheadline)
+                                        .foregroundColor(selectedProduct == nil ? .gray : .primary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        if selectedProduct != nil {
+                            Button("Clear Product") {
+                                selectedProduct = nil
+                            }
+                            .foregroundColor(.red)
+                        }
+                    }
+                }
+                
+                // Optional Store Information
+                if selectedType == "store_review" || selectedType == "price_update" {
+                    Section("Store Information (Optional)") {
+                        Button(action: {
+                            loadAvailableLocations()
+                            showingLocationPicker = true
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Store")
+                                        .font(.headline)
+                                    Text(selectedLocation?.name ?? "Select a store")
+                                        .font(.subheadline)
+                                        .foregroundColor(selectedLocation == nil ? .gray : .primary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        if selectedLocation != nil {
+                            Button("Clear Store") {
+                                selectedLocation = nil
+                            }
+                            .foregroundColor(.red)
+                        }
+                    }
+                }
+                
+                // Optional Price Information
+                if selectedType == "price_update" {
+                    Section("Price Information (Optional)") {
+                        HStack {
+                            Text("$")
+                                .font(.headline)
+                                .foregroundColor(.gray)
+                            TextField("0.00", text: $price)
+                                .keyboardType(.decimalPad)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
+                    }
+                }
+                
                 Section("Comment") {
                     TextEditor(text: $comment)
                         .frame(minHeight: 100)
@@ -250,17 +339,207 @@ struct AddExperienceView: View {
                     .disabled(comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .sheet(isPresented: $showingProductPicker) {
+                ProductPickerView(selectedProduct: $selectedProduct)
+            }
+            .sheet(isPresented: $showingLocationPicker) {
+                LocationPickerView(selectedLocation: $selectedLocation)
+            }
         }
     }
     
     private func postExperience() {
+        // Create enhanced comment with optional information
+        var enhancedComment = comment.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Add product information if available
+        if let product = selectedProduct {
+            enhancedComment += "\n\nProduct: \(product.productName ?? "Unknown")"
+            if let brand = product.brand, !brand.isEmpty {
+                enhancedComment += " (\(brand))"
+            }
+        }
+        
+        // Add store information if available
+        if let location = selectedLocation {
+            enhancedComment += "\nStore: \(location.name ?? "Unknown")"
+            if let address = location.address, !address.isEmpty {
+                enhancedComment += " (\(address))"
+            }
+        }
+        
+        // Add price information if available
+        if !price.isEmpty, let priceValue = Double(price) {
+            enhancedComment += "\nPrice: $\(String(format: "%.2f", priceValue))"
+        }
+        
         viewModel.createExperience(
-            comment: comment.trimmingCharacters(in: .whitespacesAndNewlines),
+            comment: enhancedComment,
             rating: rating,
             type: selectedType,
+            groceryItem: selectedProduct,
+            location: selectedLocation,
             user: viewModel.getCurrentUser()
         )
         dismiss()
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func loadAvailableProducts() {
+        let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.productName, ascending: true)]
+        
+        do {
+            availableProducts = try viewContext.fetch(request)
+        } catch {
+            print("Failed to load products: \(error)")
+        }
+    }
+    
+    private func loadAvailableLocations() {
+        let request: NSFetchRequest<Location> = Location.fetchRequest()
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \Location.name, ascending: true)]
+        
+        do {
+            availableLocations = try viewContext.fetch(request)
+        } catch {
+            print("Failed to load locations: \(error)")
+        }
+    }
+}
+
+// MARK: - Product Picker View
+struct ProductPickerView: View {
+    @Binding var selectedProduct: GroceryItem?
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var viewContext
+    
+    @State private var searchText = ""
+    @State private var products: [GroceryItem] = []
+    @State private var isLoading = true
+    
+    var filteredProducts: [GroceryItem] {
+        if searchText.isEmpty {
+            return products
+        }
+        return products.filter { product in
+            let nameMatch = product.productName?.localizedCaseInsensitiveContains(searchText) == true
+            let brandMatch = product.brand?.localizedCaseInsensitiveContains(searchText) == true
+            let categoryMatch = product.category?.localizedCaseInsensitiveContains(searchText) == true
+            return nameMatch || brandMatch || categoryMatch
+        }
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Search Bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gray)
+                    TextField("Search products...", text: $searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+                .padding(.horizontal)
+                .padding(.top)
+                
+                if isLoading {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Loading products...")
+                            .font(.poppins(size: 14, weight: .regular))
+                            .foregroundColor(.gray)
+                    }
+                    Spacer()
+                } else if products.isEmpty {
+                    // Empty State
+                    Spacer()
+                    VStack(spacing: 16) {
+                        Image(systemName: "cart")
+                            .font(.system(size: 48))
+                            .foregroundColor(.gray.opacity(0.6))
+                        
+                        VStack(spacing: 8) {
+                            Text("No Products Found")
+                                .font(.poppins(size: 18, weight: .semibold))
+                                .foregroundColor(.primary)
+                            
+                            Text("Add products to your shopping list first")
+                                .font(.poppins(size: 14, weight: .regular))
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    Spacer()
+                } else {
+                    // Products List
+                    List {
+                        ForEach(filteredProducts, id: \.id) { product in
+                            Button(action: {
+                                selectedProduct = product
+                                dismiss()
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(product.productName ?? "Unknown Product")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                        
+                                        if let brand = product.brand, !brand.isEmpty {
+                                            Text(brand)
+                                                .font(.subheadline)
+                                                .foregroundColor(.gray)
+                                        }
+                                        
+                                        if let category = product.category, !category.isEmpty {
+                                            Text(category)
+                                                .font(.caption)
+                                                .foregroundColor(.gray.opacity(0.7))
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    if selectedProduct?.id == product.id {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.green)
+                                    }
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Select Product")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                loadProducts()
+            }
+        }
+    }
+    
+    private func loadProducts() {
+        let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+        request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.productName, ascending: true)]
+        
+        do {
+            products = try viewContext.fetch(request)
+            isLoading = false
+        } catch {
+            print("Failed to load products: \(error)")
+            isLoading = false
+        }
     }
 }
 
