@@ -30,6 +30,7 @@ extension GroceryItem {
     @NSManaged public var tags: NSSet?
     @NSManaged public var locations: NSSet?
     @NSManaged public var prices: NSSet?
+    @NSManaged public var experiences: NSSet?
 
 }
 
@@ -69,6 +70,12 @@ extension GroceryItem : Identifiable {
     var priceArray: [GroceryItemPrice] {
         let set = prices as? Set<GroceryItemPrice> ?? []
         return Array(set)
+    }
+    
+    // Computed property for easier access to experiences
+    var experienceArray: [ShoppingExperience] {
+        let set = experiences as? Set<ShoppingExperience> ?? []
+        return Array(set).sorted { $0.createdAt ?? Date() > $1.createdAt ?? Date() }
     }
     
     // Helper method to get the current price at a specific location

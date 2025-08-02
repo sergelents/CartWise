@@ -27,6 +27,7 @@ extension Location {
     @NSManaged public var user: UserEntity?
     @NSManaged public var groceryItems: NSSet?
     @NSManaged public var prices: NSSet?
+    @NSManaged public var experiences: NSSet?
 
 }
 
@@ -57,5 +58,11 @@ extension Location : Identifiable {
     var priceArray: [GroceryItemPrice] {
         let set = prices as? Set<GroceryItemPrice> ?? []
         return Array(set)
+    }
+    
+    // Computed property for easier access to experiences
+    var experienceArray: [ShoppingExperience] {
+        let set = experiences as? Set<ShoppingExperience> ?? []
+        return Array(set).sorted { $0.createdAt ?? Date() > $1.createdAt ?? Date() }
     }
 } 
