@@ -309,13 +309,13 @@ struct EditLocationView: View {
                 // Check for duplicate address (excluding current location)
                 let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
                 locationFetchRequest.predicate = NSPredicate(
-                    format: "user == %@ AND address == %@ AND city == %@ AND state == %@ AND zipCode == %@ AND objectID != %@",
+                    format: "user == %@ AND address == %@ AND city == %@ AND state == %@ AND zipCode == %@ AND SELF != %@",
                     currentUser,
                     address.trimmingCharacters(in: .whitespacesAndNewlines),
                     city.trimmingCharacters(in: .whitespacesAndNewlines),
                     state.trimmingCharacters(in: .whitespacesAndNewlines),
                     zipCode.trimmingCharacters(in: .whitespacesAndNewlines),
-                    location.objectID
+                    location
                 )
                 
                 let existingLocations = try viewContext.fetch(locationFetchRequest)
@@ -362,13 +362,13 @@ struct EditLocationView: View {
                     // Check for duplicate address (excluding current location)
                     let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
                     locationFetchRequest.predicate = NSPredicate(
-                        format: "user == %@ AND address == %@ AND city == %@ AND state == %@ AND zipCode == %@ AND objectID != %@",
+                        format: "user == %@ AND address == %@ AND city == %@ AND state == %@ AND zipCode == %@ AND SELF != %@",
                         currentUser,
                         address.trimmingCharacters(in: .whitespacesAndNewlines),
                         city.trimmingCharacters(in: .whitespacesAndNewlines),
                         state.trimmingCharacters(in: .whitespacesAndNewlines),
                         zipCode.trimmingCharacters(in: .whitespacesAndNewlines),
-                        location.objectID
+                        location
                     )
                     
                     let existingLocations = try viewContext.fetch(locationFetchRequest)
