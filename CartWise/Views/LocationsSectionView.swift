@@ -24,7 +24,7 @@ struct LocationsSectionView: View {
                         .font(.poppins(size: 20, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
                     
-                    Text("Manage your shopping locations")
+                    Text("Your favorite shopping locations")
                         .font(.poppins(size: 14, weight: .regular))
                         .foregroundColor(.gray)
                 }
@@ -53,16 +53,16 @@ struct LocationsSectionView: View {
             } else if locations.isEmpty {
                 // Empty State
                 VStack(spacing: 16) {
-                    Image(systemName: "location.slash")
+                    Image(systemName: "heart.slash")
                         .font(.system(size: 48))
                         .foregroundColor(.gray.opacity(0.6))
                     
                     VStack(spacing: 8) {
-                        Text("No Locations Yet")
+                        Text("No Favorite Locations")
                             .font(.poppins(size: 18, weight: .semibold))
                             .foregroundColor(AppColors.textPrimary)
                         
-                        Text("Add your favorite shopping locations to track prices")
+                        Text("Add locations and mark them as favorites to see them here")
                             .font(.poppins(size: 14, weight: .regular))
                             .foregroundColor(.gray)
                             .multilineTextAlignment(.center)
@@ -74,7 +74,7 @@ struct LocationsSectionView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 16, weight: .medium))
-                            Text("Add First Location")
+                            Text("Add Location")
                                 .font(.poppins(size: 16, weight: .semibold))
                         }
                         .foregroundColor(AppColors.accentGreen)
@@ -88,26 +88,15 @@ struct LocationsSectionView: View {
                 }
                 .frame(height: 200)
             } else {
-                // Locations List
-                VStack(spacing: 12) {
-                    ForEach(locations.prefix(3)) { location in
-                        LocationRowView(location: location)
-                    }
-                    
-                    if locations.count > 3 {
-                        Button(action: {
-                            // TODO: Navigate to full locations list
-                        }) {
-                            HStack(spacing: 8) {
-                                Text("View All \(locations.count) Locations")
-                                    .font(.poppins(size: 14, weight: .medium))
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 12, weight: .medium))
-                            }
-                            .foregroundColor(AppColors.accentGreen)
+                // Scrollable Locations List
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(locations) { location in
+                            LocationRowView(location: location)
                         }
                     }
                 }
+                .frame(maxHeight: 300) // Limit height to prevent exponential expansion
             }
         }
         .padding(20)
@@ -142,12 +131,11 @@ struct LocationsSectionView: View {
             let users = try viewContext.fetch(fetchRequest)
             guard let currentUser = users.first else { return }
             
-            // Fetch user's locations
+            // Fetch only favorited locations
             let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
-            locationFetchRequest.predicate = NSPredicate(format: "user == %@", currentUser)
+            locationFetchRequest.predicate = NSPredicate(format: "user == %@ AND favorited == YES", currentUser)
             locationFetchRequest.sortDescriptors = [
                 NSSortDescriptor(keyPath: \Location.isDefault, ascending: false),
-                NSSortDescriptor(keyPath: \Location.favorited, ascending: false),
                 NSSortDescriptor(keyPath: \Location.name, ascending: true)
             ]
             
@@ -177,9 +165,9 @@ struct LocationRowView: View {
                     .fill(AppColors.accentGreen.opacity(0.1))
                     .frame(width: 40, height: 40)
                 
-                Image(systemName: "location.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(AppColors.accentGreen)
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(.red)
             }
             
             // Location Details
@@ -193,12 +181,6 @@ struct LocationRowView: View {
                         Image(systemName: "star.fill")
                             .font(.system(size: 12))
                             .foregroundColor(.yellow)
-                    }
-                    
-                    if location.favorited {
-                        Image(systemName: "heart.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.red)
                     }
                 }
                 

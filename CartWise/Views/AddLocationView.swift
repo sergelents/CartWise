@@ -23,6 +23,8 @@ struct AddLocationView: View {
     @State private var isLoading: Bool = false
     @State private var showError: Bool = false
     @State private var errorMessage: String = ""
+    @State private var isCheckingAddress: Bool = false
+    @State private var isAddressDuplicate: Bool = false
     
     var body: some View {
         NavigationView {
@@ -68,8 +70,19 @@ struct AddLocationView: View {
                                     .font(.poppins(size: 16, weight: .semibold))
                                     .foregroundColor(AppColors.textPrimary)
                                 
-                                TextField("123 Main Street", text: $address)
-                                    .textFieldStyle(CustomTextFieldStyle())
+                                HStack {
+                                    TextField("123 Main Street", text: $address)
+                                        .textFieldStyle(CustomTextFieldStyle())
+                                        .onChange(of: address) { _ in
+                                            checkAddressAvailability()
+                                        }
+                                    
+                                    if isCheckingAddress {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                            .frame(width: 20, height: 20)
+                                    }
+                                }
                             }
                             
                             // City, State, Zip Row
@@ -81,6 +94,9 @@ struct AddLocationView: View {
                                     
                                     TextField("City", text: $city)
                                         .textFieldStyle(CustomTextFieldStyle())
+                                        .onChange(of: city) { _ in
+                                            checkAddressAvailability()
+                                        }
                                 }
                                 
                                 VStack(alignment: .leading, spacing: 8) {
@@ -90,6 +106,9 @@ struct AddLocationView: View {
                                     
                                     TextField("State", text: $state)
                                         .textFieldStyle(CustomTextFieldStyle())
+                                        .onChange(of: state) { _ in
+                                            checkAddressAvailability()
+                                        }
                                 }
                             }
                             
@@ -102,6 +121,9 @@ struct AddLocationView: View {
                                 TextField("12345", text: $zipCode)
                                     .textFieldStyle(CustomTextFieldStyle())
                                     .keyboardType(.numberPad)
+                                    .onChange(of: zipCode) { _ in
+                                        checkAddressAvailability()
+                                    }
                             }
                             
                             // Toggle Options
@@ -164,8 +186,8 @@ struct AddLocationView: View {
                                     .shadow(color: AppColors.accentGreen.opacity(0.3), radius: 12, x: 0, y: 6)
                             )
                         }
-                        .disabled(isLoading || !isFormValid)
-                        .opacity(isFormValid ? 1.0 : 0.6)
+                        .disabled(isLoading || !isFormValid || isAddressDuplicate)
+                        .opacity((isFormValid && !isAddressDuplicate) ? 1.0 : 0.6)
                         .padding(.horizontal, 20)
                         .padding(.bottom, 32)
                     }
@@ -197,11 +219,62 @@ struct AddLocationView: View {
         !zipCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
+    private func checkAddressAvailability() {
+        guard !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+              !city.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+              !state.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+              !zipCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+        
+        isCheckingAddress = true
+        
+        Task {
+            do {
+                // Get current user
+                let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+                fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+                fetchRequest.fetchLimit = 1
+                
+                let users = try viewContext.fetch(fetchRequest)
+                guard let currentUser = users.first else { return }
+                
+                // Check for duplicate address
+                let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+                locationFetchRequest.predicate = NSPredicate(
+                    format: "user == %@ AND address == %@ AND city == %@ AND state == %@ AND zipCode == %@",
+                    currentUser,
+                    address.trimmingCharacters(in: .whitespacesAndNewlines),
+                    city.trimmingCharacters(in: .whitespacesAndNewlines),
+                    state.trimmingCharacters(in: .whitespacesAndNewlines),
+                    zipCode.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+                
+                let existingLocations = try viewContext.fetch(locationFetchRequest)
+                
+                await MainActor.run {
+                    isCheckingAddress = false
+                    isAddressDuplicate = !existingLocations.isEmpty
+                    if isAddressDuplicate {
+                        errorMessage = "This address has already been added to your locations."
+                        showError = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isCheckingAddress = false
+                    isAddressDuplicate = false
+                }
+            }
+        }
+    }
+    
     private func saveLocation() {
         guard isFormValid else { return }
         
         isLoading = true
         
+        // Final check for duplicate address
         Task {
             do {
                 // Get current user
@@ -214,12 +287,33 @@ struct AddLocationView: View {
                     throw LocationError.noUserFound
                 }
                 
+                // Check for duplicate address
+                let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+                locationFetchRequest.predicate = NSPredicate(
+                    format: "user == %@ AND address == %@ AND city == %@ AND state == %@ AND zipCode == %@",
+                    currentUser,
+                    address.trimmingCharacters(in: .whitespacesAndNewlines),
+                    city.trimmingCharacters(in: .whitespacesAndNewlines),
+                    state.trimmingCharacters(in: .whitespacesAndNewlines),
+                    zipCode.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+                
+                let existingLocations = try viewContext.fetch(locationFetchRequest)
+                
+                if !existingLocations.isEmpty {
+                    await MainActor.run {
+                        errorMessage = "This address has already been added to your locations."
+                        showError = true
+                    }
+                    return
+                }
+                
                 // If setting as default, unset other defaults
                 if isDefault {
-                    let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
-                    locationFetchRequest.predicate = NSPredicate(format: "user == %@ AND isDefault == YES", currentUser)
+                    let defaultLocationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+                    defaultLocationFetchRequest.predicate = NSPredicate(format: "user == %@ AND isDefault == YES", currentUser)
                     
-                    let existingDefaults = try viewContext.fetch(locationFetchRequest)
+                    let existingDefaults = try viewContext.fetch(defaultLocationFetchRequest)
                     for existingDefault in existingDefaults {
                         existingDefault.isDefault = false
                     }
