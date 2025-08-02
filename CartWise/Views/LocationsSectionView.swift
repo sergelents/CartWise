@@ -16,31 +16,75 @@ struct LocationsSectionView: View {
     @State private var isLoading: Bool = true
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Header
+        VStack(alignment: .leading, spacing: 20) {
+            // Enhanced Header
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("My Locations")
-                        .font(.poppins(size: 20, weight: .bold))
-                        .foregroundColor(AppColors.textPrimary)
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    AppColors.accentGreen.opacity(0.2),
+                                    AppColors.accentGreen.opacity(0.1)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 40, height: 40)
                     
-                    Text("Your favorite shopping locations")
-                        .font(.poppins(size: 14, weight: .regular))
-                        .foregroundColor(.gray)
+                    Image(systemName: "location.circle.fill")
+                        .foregroundColor(AppColors.accentGreen)
+                        .font(.system(size: 18, weight: .medium))
                 }
+                
+                Text("My Locations")
+                    .font(.poppins(size: 22, weight: .bold))
+                    .foregroundColor(.primary)
+                    .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
                 
                 Spacer()
                 
-                Button(action: {
-                    showAddLocation = true
-                }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(AppColors.accentGreen)
+                HStack(spacing: 8) {
+                    Text("\(locations.count) locations")
+                        .font(.poppins(size: 15, weight: .medium))
+                        .foregroundColor(.gray)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.gray.opacity(0.1))
+                        )
+                    
+                    Button(action: {
+                        showAddLocation = true
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            AppColors.accentGreen.opacity(0.2),
+                                            AppColors.accentGreen.opacity(0.1)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 32, height: 32)
+                            
+                            Image(systemName: "plus")
+                                .foregroundColor(AppColors.accentGreen)
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
             
-            // Locations List
+            // Enhanced Locations List
             if isLoading {
                 VStack(spacing: 12) {
                     ProgressView()
@@ -50,22 +94,40 @@ struct LocationsSectionView: View {
                         .foregroundColor(.gray)
                 }
                 .frame(height: 100)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
             } else if locations.isEmpty {
-                // Empty State
-                VStack(spacing: 16) {
-                    Image(systemName: "heart.slash")
-                        .font(.system(size: 48))
-                        .foregroundColor(.gray.opacity(0.6))
+                // Enhanced Empty State
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.gray.opacity(0.1),
+                                        Color.gray.opacity(0.05)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 80, height: 80)
+                        
+                        Image(systemName: "heart.slash")
+                            .font(.system(size: 36, weight: .light))
+                            .foregroundColor(.gray.opacity(0.6))
+                    }
                     
                     VStack(spacing: 8) {
-                        Text("No Favorite Locations")
-                            .font(.poppins(size: 18, weight: .semibold))
-                            .foregroundColor(AppColors.textPrimary)
+                        Text("No favorite locations yet")
+                            .font(.poppins(size: 20, weight: .semibold))
+                            .foregroundColor(.gray)
                         
                         Text("Add locations and mark them as favorites to see them here")
-                            .font(.poppins(size: 14, weight: .regular))
-                            .foregroundColor(.gray)
+                            .font(.poppins(size: 15, weight: .regular))
+                            .foregroundColor(.gray.opacity(0.7))
                             .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
                     }
                     
                     Button(action: {
@@ -86,25 +148,27 @@ struct LocationsSectionView: View {
                         )
                     }
                 }
-                .frame(height: 200)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
             } else {
-                // Scrollable Locations List
+                // Enhanced Locations List
                 ScrollView {
-                    LazyVStack(spacing: 12) {
+                    LazyVStack(spacing: 16) {
                         ForEach(locations) { location in
                             LocationRowView(location: location)
                         }
                     }
+                    .padding(.horizontal, 20)
                 }
-                .frame(maxHeight: 300) // Limit height to prevent exponential expansion
+                .frame(maxHeight: 320)
             }
         }
-        .padding(20)
         .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white)
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color(.systemBackground))
                 .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
         )
+        .padding(.vertical, 16)
         .task {
             await loadLocations()
         }
@@ -158,24 +222,36 @@ struct LocationRowView: View {
     let location: Location
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Location Icon
+        HStack(spacing: 16) {
+            // Enhanced Location icon
             ZStack {
-                Circle()
-                    .fill(AppColors.accentGreen.opacity(0.1))
-                    .frame(width: 40, height: 40)
-                
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(.red)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                AppColors.accentGreen.opacity(0.2),
+                                AppColors.accentGreen.opacity(0.1)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 56, height: 56)
+                    .overlay(
+                        Image(systemName: "location.circle.fill")
+                            .foregroundColor(AppColors.accentGreen)
+                            .font(.system(size: 24, weight: .medium))
+                    )
+                    .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
             }
             
-            // Location Details
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Text(location.name ?? "Unknown Location")
-                        .font(.poppins(size: 16, weight: .semibold))
-                        .foregroundColor(AppColors.textPrimary)
+                        .font(.poppins(size: 17, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
                     
                     if location.isDefault {
                         Image(systemName: "star.fill")
@@ -187,7 +263,17 @@ struct LocationRowView: View {
                 Text(formatAddress())
                     .font(.poppins(size: 14, weight: .regular))
                     .foregroundColor(.gray)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.red)
+                    Text("Favorite Location")
+                        .font(.poppins(size: 12, weight: .medium))
+                        .foregroundColor(.red)
+                        .lineLimit(1)
+                }
             }
             
             Spacer()
@@ -197,11 +283,20 @@ struct LocationRowView: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.gray.opacity(0.6))
         }
-        .padding(.vertical, 8)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+        )
     }
     
     private func formatAddress() -> String {
         var components: [String] = []
+        
+        if let address = location.address, !address.isEmpty {
+            components.append(address)
+        }
         
         if let city = location.city, !city.isEmpty {
             components.append(city)
