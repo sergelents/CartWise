@@ -556,7 +556,7 @@ struct ProductDetailView: View {
         do {
             let context = await CoreDataStack.shared.viewContext
             
-            // Get the product and location in the current context
+            // Get the product in the current context
             let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
             productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
             productFetchRequest.fetchLimit = 1
@@ -567,6 +567,7 @@ struct ProductDetailView: View {
                 return
             }
             
+            // Get location in the current context
             let locationInContext: Location?
             if let location = location {
                 let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
@@ -579,13 +580,16 @@ struct ProductDetailView: View {
                 locationInContext = nil
             }
             
-            // Get current user
+            // Get current user in the same context
             let userFetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
             userFetchRequest.predicate = NSPredicate(format: "username == %@", username)
             userFetchRequest.fetchLimit = 1
             
             let users = try context.fetch(userFetchRequest)
-            let currentUser = users.first
+            guard let currentUser = users.first else {
+                print("Error: Could not find user in context for social feed")
+                return
+            }
             
             // Create enhanced comment with all required information
             let storeName = locationInContext?.name ?? "Unknown Store"
