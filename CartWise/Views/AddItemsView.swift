@@ -242,6 +242,11 @@ struct AddItemsView: View {
                 
                 // Refresh price comparison after adding product
                 await productViewModel.loadLocalPriceComparison()
+                
+                // Create social feed entry for new product with price
+                if priceValue > 0 {
+                    await createSocialFeedEntryForNewProduct(product: newProduct, price: priceValue, location: location)
+                }
             }
             
             await MainActor.run {
@@ -287,6 +292,69 @@ struct AddItemsView: View {
             store: store,
             isOnSale: isOnSale
         )
+    }
+    
+    private func createSocialFeedEntryForNewProduct(product: GroceryItem, price: Double, location: Location?) async {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            
+            // Get the product and location in the current context
+            let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
+            productFetchRequest.fetchLimit = 1
+            
+            let products = try context.fetch(productFetchRequest)
+            guard let productInContext = products.first else {
+                print("Error: Could not find product in context for social feed")
+                return
+            }
+            
+            let locationInContext: Location?
+            if let location = location {
+                let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+                locationFetchRequest.predicate = NSPredicate(format: "id == %@", location.id ?? "")
+                locationFetchRequest.fetchLimit = 1
+                
+                let locations = try context.fetch(locationFetchRequest)
+                locationInContext = locations.first
+            } else {
+                locationInContext = nil
+            }
+            
+            // Get current user
+            let currentUsername = UserDefaults.standard.string(forKey: "currentUsername") ?? "Unknown User"
+            let userFetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            userFetchRequest.predicate = NSPredicate(format: "username == %@", currentUsername)
+            userFetchRequest.fetchLimit = 1
+            
+            let users = try context.fetch(userFetchRequest)
+            let currentUser = users.first
+            
+            // Create enhanced comment with all required information
+            let storeName = locationInContext?.name ?? "Unknown Store"
+            let productName = productInContext.productName ?? "Unknown Product"
+            let formattedPrice = String(format: "%.2f", price)
+            
+            let comment = "New product added: \(productName) is $\(formattedPrice) at \(storeName)"
+            
+            // Create the social experience
+            let experience = ShoppingExperience(
+                context: context,
+                id: UUID().uuidString,
+                comment: comment,
+                rating: 0,
+                type: "price_update",
+                user: currentUser,
+                groceryItem: productInContext,
+                location: locationInContext
+            )
+            
+            try context.save()
+            print("Successfully created social feed entry for new product: \(productName) at \(storeName)")
+            
+        } catch {
+            print("Error creating social feed entry for new product: \(error)")
+        }
     }
     
     private func resetPendingData() {
