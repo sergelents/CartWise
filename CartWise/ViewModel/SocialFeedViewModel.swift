@@ -142,6 +142,18 @@ class SocialFeedViewModel: ObservableObject {
         let context = persistenceController.container.viewContext
         let request: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
         
+        // Get the current username from UserDefaults
+        let currentUsername = UserDefaults.standard.string(forKey: "currentUsername")
+        
+        if let username = currentUsername {
+            // Find the user with the current username
+            request.predicate = NSPredicate(format: "username == %@", username)
+        } else {
+            // Fallback to the most recently created user
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            request.fetchLimit = 1
+        }
+        
         do {
             let users = try context.fetch(request)
             return users.first

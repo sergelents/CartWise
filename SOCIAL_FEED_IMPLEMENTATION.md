@@ -121,6 +121,12 @@ The current implementation is designed for easy cloud integration:
 - Relationships with existing UserEntity, GroceryItem, and Location
 - Proper deletion rules for data integrity
 
+### User Authentication Integration
+- Posts are automatically tied to the logged-in user's username
+- Current username stored in UserDefaults for persistence
+- Automatic user association on login/signup
+- Username cleared on logout
+
 ### ViewModel Architecture
 - SocialFeedViewModel manages all feed operations
 - ObservableObject pattern for SwiftUI integration

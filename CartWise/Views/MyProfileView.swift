@@ -96,6 +96,8 @@ struct MyProfileView: View {
                         // Enhanced Log Out Button
                         Button(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
+                                // Clear the current username when logging out
+                                UserDefaults.standard.removeObject(forKey: "currentUsername")
                                 isLoggedIn = false
                             }
                         }) {

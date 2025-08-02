@@ -70,6 +70,8 @@ class AuthViewModel: ObservableObject {
             try context.save()
             
             user = User(id: userEntity.id ?? UUID().uuidString, username: username, updates: Int(userEntity.updates))
+            // Store the current username for the social feed
+            UserDefaults.standard.set(username, forKey: "currentUsername")
             error = nil
             print("AuthViewModel: Sign up successful")
         } catch {
@@ -104,6 +106,8 @@ class AuthViewModel: ObservableObject {
                 let hashedPassword = hashPassword(password)
                 if userEntity.password == hashedPassword {
                     user = User(id: userEntity.id ?? UUID().uuidString, username: username, updates: Int(userEntity.updates))
+                    // Store the current username for the social feed
+                    UserDefaults.standard.set(username, forKey: "currentUsername")
                     error = nil
                     print("AuthViewModel: Login successful")
                 } else {
@@ -125,6 +129,8 @@ class AuthViewModel: ObservableObject {
     func logout() {
         user = nil
         error = nil
+        // Clear the current username when logging out
+        UserDefaults.standard.removeObject(forKey: "currentUsername")
     }
     
     private func hashPassword(_ password: String) -> String {
