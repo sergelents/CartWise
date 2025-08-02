@@ -592,7 +592,24 @@ struct ProductDetailView: View {
             let productName = productInContext.productName ?? "Unknown Product"
             let formattedPrice = String(format: "%.2f", newPrice)
             
-            let comment = "Price updated: \(productName) is now $\(formattedPrice) at \(storeName)"
+            // Format address
+            var addressComponents: [String] = []
+            if let address = locationInContext?.address, !address.isEmpty {
+                addressComponents.append(address)
+            }
+            if let city = locationInContext?.city, !city.isEmpty {
+                addressComponents.append(city)
+            }
+            if let state = locationInContext?.state, !state.isEmpty {
+                addressComponents.append(state)
+            }
+            if let zipCode = locationInContext?.zipCode, !zipCode.isEmpty {
+                addressComponents.append(zipCode)
+            }
+            
+            let addressString = addressComponents.isEmpty ? "" : " (\(addressComponents.joined(separator: ", ")))"
+            
+            let comment = "Price updated: \(productName) is now $\(formattedPrice) at \(storeName)\(addressString)"
             
             // Create the social experience
             let experience = ShoppingExperience(

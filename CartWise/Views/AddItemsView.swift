@@ -335,7 +335,24 @@ struct AddItemsView: View {
             let productName = productInContext.productName ?? "Unknown Product"
             let formattedPrice = String(format: "%.2f", price)
             
-            let comment = "New product added: \(productName) is $\(formattedPrice) at \(storeName)"
+            // Format address
+            var addressComponents: [String] = []
+            if let address = locationInContext?.address, !address.isEmpty {
+                addressComponents.append(address)
+            }
+            if let city = locationInContext?.city, !city.isEmpty {
+                addressComponents.append(city)
+            }
+            if let state = locationInContext?.state, !state.isEmpty {
+                addressComponents.append(state)
+            }
+            if let zipCode = locationInContext?.zipCode, !zipCode.isEmpty {
+                addressComponents.append(zipCode)
+            }
+            
+            let addressString = addressComponents.isEmpty ? "" : " (\(addressComponents.joined(separator: ", ")))"
+            
+            let comment = "New product added: \(productName) is $\(formattedPrice) at \(storeName)\(addressString)"
             
             // Create the social experience
             let experience = ShoppingExperience(
