@@ -150,44 +150,5 @@ class SocialFeedViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Sample Data for Testing
-    
-    func createSampleData() {
-        let context = persistenceController.container.viewContext
-        
-        // Create sample user if none exists
-        let user = getCurrentUser() ?? {
-            let newUser = UserEntity(context: context)
-            newUser.id = UUID().uuidString
-            newUser.username = "SuperShopper555"
-            newUser.createdAt = Date()
-            return newUser
-        }()
-        
-        // Create sample experiences
-        let experience1 = ShoppingExperience(
-            context: context,
-            id: UUID().uuidString,
-            comment: "SpaghettiO's @Albertsons => $0.89",
-            rating: 4,
-            type: "price_update",
-            user: user
-        )
-        
-        let experience2 = ShoppingExperience(
-            context: context,
-            id: UUID().uuidString,
-            comment: "Winco Foods does NOT have enough cashiers today. AVOID",
-            rating: 1,
-            type: "store_review",
-            user: user
-        )
-        
-        do {
-            try context.save()
-            loadExperiences()
-        } catch {
-            errorMessage = "Failed to create sample data: \(error.localizedDescription)"
-        }
-    }
+
 } 

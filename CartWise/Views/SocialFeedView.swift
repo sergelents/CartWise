@@ -33,11 +33,6 @@ struct SocialFeedView: View {
                             .font(.body)
                             .foregroundColor(.gray)
                             .multilineTextAlignment(.center)
-                        
-                        Button("Add Sample Data") {
-                            viewModel.createSampleData()
-                        }
-                        .buttonStyle(.borderedProminent)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {

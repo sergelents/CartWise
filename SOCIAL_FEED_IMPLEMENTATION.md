@@ -103,9 +103,9 @@ The current implementation is designed for easy cloud integration:
 
 ### Sample Feed Entries
 ```
-03-22 -- SpaghettiO's @Albertsons => $0.89 -- SuperShopper555
-03-22 -- "Winco Foods does NOT have enough cashiers today. AVOID" -- Shopaholic
-03-22 -- "Found amazing deals at Whole Foods today!" -- DealHunter
+03-22 -- "Found great deals at Safeway today!" -- User123
+03-22 -- "Trader Joe's has amazing customer service" -- Shopper456
+03-22 -- "This organic cereal is worth the price" -- DealHunter
 ```
 
 ### Experience Types
@@ -133,17 +133,11 @@ The current implementation is designed for easy cloud integration:
 
 ## Testing
 
-### Sample Data
-- `createSampleData()` method provides test data
-- Includes various experience types and ratings
-- Demonstrates the full feature set
-
 ### Manual Testing
 1. Launch app and navigate to Social Feed tab
-2. Tap "Add Sample Data" to populate feed
+2. Add new experiences using the + button
 3. Tap on experience cards to view details
-4. Add new experiences using the + button
-5. Test sharing from price comparison view
+4. Test sharing from price comparison view
 
 ## Performance Considerations
 
