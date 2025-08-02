@@ -224,10 +224,7 @@ struct LocationRowView: View {
     @State private var showEditLocation: Bool = false
     
     var body: some View {
-        Button(action: {
-            showEditLocation = true
-        }) {
-            HStack(spacing: 16) {
+        HStack(spacing: 16) {
             // Enhanced Location icon
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
@@ -283,19 +280,22 @@ struct LocationRowView: View {
             
             Spacer()
             
-            // Edit Icon
-            Image(systemName: "pencil.circle.fill")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(AppColors.accentGreen)
+            // Edit Icon Button
+            Button(action: {
+                showEditLocation = true
+            }) {
+                Image(systemName: "pencil.circle.fill")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(AppColors.accentGreen)
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
-            )
+            .buttonStyle(PlainButtonStyle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+        )
         .sheet(isPresented: $showEditLocation) {
             EditLocationView(location: location)
                 .environmentObject(productViewModel)
