@@ -410,7 +410,8 @@ final class ProductViewModel: ObservableObject {
                     currency: localStorePrice.currency,
                     availableItems: localStorePrice.availableItems,
                     unavailableItems: localStorePrice.unavailableItems,
-                    itemPrices: localStorePrice.itemPrices
+                    itemPrices: localStorePrice.itemPrices,
+                    itemShoppers: localStorePrice.itemShoppers
                 )
             }
             

@@ -114,36 +114,93 @@ struct StorePriceRow: View {
     let storePrice: StorePrice
     let isBest: Bool
     let rank: Int
+    @State private var showDetails = false
     
     var body: some View {
-        HStack {
-            // Rank
-            Text("\(rank).")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
-                .frame(width: 20, alignment: .leading)
-            
-            // Store name
-            Text(storePrice.store)
-                .font(.subheadline)
-                .fontWeight(isBest ? .semibold : .regular)
-                .foregroundColor(isBest ? .green : .primary)
-            
-            Spacer()
-            
-            // Price
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("$\(String(format: "%.2f", storePrice.totalPrice))")
+        VStack(spacing: 8) {
+            // Main row
+            HStack {
+                // Rank
+                Text("\(rank).")
                     .font(.subheadline)
-                    .fontWeight(isBest ? .bold : .medium)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                    .frame(width: 20, alignment: .leading)
+                
+                // Store name
+                Text(storePrice.store)
+                    .font(.subheadline)
+                    .fontWeight(isBest ? .semibold : .regular)
                     .foregroundColor(isBest ? .green : .primary)
                 
-                Text("\(storePrice.availableItems)/\(storePrice.availableItems + storePrice.unavailableItems) items")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                Spacer()
+                
+                // Price
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("$\(String(format: "%.2f", storePrice.totalPrice))")
+                        .font(.subheadline)
+                        .fontWeight(isBest ? .bold : .medium)
+                        .foregroundColor(isBest ? .green : .primary)
+                    
+                    Text("\(storePrice.availableItems)/\(storePrice.availableItems + storePrice.unavailableItems) items")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                
+                // Expand button
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        showDetails.toggle()
+                    }
+                }) {
+                    Image(systemName: showDetails ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding(.vertical, 4)
+            
+            // Detailed view
+            if showDetails {
+                VStack(spacing: 8) {
+                    ForEach(Array(storePrice.itemPrices.keys.sorted()), id: \.self) { productName in
+                        if let price = storePrice.itemPrices[productName] {
+                            HStack {
+                                Text(productName)
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                
+                                Spacer()
+                                
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text("$\(String(format: "%.2f", price))")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.primary)
+                                    
+                                    if let shopper = storePrice.itemShoppers[productName] {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "person.circle.fill")
+                                                .font(.caption2)
+                                                .foregroundColor(.blue)
+                                            Text(shopper)
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.gray.opacity(0.05))
+                            .cornerRadius(6)
+                        }
+                    }
+                }
+                .padding(.top, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(.vertical, 4)
     }
 }

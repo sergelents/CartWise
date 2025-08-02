@@ -152,19 +152,23 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             var availableItems = 0
             var unavailableItems = 0
             var itemPrices: [String: Double] = [:]
+            var itemShoppers: [String: String] = [:]
             
             // For each item in the shopping list, find its price at this store
             for item in shoppingList {
                 guard let productName = item.productName else { continue }
                 
-                // Find the price for this item at this store
-                let itemPrice = try await getItemPriceAtStore(item: item, store: store)
+                // Find the price and shopper for this item at this store
+                let itemPriceInfo = try await getItemPriceAndShopperAtStore(item: item, store: store)
                 
-                if let price = itemPrice, price > 0 {
-                    totalPrice += price
+                if let priceInfo = itemPriceInfo, priceInfo.price > 0 {
+                    totalPrice += priceInfo.price
                     availableItems += 1
-                    itemPrices[productName] = price
-                    print("Repository: Found \(productName) at \(store) for $\(price)")
+                    itemPrices[productName] = priceInfo.price
+                    if let shopper = priceInfo.shopper {
+                        itemShoppers[productName] = shopper
+                    }
+                    print("Repository: Found \(productName) at \(store) for $\(priceInfo.price) by \(priceInfo.shopper ?? "Unknown")")
                 } else {
                     unavailableItems += 1
                     print("Repository: \(productName) not available at \(store)")
@@ -179,7 +183,8 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     currency: "USD",
                     availableItems: availableItems,
                     unavailableItems: unavailableItems,
-                    itemPrices: itemPrices
+                    itemPrices: itemPrices,
+                    itemShoppers: itemShoppers
                 )
                 storePrices.append(storePrice)
                 print("Repository: Store \(store) total: $\(totalPrice), available: \(availableItems)/\(shoppingList.count)")
@@ -216,6 +221,11 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     // Helper method to get the price of an item at a specific store
     private func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double? {
         return try await coreDataContainer.getItemPriceAtStore(item: item, store: store)
+    }
+    
+    // Helper method to get the price and shopper of an item at a specific store
+    private func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double, shopper: String?)? {
+        return try await coreDataContainer.getItemPriceAndShopperAtStore(item: item, store: store)
     }
     
     // MARK: - Tag Methods

@@ -521,6 +521,12 @@ struct ProductDetailView: View {
             try context.save()
             print("Successfully updated product price to $\(newPrice) for location: \(locationInContext.name ?? "Unknown")")
             
+            // Update user reputation
+            let username = await getCurrentUsername()
+            if let currentUser = await getCurrentUser() {
+                await ReputationManager.shared.updateUserReputation(userId: currentUser.id ?? "")
+            }
+            
         } catch {
             print("Error updating product price: \(error)")
         }
@@ -547,6 +553,21 @@ struct ProductDetailView: View {
             print("Error getting current username: \(error)")
         }
         return "Unknown User"
+    }
+    
+    private func getCurrentUser() async -> UserEntity? {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            fetchRequest.fetchLimit = 1
+            
+            let users = try context.fetch(fetchRequest)
+            return users.first
+        } catch {
+            print("Error getting current user: \(error)")
+            return nil
+        }
     }
 }
 

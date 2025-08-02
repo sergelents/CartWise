@@ -29,6 +29,7 @@ protocol CoreDataContainerProtocol: Sendable {
     // Price comparison methods
     func getAllStores() async throws -> [String]
     func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double?
+    func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double, shopper: String?)?
     
     // Tag-related methods
     func fetchAllTags() async throws -> [Tag]
@@ -396,6 +397,23 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             }
             
             return storePrice?.price
+        }
+    }
+    
+    func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double, shopper: String?)? {
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            // Get all prices for this item
+            let prices = item.priceArray
+            
+            // Find the price for this specific store
+            let storePrice = prices.first { price in
+                price.store == store
+            }
+            
+            guard let storePrice = storePrice else { return nil }
+            
+            return (price: storePrice.price, shopper: storePrice.updatedBy)
         }
     }
     

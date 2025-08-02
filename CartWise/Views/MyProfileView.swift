@@ -14,6 +14,7 @@ struct MyProfileView: View {
     @State private var currentUsername: String = ""
     @State private var isLoadingUser: Bool = true
     @State private var showAddLocation: Bool = false
+    @State private var userUpdates: Int = 0
     
     var body: some View {
         NavigationView {
@@ -82,6 +83,10 @@ struct MyProfileView: View {
                         )
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
+                        
+                        // Reputation Card
+                        ReputationCardView(updates: userUpdates, username: currentUsername)
+                            .padding(.vertical, 12)
                         
                         // Enhanced Favorites Section
                         FavoriteItemsView()
@@ -161,6 +166,7 @@ struct MyProfileView: View {
                 await MainActor.run {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         currentUsername = username
+                        userUpdates = Int(currentUser.updates)
                         isLoadingUser = false
                     }
                 }
@@ -168,6 +174,7 @@ struct MyProfileView: View {
                 await MainActor.run {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         currentUsername = "User"
+                        userUpdates = 0
                         isLoadingUser = false
                     }
                 }
@@ -177,6 +184,7 @@ struct MyProfileView: View {
             await MainActor.run {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     currentUsername = "User"
+                    userUpdates = 0
                     isLoadingUser = false
                 }
             }

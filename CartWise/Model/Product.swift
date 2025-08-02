@@ -89,6 +89,7 @@ struct LocalStorePrice: Codable, Sendable {
     let availableItems: Int
     let unavailableItems: Int
     let itemPrices: [String: Double] // productName -> price
+    let itemShoppers: [String: String] // productName -> shopper username
 }
 
 // Local price comparison result
@@ -109,6 +110,7 @@ struct StorePrice: Codable, Sendable {
     let availableItems: Int
     let unavailableItems: Int
     let itemPrices: [String: Double] // productName -> price
+    let itemShoppers: [String: String] // productName -> shopper username
 }
 
 struct PriceComparison: Codable, Sendable {
