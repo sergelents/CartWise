@@ -155,7 +155,7 @@ struct LocationsSectionView: View {
                 ScrollView {
                     LazyVStack(spacing: 16) {
                         ForEach(locations) { location in
-                            LocationRowView(location: location)
+                            LocationRowView(location: location, productViewModel: productViewModel)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -220,9 +220,14 @@ struct LocationsSectionView: View {
 
 struct LocationRowView: View {
     let location: Location
+    let productViewModel: ProductViewModel
+    @State private var showEditLocation: Bool = false
     
     var body: some View {
-        HStack(spacing: 16) {
+        Button(action: {
+            showEditLocation = true
+        }) {
+            HStack(spacing: 16) {
             // Enhanced Location icon
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
@@ -278,17 +283,23 @@ struct LocationRowView: View {
             
             Spacer()
             
-            // Arrow
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.gray.opacity(0.6))
+            // Edit Icon
+            Image(systemName: "pencil.circle.fill")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(AppColors.accentGreen)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+            )
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
-        )
+        .buttonStyle(PlainButtonStyle())
+        .sheet(isPresented: $showEditLocation) {
+            EditLocationView(location: location)
+                .environmentObject(productViewModel)
+        }
     }
     
     private func formatAddress() -> String {
