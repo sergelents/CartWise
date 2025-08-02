@@ -37,15 +37,19 @@ struct ShareExperienceView: View {
                         Text("Rating")
                             .font(.headline)
                         
-                        HStack {
+                        HStack(spacing: 12) {
                             ForEach(1...5, id: \.self) { star in
                                 Button(action: {
-                                    rating = Int16(star)
+                                    // If tapping the same star, clear the rating, otherwise set to the tapped star
+                                    rating = rating == Int16(star) ? 0 : Int16(star)
                                 }) {
                                     Image(systemName: star <= rating ? "star.fill" : "star")
                                         .foregroundColor(star <= rating ? .orange : .gray)
                                         .font(.title2)
+                                        .frame(width: 32, height: 32)
+                                        .contentShape(Rectangle())
                                 }
+                                .buttonStyle(PlainButtonStyle())
                             }
                         }
                     }
