@@ -198,13 +198,16 @@ struct ShareExperienceView: View {
             }
         }
         
+        // Get current user from the same context
+        let currentUser = viewModel.getCurrentUser()
+        
         viewModel.createExperience(
             comment: enhancedComment,
             rating: rating,
             type: selectedType,
             groceryItem: selectedProduct,
             location: selectedLocation,
-            user: viewModel.getCurrentUser()
+            user: currentUser
         )
         dismiss()
     }

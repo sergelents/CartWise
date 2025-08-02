@@ -43,21 +43,48 @@ class SocialFeedViewModel: ObservableObject {
     func createExperience(comment: String, rating: Int16 = 0, type: String = "general", groceryItem: GroceryItem? = nil, location: Location? = nil, user: UserEntity? = nil) {
         let context = persistenceController.container.viewContext
         
+        // Ensure all objects are in the same context
+        let contextGroceryItem: GroceryItem?
+        let contextLocation: Location?
+        let contextUser: UserEntity?
+        
+        if let groceryItem = groceryItem {
+            contextGroceryItem = context.object(with: groceryItem.objectID) as? GroceryItem
+            print("GroceryItem context conversion: \(groceryItem.managedObjectContext?.description ?? "nil") -> \(contextGroceryItem?.managedObjectContext?.description ?? "nil")")
+        } else {
+            contextGroceryItem = nil
+        }
+        
+        if let location = location {
+            contextLocation = context.object(with: location.objectID) as? Location
+            print("Location context conversion: \(location.managedObjectContext?.description ?? "nil") -> \(contextLocation?.managedObjectContext?.description ?? "nil")")
+        } else {
+            contextLocation = nil
+        }
+        
+        if let user = user {
+            contextUser = context.object(with: user.objectID) as? UserEntity
+            print("User context conversion: \(user.managedObjectContext?.description ?? "nil") -> \(contextUser?.managedObjectContext?.description ?? "nil")")
+        } else {
+            contextUser = nil
+        }
+        
         let experience = ShoppingExperience(
             context: context,
             id: UUID().uuidString,
             comment: comment,
             rating: rating,
             type: type,
-            user: user,
-            groceryItem: groceryItem,
-            location: location
+            user: contextUser,
+            groceryItem: contextGroceryItem,
+            location: contextLocation
         )
         
         do {
             try context.save()
             loadExperiences() // Refresh the feed
         } catch {
+            print("Core Data save error: \(error)")
             errorMessage = "Failed to create experience: \(error.localizedDescription)"
         }
     }
@@ -65,19 +92,30 @@ class SocialFeedViewModel: ObservableObject {
     func createComment(comment: String, rating: Int16 = 0, experience: ShoppingExperience, user: UserEntity? = nil) {
         let context = persistenceController.container.viewContext
         
+        // Ensure all objects are in the same context
+        let contextExperience = context.object(with: experience.objectID) as? ShoppingExperience
+        let contextUser: UserEntity?
+        
+        if let user = user {
+            contextUser = context.object(with: user.objectID) as? UserEntity
+        } else {
+            contextUser = nil
+        }
+        
         let userComment = UserComment(
             context: context,
             id: UUID().uuidString,
             comment: comment,
             rating: rating,
-            user: user,
-            experience: experience
+            user: contextUser,
+            experience: contextExperience
         )
         
         do {
             try context.save()
             loadExperiences() // Refresh the feed
         } catch {
+            print("Core Data save error: \(error)")
             errorMessage = "Failed to create comment: \(error.localizedDescription)"
         }
     }
@@ -156,8 +194,11 @@ class SocialFeedViewModel: ObservableObject {
         
         do {
             let users = try context.fetch(request)
-            return users.first
+            let user = users.first
+            print("getCurrentUser: Found user \(user?.username ?? "nil") in context \(user?.managedObjectContext?.description ?? "nil")")
+            return user
         } catch {
+            print("getCurrentUser error: \(error)")
             return nil
         }
     }
