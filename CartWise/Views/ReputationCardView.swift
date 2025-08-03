@@ -82,10 +82,10 @@ struct ReputationCardView: View {
                     .background(Color.gray.opacity(0.3))
                 
                 VStack(spacing: 4) {
-                    Text("\(currentLevel.minUpdates)")
+                    Text("Level \(reputationSystem.getNumericalLevel(updates: updates))")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.primary)
-                    Text("Level Min")
+                    Text("Current Level")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.secondary)
                 }

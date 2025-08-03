@@ -108,4 +108,13 @@ class ReputationSystem {
         }
         return nextLevel.minUpdates - updates
     }
+    
+    func getNumericalLevel(updates: Int) -> Int {
+        for (index, level) in levels.enumerated().reversed() {
+            if updates >= level.minUpdates {
+                return index + 1 // Return 1-based level number
+            }
+        }
+        return 1 // Default to level 1
+    }
 } 
