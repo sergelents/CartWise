@@ -4,20 +4,16 @@
 //
 //  Created by AI Assistant on 12/19/24.
 //
-
 import SwiftUI
 import CoreData
-
 struct LocationPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     @Binding var selectedLocation: Location?
-    
     @State private var searchText = ""
     @State private var locations: [Location] = []
     @State private var isLoading = true
     @State private var showAddLocation = false
-    
     var filteredLocations: [Location] {
         if searchText.isEmpty {
             return locations
@@ -29,7 +25,6 @@ struct LocationPickerView: View {
             return nameMatch || cityMatch || stateMatch
         }
     }
-    
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -42,7 +37,6 @@ struct LocationPickerView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
-                
                 if isLoading {
                     Spacer()
                     VStack(spacing: 12) {
@@ -60,18 +54,15 @@ struct LocationPickerView: View {
                         Image(systemName: "location.slash")
                             .font(.system(size: 48))
                             .foregroundColor(.gray.opacity(0.6))
-                        
                         VStack(spacing: 8) {
                             Text("No Locations Yet")
                                 .font(.poppins(size: 18, weight: .semibold))
                                 .foregroundColor(AppColors.textPrimary)
-                            
                             Text("Add your first location to get started")
                                 .font(.poppins(size: 14, weight: .regular))
                                 .foregroundColor(.gray)
                                 .multilineTextAlignment(.center)
                         }
-                        
                         Button(action: {
                             showAddLocation = true
                         }) {
@@ -105,40 +96,33 @@ struct LocationPickerView: View {
                                         Circle()
                                             .fill(AppColors.accentGreen.opacity(0.1))
                                             .frame(width: 40, height: 40)
-                                        
                                         Image(systemName: "location.circle.fill")
                                             .font(.system(size: 20))
                                             .foregroundColor(AppColors.accentGreen)
                                     }
-                                    
                                     // Location Details
                                     VStack(alignment: .leading, spacing: 4) {
                                         HStack(spacing: 8) {
                                             Text(location.name ?? "Unknown Location")
                                                 .font(.poppins(size: 16, weight: .semibold))
                                                 .foregroundColor(AppColors.textPrimary)
-                                            
                                             if location.isDefault {
                                                 Image(systemName: "star.fill")
                                                     .font(.system(size: 12))
                                                     .foregroundColor(.yellow)
                                             }
-                                            
                                             if location.favorited {
                                                 Image(systemName: "heart.fill")
                                                     .font(.system(size: 12))
                                                     .foregroundColor(.red)
                                             }
                                         }
-                                        
                                         Text(formatAddress(location))
                                             .font(.poppins(size: 14, weight: .regular))
                                             .foregroundColor(.gray)
                                             .lineLimit(1)
                                     }
-                                    
                                     Spacer()
-                                    
                                     // Checkmark if selected
                                     if selectedLocation?.id == location.id {
                                         Image(systemName: "checkmark")
@@ -163,7 +147,6 @@ struct LocationPickerView: View {
                     }
                     .foregroundColor(AppColors.accentGreen)
                 }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         showAddLocation = true
@@ -186,19 +169,15 @@ struct LocationPickerView: View {
             }
         }
     }
-    
     private func loadLocations() async {
         isLoading = true
-        
         do {
             // Get current user
             let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
             fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
             fetchRequest.fetchLimit = 1
-            
             let users = try viewContext.fetch(fetchRequest)
             guard let currentUser = users.first else { return }
-            
             // Fetch user's locations
             let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
             locationFetchRequest.predicate = NSPredicate(format: "user == %@", currentUser)
@@ -207,9 +186,7 @@ struct LocationPickerView: View {
                 NSSortDescriptor(keyPath: \Location.favorited, ascending: false),
                 NSSortDescriptor(keyPath: \Location.name, ascending: true)
             ]
-            
             let fetchedLocations = try viewContext.fetch(locationFetchRequest)
-            
             await MainActor.run {
                 self.locations = fetchedLocations
                 self.isLoading = false
@@ -221,22 +198,17 @@ struct LocationPickerView: View {
             }
         }
     }
-    
     private func formatAddress(_ location: Location) -> String {
         var components: [String] = []
-        
         if let city = location.city, !city.isEmpty {
             components.append(city)
         }
-        
         if let state = location.state, !state.isEmpty {
             components.append(state)
         }
-        
         if let zipCode = location.zipCode, !zipCode.isEmpty {
             components.append(zipCode)
         }
-        
         return components.isEmpty ? "No address" : components.joined(separator: ", ")
     }
-} 
+}

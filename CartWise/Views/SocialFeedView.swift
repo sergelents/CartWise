@@ -4,15 +4,12 @@
 //
 //  Created by AI Assistant on 12/19/24.
 //
-
 import SwiftUI
 import CoreData
-
 struct SocialFeedView: View {
     @StateObject private var viewModel = SocialFeedViewModel()
     @State private var showingAddExperience = false
     @State private var selectedExperience: ShoppingExperience?
-    
     var body: some View {
         NavigationView {
             VStack {
@@ -24,12 +21,10 @@ struct SocialFeedView: View {
                         Image(systemName: "bubble.left.and.bubble.right")
                             .font(.system(size: 60))
                             .foregroundColor(.gray)
-                        
                         Text("No experiences yet")
                             .font(.title2)
                             .fontWeight(.medium)
                             .foregroundColor(.gray)
-                        
                         Text("Be the first to share your shopping experience!")
                             .font(.body)
                             .foregroundColor(.gray)
@@ -77,11 +72,9 @@ struct SocialFeedView: View {
         }
     }
 }
-
 struct ExperienceCardView: View {
     let experience: ShoppingExperience
     let viewModel: SocialFeedViewModel
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Header
@@ -90,14 +83,11 @@ struct ExperienceCardView: View {
                     Text(experience.user?.username ?? "Anonymous")
                         .font(.headline)
                         .fontWeight(.semibold)
-                    
                     Text(viewModel.formatDate(experience.createdAt))
                         .font(.caption)
                         .foregroundColor(.gray)
                 }
-                
                 Spacer()
-                
                 // Type badge
                 Text(experience.displayType)
                     .font(.caption)
@@ -108,23 +98,19 @@ struct ExperienceCardView: View {
                     .foregroundColor(typeColor)
                     .cornerRadius(8)
             }
-            
             // Content
             VStack(alignment: .leading, spacing: 8) {
                 Text(experience.comment ?? "")
                     .font(.body)
                     .multilineTextAlignment(.leading)
-                
                 if experience.rating > 0 {
                     HStack {
                         Text(viewModel.formatRating(experience.rating))
                             .font(.caption)
                             .foregroundColor(.orange)
-                        
                         Spacer()
                     }
                 }
-                
                 // Related item/location info
                 if let groceryItem = experience.groceryItem {
                     HStack {
@@ -144,7 +130,6 @@ struct ExperienceCardView: View {
                     }
                 }
             }
-            
             // Comments count
             if !experience.commentArray.isEmpty {
                 HStack {
@@ -154,7 +139,6 @@ struct ExperienceCardView: View {
                     Text("\(experience.commentArray.count) comments")
                         .font(.caption)
                         .foregroundColor(.gray)
-                    
                     Spacer()
                 }
             }
@@ -164,7 +148,6 @@ struct ExperienceCardView: View {
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
-    
     private var typeColor: Color {
         switch experience.type {
         case "price_update":
@@ -180,35 +163,29 @@ struct ExperienceCardView: View {
         }
     }
 }
-
 struct AddExperienceView: View {
     @ObservedObject var viewModel: SocialFeedViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
-    
     @State private var comment = ""
     @State private var rating: Int16 = 0
     @State private var selectedType = "general"
     @State private var showingTypePicker = false
-    
     // Optional fields for additional information
     @State private var selectedProduct: GroceryItem?
     @State private var selectedLocation: Location?
     @State private var price: String = ""
     @State private var showingProductPicker = false
     @State private var showingLocationPicker = false
-    
     // Available products and locations
     @State private var availableProducts: [GroceryItem] = []
     @State private var availableLocations: [Location] = []
-    
     private let types = [
         ("general", "General Comment"),
         ("price_update", "Price Update"),
         ("store_review", "Store Review"),
         ("product_review", "Product Review")
     ]
-    
     var body: some View {
         NavigationView {
             Form {
@@ -219,11 +196,9 @@ struct AddExperienceView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Rating")
                             .font(.headline)
-                        
                         HStack(spacing: 12) {
                             ForEach(1...5, id: \.self) { star in
                                 Button(action: {
@@ -241,7 +216,6 @@ struct AddExperienceView: View {
                         }
                     }
                 }
-                
                 // Optional Product Information
                 if selectedType == "product_review" || selectedType == "price_update" {
                     Section("Product Information (Optional)") {
@@ -263,7 +237,6 @@ struct AddExperienceView: View {
                             }
                         }
                         .buttonStyle(PlainButtonStyle())
-                        
                         if selectedProduct != nil {
                             Button("Clear Product") {
                                 selectedProduct = nil
@@ -272,7 +245,6 @@ struct AddExperienceView: View {
                         }
                     }
                 }
-                
                 // Optional Store Information
                 if selectedType == "store_review" || selectedType == "price_update" {
                     Section("Store Information (Optional)") {
@@ -294,7 +266,6 @@ struct AddExperienceView: View {
                             }
                         }
                         .buttonStyle(PlainButtonStyle())
-                        
                         if selectedLocation != nil {
                             Button("Clear Store") {
                                 selectedLocation = nil
@@ -303,7 +274,6 @@ struct AddExperienceView: View {
                         }
                     }
                 }
-                
                 // Optional Price Information
                 if selectedType == "price_update" {
                     Section("Price Information (Optional)") {
@@ -317,7 +287,6 @@ struct AddExperienceView: View {
                         }
                     }
                 }
-                
                 Section("Comment") {
                     TextEditor(text: $comment)
                         .frame(minHeight: 100)
@@ -331,7 +300,6 @@ struct AddExperienceView: View {
                         dismiss()
                     }
                 }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Post") {
                         postExperience()
@@ -347,11 +315,9 @@ struct AddExperienceView: View {
             }
         }
     }
-    
     private func postExperience() {
         // Create enhanced comment with optional information
         var enhancedComment = comment.trimmingCharacters(in: .whitespacesAndNewlines)
-        
         // Add product information if available
         if let product = selectedProduct {
             enhancedComment += "\n\nProduct: \(product.productName ?? "Unknown")"
@@ -359,7 +325,6 @@ struct AddExperienceView: View {
                 enhancedComment += " (\(brand))"
             }
         }
-        
         // Add store information if available
         if let location = selectedLocation {
             enhancedComment += "\nStore: \(location.name ?? "Unknown")"
@@ -367,15 +332,12 @@ struct AddExperienceView: View {
                 enhancedComment += " (\(address))"
             }
         }
-        
         // Add price information if available
         if !price.isEmpty, let priceValue = Double(price) {
             enhancedComment += "\nPrice: $\(String(format: "%.2f", priceValue))"
         }
-        
         // Get current user from the same context
         let currentUser = viewModel.getCurrentUser()
-        
         viewModel.createExperience(
             comment: enhancedComment,
             rating: rating,
@@ -386,24 +348,19 @@ struct AddExperienceView: View {
         )
         dismiss()
     }
-    
     // MARK: - Helper Methods
-    
     private func loadAvailableProducts() {
         let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.productName, ascending: true)]
-        
         do {
             availableProducts = try viewContext.fetch(request)
         } catch {
             print("Failed to load products: \(error)")
         }
     }
-    
     private func loadAvailableLocations() {
         let request: NSFetchRequest<Location> = Location.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(keyPath: \Location.name, ascending: true)]
-        
         do {
             availableLocations = try viewContext.fetch(request)
         } catch {
@@ -411,17 +368,14 @@ struct AddExperienceView: View {
         }
     }
 }
-
 // MARK: - Product Picker View
 struct ProductPickerView: View {
     @Binding var selectedProduct: GroceryItem?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
-    
     @State private var searchText = ""
     @State private var products: [GroceryItem] = []
     @State private var isLoading = true
-    
     var filteredProducts: [GroceryItem] {
         if searchText.isEmpty {
             return products
@@ -433,7 +387,6 @@ struct ProductPickerView: View {
             return nameMatch || brandMatch || categoryMatch
         }
     }
-    
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -446,7 +399,6 @@ struct ProductPickerView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
-                
                 if isLoading {
                     Spacer()
                     VStack(spacing: 12) {
@@ -464,12 +416,10 @@ struct ProductPickerView: View {
                         Image(systemName: "cart")
                             .font(.system(size: 48))
                             .foregroundColor(.gray.opacity(0.6))
-                        
                         VStack(spacing: 8) {
                             Text("No Products Found")
                                 .font(.poppins(size: 18, weight: .semibold))
                                 .foregroundColor(.primary)
-                            
                             Text("Add products to your shopping list first")
                                 .font(.poppins(size: 14, weight: .regular))
                                 .foregroundColor(.gray)
@@ -490,22 +440,18 @@ struct ProductPickerView: View {
                                         Text(product.productName ?? "Unknown Product")
                                             .font(.headline)
                                             .foregroundColor(.primary)
-                                        
                                         if let brand = product.brand, !brand.isEmpty {
                                             Text(brand)
                                                 .font(.subheadline)
                                                 .foregroundColor(.gray)
                                         }
-                                        
                                         if let category = product.category, !category.isEmpty {
                                             Text(category)
                                                 .font(.caption)
                                                 .foregroundColor(.gray.opacity(0.7))
                                         }
                                     }
-                                    
                                     Spacer()
-                                    
                                     if selectedProduct?.id == product.id {
                                         Image(systemName: "checkmark")
                                             .foregroundColor(.green)
@@ -531,11 +477,9 @@ struct ProductPickerView: View {
             }
         }
     }
-    
     private func loadProducts() {
         let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.productName, ascending: true)]
-        
         do {
             products = try viewContext.fetch(request)
             isLoading = false
@@ -545,15 +489,12 @@ struct ProductPickerView: View {
         }
     }
 }
-
 struct ExperienceDetailView: View {
     let experience: ShoppingExperience
     @ObservedObject var viewModel: SocialFeedViewModel
     @Environment(\.dismiss) private var dismiss
-    
     @State private var newComment = ""
     @State private var newRating: Int16 = 0
-    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -565,14 +506,11 @@ struct ExperienceDetailView: View {
                                 Text(experience.user?.username ?? "Anonymous")
                                     .font(.headline)
                                     .fontWeight(.semibold)
-                                
                                 Text(viewModel.formatDate(experience.createdAt))
                                     .font(.caption)
                                     .foregroundColor(.gray)
                             }
-                            
                             Spacer()
-                            
                             Text(experience.displayType)
                                 .font(.caption)
                                 .fontWeight(.medium)
@@ -582,10 +520,8 @@ struct ExperienceDetailView: View {
                                 .foregroundColor(.blue)
                                 .cornerRadius(8)
                         }
-                        
                         Text(experience.comment ?? "")
                             .font(.body)
-                        
                         if experience.rating > 0 {
                             Text(viewModel.formatRating(experience.rating))
                                 .font(.caption)
@@ -595,13 +531,11 @@ struct ExperienceDetailView: View {
                     .padding()
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
-                    
                     // Comments
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Comments (\(experience.commentArray.count))")
                             .font(.headline)
                             .fontWeight(.semibold)
-                        
                         if experience.commentArray.isEmpty {
                             Text("No comments yet")
                                 .font(.body)
@@ -613,13 +547,11 @@ struct ExperienceDetailView: View {
                             }
                         }
                     }
-                    
                     // Add comment section
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Add Comment")
                             .font(.headline)
                             .fontWeight(.semibold)
-                        
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 12) {
                                 ForEach(1...5, id: \.self) { star in
@@ -636,11 +568,9 @@ struct ExperienceDetailView: View {
                                     .buttonStyle(PlainButtonStyle())
                                 }
                             }
-                            
                             TextField("Write a comment...", text: $newComment, axis: .vertical)
                                 .textFieldStyle(.roundedBorder)
                                 .lineLimit(3...6)
-                            
                             Button("Post Comment") {
                                 postComment()
                             }
@@ -665,7 +595,6 @@ struct ExperienceDetailView: View {
             }
         }
     }
-    
     private func postComment() {
         viewModel.createComment(
             comment: newComment.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -677,28 +606,22 @@ struct ExperienceDetailView: View {
         newRating = 0
     }
 }
-
 struct CommentView: View {
     let comment: UserComment
     let viewModel: SocialFeedViewModel
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(comment.user?.username ?? "Anonymous")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                
                 Spacer()
-                
                 Text(viewModel.formatDate(comment.createdAt))
                     .font(.caption)
                     .foregroundColor(.gray)
             }
-            
             Text(comment.comment ?? "")
                 .font(.body)
-            
             if comment.rating > 0 {
                 Text(viewModel.formatRating(comment.rating))
                     .font(.caption)
@@ -710,7 +633,6 @@ struct CommentView: View {
         .cornerRadius(8)
     }
 }
-
 #Preview {
     SocialFeedView()
-} 
+}

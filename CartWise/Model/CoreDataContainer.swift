@@ -4,11 +4,9 @@
 //
 //  Created by Serg Tsogtbaatar on 7/7/25.
 //
-
 import Foundation
 import CoreData
 import SwiftUI
-
 protocol CoreDataContainerProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
     func fetchListProducts() async throws -> [GroceryItem]
@@ -27,11 +25,9 @@ protocol CoreDataContainerProtocol: Sendable {
     func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem]
     func searchProductsByTag(_ tag: Tag) async throws -> [GroceryItem]
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
-    
     // Price comparison methods
     func getAllStores() async throws -> [String]
     func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double?
-    
     // Tag-related methods
     func fetchAllTags() async throws -> [Tag]
     func createTag(id: String, name: String, color: String) async throws -> Tag
@@ -39,17 +35,12 @@ protocol CoreDataContainerProtocol: Sendable {
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func initializeDefaultTags() async throws
-    
-
 }
-
 final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     private let coreDataStack: CoreDataStack
-    
     init(coreDataStack: CoreDataStack = CoreDataStack.shared) {
         self.coreDataStack = coreDataStack
     }
-    
     func fetchAllProducts() async throws -> [GroceryItem] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
@@ -59,7 +50,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return try context.fetch(request)
         }
     }
-    
     func fetchListProducts() async throws -> [GroceryItem] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
@@ -68,16 +58,13 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             request.predicate = NSPredicate(format: "isInShoppingList == YES")
             request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.createdAt, ascending: false)]
             let products = try context.fetch(request)
-            
             print("CoreDataContainer: Fetched \(products.count) shopping list products")
             for (index, product) in products.enumerated() {
                 print("CoreDataContainer: Product \(index + 1): '\(product.productName ?? "Unknown")' - Store: '\(product.store ?? "nil")' - Price: $\(product.price)")
             }
-            
             return products
         }
     }
-    
     // func fetchRecentProducts(limit: Int) async throws -> [GroceryItem] {
     //     // Use viewContext through the actor
     //     let context = await coreDataStack.viewContext
@@ -89,11 +76,9 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     //         return try context.fetch(request)
     //     }
     // }
-    
     // createProduct was creating GroceryItem objects in background Core Data context, but ViewModel expecting objects from main context.
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false, isOnSale: Bool = false) async throws -> GroceryItem {
         print("CoreDataContainer: Creating product with store: '\(store ?? "nil")'")
-        
         // Create in background context first
         let objectID = try await coreDataStack.performBackgroundTask { context in
             let product = GroceryItem(
@@ -106,17 +91,13 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 barcode: barcode,
                 isOnSale: isOnSale
             )
-            
             print("CoreDataContainer: Product created, store set to: '\(product.store ?? "nil")'")
-            
             // Set shopping list status based on parameter
             product.isInShoppingList = isInShoppingList
-            
             // If we have price and store information, create a GroceryItemPrice
             if price > 0, let store = store {
                 // Find or create the location
                 let locationEntity = try self.findOrCreateLocation(context: context, name: store, address: location)
-                
                 // Create the price entity
                 let priceEntity = GroceryItemPrice(
                     context: context,
@@ -129,12 +110,10 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                     updatedBy: "System" // Default user for now
                 )
             }
-            
             try context.save()
             print("CoreDataContainer: Context saved, final store: '\(product.store ?? "nil")'")
             return product.objectID
         }
-        
         // Then fetch from main context to ensure proper access
         let viewContext = await coreDataStack.viewContext
         return try await viewContext.perform {
@@ -143,18 +122,15 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return fetchedProduct
         }
     }
-    
     // Helper method to find or create a location
     private func findOrCreateLocation(context: NSManagedObjectContext, name: String, address: String?) throws -> Location {
         let request: NSFetchRequest<Location> = Location.fetchRequest()
         request.predicate = NSPredicate(format: "name == %@", name)
         request.fetchLimit = 1
-        
         let existingLocations = try context.fetch(request)
         if let existingLocation = existingLocations.first {
             return existingLocation
         }
-        
         // Create new location
         let newLocation = Location(context: context)
         newLocation.id = UUID().uuidString
@@ -162,10 +138,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         newLocation.address = address
         newLocation.createdAt = Date()
         newLocation.updatedAt = Date()
-        
         return newLocation
     }
-    
     // Helper method to get current username
     private func getCurrentUsername() async -> String {
         do {
@@ -174,7 +148,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
                 fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
                 fetchRequest.fetchLimit = 1
-                
                 let users = try context.fetch(fetchRequest)
                 if let currentUser = users.first, let username = currentUser.username {
                     return username
@@ -185,7 +158,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return "Unknown User"
         }
     }
-    
     func updateProduct(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
@@ -194,21 +166,17 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try context.save()
         }
     }
-    
     func updateProductWithPrice(product: GroceryItem, price: Double, store: String, location: String?) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             let productInContext = try context.existingObject(with: objectID) as! GroceryItem
-            
             // Find or create the location
             let locationEntity = try self.findOrCreateLocation(context: context, name: store, address: location)
-            
             // Check if a price already exists for this product at this store
             let existingPrices = productInContext.prices as? Set<GroceryItemPrice> ?? Set()
             let existingPrice = existingPrices.first { priceEntity in
                 priceEntity.store == store && priceEntity.location == locationEntity
             }
-            
             if let existingPrice = existingPrice {
                 // Update existing price
                 existingPrice.price = price
@@ -227,31 +195,24 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                     updatedBy: "System" // Use default for now
                 )
             }
-            
             productInContext.updatedAt = Date()
             try context.save()
         }
     }
-    
     func deleteProduct(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             let productInContext = try context.existingObject(with: objectID) as! GroceryItem
-            
             // Remove all relationships before deletion to prevent cascade issues
             // Remove tag relationships
             productInContext.tags = NSSet()
-            
             // Remove location relationships (this should not delete locations due to Nullify rule)
             productInContext.locations = NSSet()
-            
             // Prices will be automatically deleted due to Cascade rule
-            
             context.delete(productInContext)
             try context.save()
         }
     }
-    
     func removeProductFromShoppingList(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
@@ -260,7 +221,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try context.save()
         }
     }
-    
     func toggleProductCompletion(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
@@ -269,7 +229,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try context.save()
         }
     }
-    
     func addProductToShoppingList(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
@@ -279,7 +238,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try context.save()
         }
     }
-    
     func fetchFavoriteProducts() async throws -> [GroceryItem] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
@@ -290,7 +248,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return try context.fetch(request)
         }
     }
-    
     func addProductToFavorites(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
@@ -299,7 +256,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try context.save()
         }
     }
-    
     func removeProductFromFavorites(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
@@ -308,7 +264,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try context.save()
         }
     }
-    
     func toggleProductFavorite(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
@@ -317,7 +272,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try context.save()
         }
     }
-    
     func searchProducts(by name: String) async throws -> [GroceryItem] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
@@ -328,7 +282,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return try context.fetch(request)
         }
     }
-    
     func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
@@ -339,13 +292,10 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return try context.fetch(request)
         }
     }
-    
     // MARK: - Tag Methods
-    
     func fetchAllTags() async throws -> [Tag] {
         // Ensure tags are seeded before fetching
         try await coreDataStack.ensureTagsSeeded()
-        
         let context = await coreDataStack.viewContext
         return try await context.perform {
             let request: NSFetchRequest<Tag> = Tag.fetchRequest()
@@ -353,20 +303,17 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return try context.fetch(request)
         }
     }
-    
     func createTag(id: String, name: String, color: String) async throws -> Tag {
         let objectID = try await coreDataStack.performBackgroundTask { context in
             let tag = Tag(context: context, id: id, name: name, color: color)
             try context.save()
             return tag.objectID
         }
-        
         let viewContext = await coreDataStack.viewContext
         return try await viewContext.perform {
             return try viewContext.existingObject(with: objectID) as! Tag
         }
     }
-    
     func updateTag(_ tag: Tag) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = tag.objectID
@@ -375,43 +322,34 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try context.save()
         }
     }
-    
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             let productInContext = try context.existingObject(with: objectID) as! GroceryItem
-            
             // Get the tags in the current context
             let tagObjectIDs = tags.map { $0.objectID }
             let tagsInContext = try tagObjectIDs.map { try context.existingObject(with: $0) as! Tag }
-            
             // Add tags to product
             let currentTags = productInContext.tags as? Set<Tag> ?? Set()
             let newTags = currentTags.union(Set(tagsInContext))
             productInContext.tags = NSSet(set: newTags)
-            
             try context.save()
         }
     }
-    
     func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             let productInContext = try context.existingObject(with: objectID) as! GroceryItem
-            
             // Get the tags in the current context
             let tagObjectIDs = tags.map { $0.objectID }
             let tagsInContext = try tagObjectIDs.map { try context.existingObject(with: $0) as! Tag }
-            
             // Remove tags from product
             let currentTags = productInContext.tags as? Set<Tag> ?? Set()
             let newTags = currentTags.subtracting(Set(tagsInContext))
             productInContext.tags = NSSet(set: newTags)
-            
             try context.save()
         }
     }
-
         func searchProductsByTag(_ tag: Tag) async throws -> [GroceryItem] {
         // Use viewContext through the actor
         let context = await coreDataStack.viewContext
@@ -422,14 +360,12 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return try context.fetch(request)
         }
     }
-    
     func initializeDefaultTags() async throws {
         // Use the new seeded data approach
         try await coreDataStack.performBackgroundTask { context in
             try TagSeedData.seedTags(in: context)
         }
     }
-    
     func getAllStores() async throws -> [String] {
         let context = await coreDataStack.viewContext
         return try await context.perform {
@@ -438,21 +374,16 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return locations.compactMap { $0.name }.filter { !$0.isEmpty }
         }
     }
-    
     func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double? {
         let context = await coreDataStack.viewContext
         return try await context.perform {
             // Get all prices for this item
             let prices = item.priceArray
-            
             // Find the price for this specific store
             let storePrice = prices.first { price in
                 price.store == store
             }
-            
             return storePrice?.price
         }
     }
-    
-
-} 
+}

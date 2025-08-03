@@ -4,10 +4,8 @@
 //
 //  Created by Brenna Wilson on 7/27/25.
 //
-
 import Foundation
 import CoreData
-
 struct TagSeedData {
     static let seededTags: [(name: String, color: String)] = [
         // Original 20 tags
@@ -31,7 +29,6 @@ struct TagSeedData {
         ("Personal Care", "#FF9800"),
         ("Snacks", "#4CAF50"),
         ("Beverages", "#2196F3"),
-        
         // Energy Drinks (as requested)
         ("Energy Drink", "#FF5722"),
         ("Red Bull", "#D32F2F"),
@@ -43,7 +40,6 @@ struct TagSeedData {
         ("Amp", "#E91E63"),
         ("Full Throttle", "#FF5722"),
         ("Xyience", "#9C27B0"),
-        
         // Store Brands (as requested)
         ("Store Brand", "#607D8B"),
         ("Great Value", "#4CAF50"),
@@ -55,7 +51,6 @@ struct TagSeedData {
         ("Good & Gather", "#2196F3"),
         ("Market Pantry", "#FF9800"),
         ("Simply Nature", "#8BC34A"),
-        
         // Organic (as requested)
         ("Organic", "#4CAF50"),
         ("USDA Organic", "#2E7D32"),
@@ -67,7 +62,6 @@ struct TagSeedData {
         ("Organic Snacks", "#E8F5E8"),
         ("Organic Beverages", "#4CAF50"),
         ("Organic Personal Care", "#66BB6A"),
-        
         // Food Categories
         ("Fruits", "#FF9800"),
         ("Vegetables", "#4CAF50"),
@@ -88,7 +82,6 @@ struct TagSeedData {
         ("Dressings", "#FF9800"),
         ("Jams & Jellies", "#E91E63"),
         ("Peanut Butter", "#8D6E63"),
-        
         // Beverage Categories
         ("Coffee", "#8D6E63"),
         ("Tea", "#4CAF50"),
@@ -100,7 +93,6 @@ struct TagSeedData {
         ("Plant Milk", "#8BC34A"),
         ("Alcoholic Beverages", "#9C27B0"),
         ("Sparkling Water", "#00BCD4"),
-        
         // Health & Wellness
         ("Gluten Free", "#4CAF50"),
         ("Dairy Free", "#2196F3"),
@@ -112,7 +104,6 @@ struct TagSeedData {
         ("Sugar Free", "#E91E63"),
         ("Low Sodium", "#00BCD4"),
         ("High Protein", "#FF5722"),
-        
         // Household Categories
         ("Kitchen", "#FF9800"),
         ("Bathroom", "#2196F3"),
@@ -124,7 +115,6 @@ struct TagSeedData {
         ("Automotive", "#FF5722"),
         ("Hardware", "#795548"),
         ("Seasonal", "#FF9800"),
-        
         // Special Categories
         ("On Sale", "#E91E63"),
         ("New Product", "#4CAF50"),
@@ -136,7 +126,6 @@ struct TagSeedData {
         ("Single Serve", "#2196F3"),
         ("Family Size", "#FF9800"),
         ("Travel Size", "#607D8B"),
-        
         // Dietary Restrictions
         ("Nut Free", "#4CAF50"),
         ("Soy Free", "#8BC34A"),
@@ -149,26 +138,21 @@ struct TagSeedData {
         ("Artificial Colors", "#E91E63"),
         ("Preservative Free", "#4CAF50")
     ]
-    
     static func seedTags(in context: NSManagedObjectContext) throws {
         // Check if tags already exist
         let request: NSFetchRequest<Tag> = Tag.fetchRequest()
         let existingTags = try context.fetch(request)
-        
         // If we have the full set of tags (100), don't recreate
         if existingTags.count >= seededTags.count {
             return // Tags already seeded
         }
-        
         // If we have some tags but not all, add the missing ones
         let existingTagNames = Set(existingTags.compactMap { $0.name })
         let newTagsToCreate = seededTags.filter { !existingTagNames.contains($0.name) }
-        
         // Create missing tags
         for (name, color) in newTagsToCreate {
             let tag = Tag(context: context, id: UUID().uuidString, name: name, color: color)
         }
-        
         try context.save()
     }
-} 
+}

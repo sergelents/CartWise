@@ -4,29 +4,23 @@
 //
 //  Created by Serg Tsogtbaatar on 7/5/25.
 //
-
 import SwiftUI
-
 class AppCoordinator: ObservableObject {
     @Published var selectedTab: TabItem = .yourList
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-    
     func selectTab(_ tab: TabItem) {
         selectedTab = tab
     }
-    
     func logout() {
         isLoggedIn = false
     }
 }
-
 enum TabItem: String, CaseIterable {
     case yourList = "Your List"
     case searchItems = "Search Items"
     case addItems = "Add Items"
     case socialFeed = "Social Feed"
     case myProfile = "My Profile"
-    
     var iconName: String {
         switch self {
         case .yourList: return "list.bullet"
@@ -36,7 +30,6 @@ enum TabItem: String, CaseIterable {
         case .myProfile: return "person.circle"
         }
     }
-    
     var selectedIconName: String {
         switch self {
         case .yourList: return "list.bullet"
@@ -47,12 +40,10 @@ enum TabItem: String, CaseIterable {
         }
     }
 }
-
 struct AppCoordinatorView: View {
     @ObservedObject var coordinator: AppCoordinator
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @EnvironmentObject var productViewModel: ProductViewModel
-    
     var body: some View {
         Group {
             if isLoggedIn {
@@ -64,7 +55,6 @@ struct AppCoordinatorView: View {
                             Text(TabItem.yourList.rawValue)
                         }
                         .tag(TabItem.yourList)
-                    
                     SearchItemsView()
                         .tabItem {
                             Image(systemName: coordinator.selectedTab == .searchItems ?
@@ -73,7 +63,6 @@ struct AppCoordinatorView: View {
                         }
                         .tag(TabItem.searchItems)
                         .tint(Color.accentColorBlue)
-                    
                     AddItemsView(availableTags: productViewModel.tags)
                         .tabItem {
                             Image(systemName: coordinator.selectedTab == .addItems ?
@@ -81,7 +70,6 @@ struct AppCoordinatorView: View {
                             Text(TabItem.addItems.rawValue)
                         }
                         .tag(TabItem.addItems)
-                    
                     SocialFeedView()
                         .tabItem {
                             Image(systemName: coordinator.selectedTab == .socialFeed ?
@@ -89,7 +77,6 @@ struct AppCoordinatorView: View {
                             Text(TabItem.socialFeed.rawValue)
                         }
                         .tag(TabItem.socialFeed)
-                    
                     MyProfileView()
                         .tabItem {
                             Image(systemName: coordinator.selectedTab == .myProfile ?
@@ -104,5 +91,4 @@ struct AppCoordinatorView: View {
         }
     }
 }
-
 // This code was generated with the help of Claude, saving me 2 hours of research and development.

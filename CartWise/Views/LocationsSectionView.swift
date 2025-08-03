@@ -4,17 +4,14 @@
 //
 //  Created by AI Assistant on 12/19/24.
 //
-
 import SwiftUI
 import CoreData
-
 struct LocationsSectionView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var productViewModel: ProductViewModel
     @State private var showAddLocation: Bool = false
     @State private var locations: [Location] = []
     @State private var isLoading: Bool = true
-    
     var body: some View {
         VStack(spacing: 16) {
             // Header
@@ -23,14 +20,11 @@ struct LocationsSectionView: View {
                     Text("My Locations")
                         .font(.poppins(size: 20, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
-                    
                     Text("Manage your shopping locations")
                         .font(.poppins(size: 14, weight: .regular))
                         .foregroundColor(.gray)
                 }
-                
                 Spacer()
-                
                 Button(action: {
                     showAddLocation = true
                 }) {
@@ -39,7 +33,6 @@ struct LocationsSectionView: View {
                         .foregroundColor(AppColors.accentGreen)
                 }
             }
-            
             // Locations List
             if isLoading {
                 VStack(spacing: 12) {
@@ -56,18 +49,15 @@ struct LocationsSectionView: View {
                     Image(systemName: "location.slash")
                         .font(.system(size: 48))
                         .foregroundColor(.gray.opacity(0.6))
-                    
                     VStack(spacing: 8) {
                         Text("No Locations Yet")
                             .font(.poppins(size: 18, weight: .semibold))
                             .foregroundColor(AppColors.textPrimary)
-                        
                         Text("Add your favorite shopping locations to track prices")
                             .font(.poppins(size: 14, weight: .regular))
                             .foregroundColor(.gray)
                             .multilineTextAlignment(.center)
                     }
-                    
                     Button(action: {
                         showAddLocation = true
                     }) {
@@ -93,7 +83,6 @@ struct LocationsSectionView: View {
                     ForEach(locations.prefix(3)) { location in
                         LocationRowView(location: location)
                     }
-                    
                     if locations.count > 3 {
                         Button(action: {
                             // TODO: Navigate to full locations list
@@ -129,19 +118,15 @@ struct LocationsSectionView: View {
             }
         }
     }
-    
     private func loadLocations() async {
         isLoading = true
-        
         do {
             // Get current user
             let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
             fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
             fetchRequest.fetchLimit = 1
-            
             let users = try viewContext.fetch(fetchRequest)
             guard let currentUser = users.first else { return }
-            
             // Fetch user's locations
             let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
             locationFetchRequest.predicate = NSPredicate(format: "user == %@", currentUser)
@@ -150,9 +135,7 @@ struct LocationsSectionView: View {
                 NSSortDescriptor(keyPath: \Location.favorited, ascending: false),
                 NSSortDescriptor(keyPath: \Location.name, ascending: true)
             ]
-            
             let fetchedLocations = try viewContext.fetch(locationFetchRequest)
-            
             await MainActor.run {
                 self.locations = fetchedLocations
                 self.isLoading = false
@@ -165,10 +148,8 @@ struct LocationsSectionView: View {
         }
     }
 }
-
 struct LocationRowView: View {
     let location: Location
-    
     var body: some View {
         HStack(spacing: 12) {
             // Location Icon
@@ -176,40 +157,33 @@ struct LocationRowView: View {
                 Circle()
                     .fill(AppColors.accentGreen.opacity(0.1))
                     .frame(width: 40, height: 40)
-                
                 Image(systemName: "location.circle.fill")
                     .font(.system(size: 20))
                     .foregroundColor(AppColors.accentGreen)
             }
-            
             // Location Details
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Text(location.name ?? "Unknown Location")
                         .font(.poppins(size: 16, weight: .semibold))
                         .foregroundColor(AppColors.textPrimary)
-                    
                     if location.isDefault {
                         Image(systemName: "star.fill")
                             .font(.system(size: 12))
                             .foregroundColor(.yellow)
                     }
-                    
                     if location.favorited {
                         Image(systemName: "heart.fill")
                             .font(.system(size: 12))
                             .foregroundColor(.red)
                     }
                 }
-                
                 Text(formatAddress())
                     .font(.poppins(size: 14, weight: .regular))
                     .foregroundColor(.gray)
                     .lineLimit(1)
             }
-            
             Spacer()
-            
             // Arrow
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .medium))
@@ -217,22 +191,17 @@ struct LocationRowView: View {
         }
         .padding(.vertical, 8)
     }
-    
     private func formatAddress() -> String {
         var components: [String] = []
-        
         if let city = location.city, !city.isEmpty {
             components.append(city)
         }
-        
         if let state = location.state, !state.isEmpty {
             components.append(state)
         }
-        
         if let zipCode = location.zipCode, !zipCode.isEmpty {
             components.append(zipCode)
         }
-        
         return components.isEmpty ? "No address" : components.joined(separator: ", ")
     }
-} 
+}

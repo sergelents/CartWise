@@ -4,17 +4,14 @@
 //
 //  Created by Serg Tsogtbaatar on 7/5/25.
 //
-
 import SwiftUI
 import CoreData
-
 struct MyProfileView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @EnvironmentObject var productViewModel: ProductViewModel
     @State private var currentUsername: String = ""
     @State private var isLoadingUser: Bool = true
     @State private var showAddLocation: Bool = false
-    
     var body: some View {
         NavigationView {
             ZStack {
@@ -29,7 +26,6 @@ struct MyProfileView: View {
                     endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
-                
                 ScrollView {
                     VStack(spacing: 32) {
                         // Enhanced Profile Card
@@ -48,7 +44,6 @@ struct MyProfileView: View {
                                         )
                                     )
                                     .frame(width: 100, height: 100)
-                                
                                 Image(systemName: "person.crop.circle.fill")
                                     .resizable()
                                     .frame(width: 80, height: 80)
@@ -56,7 +51,6 @@ struct MyProfileView: View {
                                     .shadow(color: AppColors.accentGreen.opacity(0.3), radius: 8, x: 0, y: 4)
                             }
                             .padding(.top, 28)
-                            
                             if isLoadingUser {
                                 ProgressView()
                                     .scaleEffect(0.8)
@@ -67,7 +61,6 @@ struct MyProfileView: View {
                                     .foregroundColor(AppColors.textPrimary)
                                     .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
                             }
-                            
                             Text("Manage your favorite items and account")
                                 .font(.poppins(size: 16, weight: .regular))
                                 .foregroundColor(.gray)
@@ -82,17 +75,14 @@ struct MyProfileView: View {
                         )
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
-                        
                         // Enhanced Favorites Section
                         FavoriteItemsView()
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
-                        
                         // Locations Section
                         LocationsSectionView()
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
-                        
                         // Enhanced Log Out Button
                         Button(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -144,21 +134,16 @@ struct MyProfileView: View {
             }
         }
     }
-    
     private func loadCurrentUser() async {
         isLoadingUser = true
-        
         do {
             let context = PersistenceController.shared.container.viewContext
             let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
-            
             // Since we don't have a direct way to identify the current user,
             // we'll fetch the most recently created user (assuming the last logged in user)
             fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
             fetchRequest.fetchLimit = 1
-            
             let users = try context.fetch(fetchRequest)
-            
             if let currentUser = users.first, let username = currentUser.username {
                 await MainActor.run {
                     withAnimation(.easeInOut(duration: 0.3)) {

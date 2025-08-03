@@ -4,31 +4,25 @@
 //
 //  Created by AI Assistant on 12/19/24.
 //
-
 import SwiftUI
-
 struct ShareExperienceView: View {
     let priceComparison: PriceComparison?
     @StateObject private var viewModel = SocialFeedViewModel()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
-    
     @State private var comment = ""
     @State private var rating: Int16 = 0
     @State private var selectedType = "price_update"
-    
     // Optional additional information
     @State private var selectedProduct: GroceryItem?
     @State private var selectedLocation: Location?
     @State private var showingProductPicker = false
     @State private var showingLocationPicker = false
-    
     private let types = [
         ("price_update", "Price Update"),
         ("store_review", "Store Review"),
         ("general", "General Comment")
     ]
-    
     var body: some View {
         NavigationView {
             Form {
@@ -39,11 +33,9 @@ struct ShareExperienceView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Rating")
                             .font(.headline)
-                        
                         HStack(spacing: 12) {
                             ForEach(1...5, id: \.self) { star in
                                 Button(action: {
@@ -61,18 +53,15 @@ struct ShareExperienceView: View {
                         }
                     }
                 }
-                
                 if let comparison = priceComparison, let bestStore = comparison.bestStore {
                     Section("Price Comparison Info") {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Best Store: \(bestStore)")
                                 .font(.headline)
                                 .foregroundColor(.green)
-                            
                             Text("Total Price: $\(String(format: "%.2f", comparison.bestTotalPrice))")
                                 .font(.subheadline)
                                 .foregroundColor(.primary)
-                            
                             if !comparison.storePrices.isEmpty {
                                 Text("Available at \(comparison.storePrices.count) stores")
                                     .font(.caption)
@@ -82,7 +71,6 @@ struct ShareExperienceView: View {
                         .padding(.vertical, 4)
                     }
                 }
-                
                 // Optional Product Information
                 if selectedType == "price_update" {
                     Section("Product Information (Optional)") {
@@ -103,7 +91,6 @@ struct ShareExperienceView: View {
                             }
                         }
                         .buttonStyle(PlainButtonStyle())
-                        
                         if selectedProduct != nil {
                             Button("Clear Product") {
                                 selectedProduct = nil
@@ -112,7 +99,6 @@ struct ShareExperienceView: View {
                         }
                     }
                 }
-                
                 // Optional Store Information
                 if selectedType == "store_review" {
                     Section("Store Information (Optional)") {
@@ -133,7 +119,6 @@ struct ShareExperienceView: View {
                             }
                         }
                         .buttonStyle(PlainButtonStyle())
-                        
                         if selectedLocation != nil {
                             Button("Clear Store") {
                                 selectedLocation = nil
@@ -142,7 +127,6 @@ struct ShareExperienceView: View {
                         }
                     }
                 }
-                
                 Section("Your Comment") {
                     TextEditor(text: $comment)
                         .frame(minHeight: 100)
@@ -161,7 +145,6 @@ struct ShareExperienceView: View {
                         dismiss()
                     }
                 }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Post") {
                         postExperience()
@@ -177,11 +160,9 @@ struct ShareExperienceView: View {
             }
         }
     }
-    
     private func postExperience() {
         // Create enhanced comment with optional information
         var enhancedComment = comment.trimmingCharacters(in: .whitespacesAndNewlines)
-        
         // Add product information if available
         if let product = selectedProduct {
             enhancedComment += "\n\nProduct: \(product.productName ?? "Unknown")"
@@ -189,7 +170,6 @@ struct ShareExperienceView: View {
                 enhancedComment += " (\(brand))"
             }
         }
-        
         // Add store information if available
         if let location = selectedLocation {
             enhancedComment += "\nStore: \(location.name ?? "Unknown")"
@@ -197,10 +177,8 @@ struct ShareExperienceView: View {
                 enhancedComment += " (\(address))"
             }
         }
-        
         // Get current user from the same context
         let currentUser = viewModel.getCurrentUser()
-        
         viewModel.createExperience(
             comment: enhancedComment,
             rating: rating,
@@ -212,7 +190,6 @@ struct ShareExperienceView: View {
         dismiss()
     }
 }
-
 #Preview {
     ShareExperienceView(priceComparison: nil)
-} 
+}

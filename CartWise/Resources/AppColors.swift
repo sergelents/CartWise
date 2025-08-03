@@ -4,9 +4,7 @@
 //
 //  Created by Brenna Wilson on 7/9/25.
 //
-
 import SwiftUI
-
 struct AppColors {
     static let accentGreen = Color("AccentColorGreen")
     static let accentCoral = Color("AccentColorCoral")
@@ -21,4 +19,3 @@ struct AppColors {
     static let backgroundPrimary = Color("BackgroundColor")
     static let backgroundSecondary = Color.gray.opacity(0.05)
 }
-

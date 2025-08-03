@@ -4,15 +4,12 @@
 //
 //  Created by AI Assistant on 12/19/24.
 //
-
 import SwiftUI
 import CoreData
-
 struct AddLocationView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var productViewModel: ProductViewModel
-    
     @State private var name: String = ""
     @State private var address: String = ""
     @State private var city: String = ""
@@ -23,14 +20,12 @@ struct AddLocationView: View {
     @State private var isLoading: Bool = false
     @State private var showError: Bool = false
     @State private var errorMessage: String = ""
-    
     var body: some View {
         NavigationView {
             ZStack {
                 // Background
                 AppColors.backgroundSecondary
                     .ignoresSafeArea()
-                
                 ScrollView {
                     VStack(spacing: 24) {
                         // Header
@@ -38,18 +33,15 @@ struct AddLocationView: View {
                             Image(systemName: "location.circle.fill")
                                 .font(.system(size: 48))
                                 .foregroundColor(AppColors.accentGreen)
-                            
                             Text("Add New Location")
                                 .font(.poppins(size: 24, weight: .bold))
                                 .foregroundColor(AppColors.textPrimary)
-                            
                             Text("Save your favorite shopping locations")
                                 .font(.poppins(size: 16, weight: .regular))
                                 .foregroundColor(.gray)
                                 .multilineTextAlignment(.center)
                         }
                         .padding(.top, 20)
-                        
                         // Form
                         VStack(spacing: 20) {
                             // Location Name
@@ -57,53 +49,43 @@ struct AddLocationView: View {
                                 Text("Location Name")
                                     .font(.poppins(size: 16, weight: .semibold))
                                     .foregroundColor(AppColors.textPrimary)
-                                
                                 TextField("e.g., Home, Work, Mom's House", text: $name)
                                     .textFieldStyle(CustomTextFieldStyle())
                             }
-                            
                             // Address
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Street Address")
                                     .font(.poppins(size: 16, weight: .semibold))
                                     .foregroundColor(AppColors.textPrimary)
-                                
                                 TextField("123 Main Street", text: $address)
                                     .textFieldStyle(CustomTextFieldStyle())
                             }
-                            
                             // City, State, Zip Row
                             HStack(spacing: 12) {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("City")
                                         .font(.poppins(size: 16, weight: .semibold))
                                         .foregroundColor(AppColors.textPrimary)
-                                    
                                     TextField("City", text: $city)
                                         .textFieldStyle(CustomTextFieldStyle())
                                 }
-                                
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("State")
                                         .font(.poppins(size: 16, weight: .semibold))
                                         .foregroundColor(AppColors.textPrimary)
-                                    
                                     TextField("State", text: $state)
                                         .textFieldStyle(CustomTextFieldStyle())
                                 }
                             }
-                            
                             // Zip Code
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Zip Code")
                                     .font(.poppins(size: 16, weight: .semibold))
                                     .foregroundColor(AppColors.textPrimary)
-                                
                                 TextField("12345", text: $zipCode)
                                     .textFieldStyle(CustomTextFieldStyle())
                                     .keyboardType(.numberPad)
                             }
-                            
                             // Toggle Options
                             VStack(spacing: 16) {
                                 Toggle(isOn: $favorited) {
@@ -116,7 +98,6 @@ struct AddLocationView: View {
                                     }
                                 }
                                 .toggleStyle(CustomToggleStyle())
-                                
                                 Toggle(isOn: $isDefault) {
                                     HStack {
                                         Image(systemName: "star.fill")
@@ -130,7 +111,6 @@ struct AddLocationView: View {
                             }
                         }
                         .padding(.horizontal, 20)
-                        
                         // Save Button
                         Button(action: saveLocation) {
                             HStack(spacing: 12) {
@@ -142,7 +122,6 @@ struct AddLocationView: View {
                                     Image(systemName: "plus.circle.fill")
                                         .font(.system(size: 18, weight: .medium))
                                 }
-                                
                                 Text(isLoading ? "Saving..." : "Save Location")
                                     .font(.poppins(size: 18, weight: .semibold))
                             }
@@ -188,7 +167,6 @@ struct AddLocationView: View {
             Text(errorMessage)
         }
     }
-    
     private var isFormValid: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -196,35 +174,28 @@ struct AddLocationView: View {
         !state.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !zipCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
-    
     private func saveLocation() {
         guard isFormValid else { return }
-        
         isLoading = true
-        
         Task {
             do {
                 // Get current user
                 let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
                 fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
                 fetchRequest.fetchLimit = 1
-                
                 let users = try viewContext.fetch(fetchRequest)
                 guard let currentUser = users.first else {
                     throw LocationError.noUserFound
                 }
-                
                 // If setting as default, unset other defaults
                 if isDefault {
                     let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
                     locationFetchRequest.predicate = NSPredicate(format: "user == %@ AND isDefault == YES", currentUser)
-                    
                     let existingDefaults = try viewContext.fetch(locationFetchRequest)
                     for existingDefault in existingDefaults {
                         existingDefault.isDefault = false
                     }
                 }
-                
                 // Create new location
                 let location = Location(
                     context: viewContext,
@@ -237,16 +208,12 @@ struct AddLocationView: View {
                     favorited: favorited,
                     isDefault: isDefault
                 )
-                
                 location.user = currentUser
-                
                 try viewContext.save()
-                
                 await MainActor.run {
                     isLoading = false
                     dismiss()
                 }
-                
             } catch {
                 await MainActor.run {
                     isLoading = false
@@ -257,9 +224,7 @@ struct AddLocationView: View {
         }
     }
 }
-
 // MARK: - Custom Styles
-
 struct CustomTextFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
@@ -273,7 +238,6 @@ struct CustomTextFieldStyle: TextFieldStyle {
             .font(.poppins(size: 16, weight: .regular))
     }
 }
-
 struct CustomToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack {
@@ -297,16 +261,13 @@ struct CustomToggleStyle: ToggleStyle {
         }
     }
 }
-
 // MARK: - Error Types
-
 enum LocationError: Error, LocalizedError {
     case noUserFound
-    
     var errorDescription: String? {
         switch self {
         case .noUserFound:
             return "No user found. Please log in again."
         }
     }
-} 
+}

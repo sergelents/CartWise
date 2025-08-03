@@ -4,16 +4,12 @@
 //
 //  Created by AI Assistant on 12/19/24.
 //
-
 import Foundation
 import CoreData
-
 extension Location {
-
     @nonobjc public class func fetchRequest() -> NSFetchRequest<Location> {
         return NSFetchRequest<Location>(entityName: "Location")
     }
-
     @NSManaged public var id: String?
     @NSManaged public var name: String?
     @NSManaged public var address: String?
@@ -28,9 +24,7 @@ extension Location {
     @NSManaged public var groceryItems: NSSet?
     @NSManaged public var prices: NSSet?
     @NSManaged public var experiences: NSSet?
-
 }
-
 extension Location {
     convenience init(context: NSManagedObjectContext, id: String, name: String, address: String, city: String, state: String, zipCode: String, favorited: Bool = false, isDefault: Bool = false) {
         self.init(context: context)
@@ -46,23 +40,20 @@ extension Location {
         self.updatedAt = Date()
     }
 }
-
 extension Location : Identifiable {
     // Computed property for easier access to grocery items
     var groceryItemArray: [GroceryItem] {
         let set = groceryItems as? Set<GroceryItem> ?? []
         return Array(set)
     }
-    
     // Computed property for easier access to prices
     var priceArray: [GroceryItemPrice] {
         let set = prices as? Set<GroceryItemPrice> ?? []
         return Array(set)
     }
-    
     // Computed property for easier access to experiences
     var experienceArray: [ShoppingExperience] {
         let set = experiences as? Set<ShoppingExperience> ?? []
         return Array(set).sorted { $0.createdAt ?? Date() > $1.createdAt ?? Date() }
     }
-} 
+}

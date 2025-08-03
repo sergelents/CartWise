@@ -1,4 +1,3 @@
-
 //
 //  ProductViewModel.swift
 //  CartWise
@@ -8,7 +7,6 @@
 import SwiftUI
 import Combine
 import CoreData
-
 @MainActor
 final class ProductViewModel: ObservableObject {
     @Published var products: [GroceryItem] = []
@@ -19,21 +17,17 @@ final class ProductViewModel: ObservableObject {
     @Published var tags: [Tag] = []
     @Published var locations: [Location] = []
     var errorMessage: String?
-    
     private let repository: ProductRepositoryProtocol
-    
     // Computed property to check if all products are completed
     var allProductsCompleted: Bool {
         !products.isEmpty && products.allSatisfy { $0.isCompleted }
     }
-    
     init(repository: ProductRepositoryProtocol) {
         self.repository = repository
         Task {
             await loadTags()
         }
     }
-    
     func loadShoppingListProducts() async {
         do {
             products = try await repository.fetchListProducts()
@@ -42,7 +36,6 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func loadProducts() async {
         do {
             products = try await repository.fetchAllProducts()
@@ -51,17 +44,15 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func updateProduct(_ product: GroceryItem) async {
         do {
             try await repository.updateProduct(product)
-            await loadProducts() 
+            await loadProducts()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
     }
-    
     func deleteProduct(_ product: GroceryItem) async {
         do {
             try await repository.deleteProduct(product)
@@ -71,7 +62,6 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func removeProductFromShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.removeProductFromShoppingList(product)
@@ -81,7 +71,6 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func permanentlyDeleteProduct(_ product: GroceryItem) async {
         do {
             try await repository.deleteProduct(product)
@@ -91,7 +80,6 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func toggleProductCompletion(_ product: GroceryItem) async {
         do {
             try await repository.toggleProductCompletion(product)
@@ -101,12 +89,10 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func toggleAllProductsCompletion() async {
         do {
             // Check if all products are completed
             let allCompleted = products.allSatisfy { $0.isCompleted }
-            
             // If all are completed, uncheck them all. Otherwise, check them all.
             for product in products {
                 if allCompleted {
@@ -127,7 +113,6 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func addExistingProductToShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.addProductToShoppingList(product)
@@ -137,9 +122,7 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     // MARK: - Favorites Methods
-    
     func loadFavoriteProducts() async {
         do {
             favoriteProducts = try await repository.fetchFavoriteProducts()
@@ -148,7 +131,6 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func addProductToFavorites(_ product: GroceryItem) async {
         do {
             try await repository.addProductToFavorites(product)
@@ -158,7 +140,6 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func removeProductFromFavorites(_ product: GroceryItem) async {
         do {
             try await repository.removeProductFromFavorites(product)
@@ -168,7 +149,6 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func toggleProductFavorite(_ product: GroceryItem) async {
         do {
             try await repository.toggleProductFavorite(product)
@@ -178,7 +158,6 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func isProductInFavorites(_ product: GroceryItem) async -> Bool {
         do {
             let favorites = try await repository.fetchFavoriteProducts()
@@ -189,7 +168,6 @@ final class ProductViewModel: ObservableObject {
             return false
         }
     }
-    
     func searchProducts(by name: String) async {
         do {
             products = try await repository.searchProducts(by: name)
@@ -198,18 +176,15 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem] {
         return try await repository.searchProductsByBarcode(barcode)
     }
-    
     func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, isOnSale: Bool = false) async {
         do {
             if await isDuplicateProduct(name: name) {
                 errorMessage = "Product '\(name)' already exists in your list"
                 return
             }
-            
             let id = UUID().uuidString
             _ = try await repository.createProduct(
                 id: id,
@@ -231,7 +206,6 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
     // For creating products to database
     func isDuplicateProduct(name: String) async -> Bool {
         do {
@@ -243,7 +217,6 @@ final class ProductViewModel: ObservableObject {
             return false // If search fails, allow creation
         }
     }
-    
     // For checking if existing product is already in shopping list
     func isProductInShoppingList(name: String) async -> Bool {
         do {
@@ -256,8 +229,6 @@ final class ProductViewModel: ObservableObject {
             return false // If search fails, allow adding
         }
     }
-    
-    
     func isDuplicateBarcode(_ barcode: String) async -> Bool {
         do {
             let existingProducts = try await repository.searchProductsByBarcode(barcode)
@@ -268,18 +239,23 @@ final class ProductViewModel: ObservableObject {
             return false // If search fails, allow creation
         }
     }
-    
-    func createProductByBarcode(barcode: String, productName: String, brand: String?, category: String?, price: Double, store: String, isOnSale: Bool = false) async -> GroceryItem? {
+    func createProductByBarcode(
+        barcode: String,
+        productName: String,
+        brand: String?,
+        category: String?,
+        price: Double,
+        store: String,
+        isOnSale: Bool = false
+    ) async -> GroceryItem? {
         do {
             print("ProductViewModel: Creating product with barcode: \(barcode)")
             print("ProductViewModel: Store value: '\(store)'")
-            
             // Check if product already exists with this barcode
             if await isDuplicateBarcode(barcode) {
                 errorMessage = "Product with barcode '\(barcode)' already exists"
                 return nil
             }
-            
             let id = UUID().uuidString
             let savedProduct = try await repository.createProduct(
                 id: id,
@@ -295,10 +271,8 @@ final class ProductViewModel: ObservableObject {
                 isInShoppingList: false, // Don't automatically add to shopping list
                 isOnSale: isOnSale
             )
-            
             print("ProductViewModel: Product created successfully")
             print("ProductViewModel: Saved product store: '\(savedProduct.store ?? "nil")'")
-            
             await loadShoppingListProducts()
             errorMessage = nil
             return savedProduct
@@ -307,12 +281,10 @@ final class ProductViewModel: ObservableObject {
             return nil
         }
     }
-    
     func updateProductByBarcode(barcode: String, productName: String?, brand: String?, category: String?, price: Double?, store: String?, isOnSale: Bool?) async -> GroceryItem? {
         do {
             print("ProductViewModel: Updating product with barcode: \(barcode)")
             print("ProductViewModel: Update store value: '\(store ?? "nil")'")
-            
             let existingProducts = try await repository.searchProductsByBarcode(barcode)
             guard let existingProduct = existingProducts.first(where: { $0.barcode?.lowercased() == barcode.lowercased() }) else {
                 // This should not happen if we checked isDuplicateBarcode first
@@ -320,9 +292,7 @@ final class ProductViewModel: ObservableObject {
                 errorMessage = "Unable to update product with barcode '\(barcode)' - product not found in database"
                 return nil
             }
-            
             print("ProductViewModel: Found existing product, current store: '\(existingProduct.store ?? "nil")'")
-            
             // Update only provided values
             if let productName = productName {
                 existingProduct.productName = productName
@@ -336,7 +306,6 @@ final class ProductViewModel: ObservableObject {
             if let isOnSale = isOnSale {
                 existingProduct.isOnSale = isOnSale
             }
-            
             // Handle price and store updates
             if let price = price, let store = store, price > 0 {
                 try await repository.updateProductWithPrice(product: existingProduct, price: price, store: store, location: nil)
@@ -344,10 +313,8 @@ final class ProductViewModel: ObservableObject {
                 // Just update the product without price changes
                 try await repository.updateProduct(existingProduct)
             }
-            
             print("ProductViewModel: Product updated successfully")
             print("ProductViewModel: Final product store: '\(existingProduct.store ?? "nil")'")
-            
             await loadShoppingListProducts()
             errorMessage = nil
             return existingProduct
@@ -356,14 +323,11 @@ final class ProductViewModel: ObservableObject {
             return nil
         }
     }
-    
     func loadLocalPriceComparison() async {
         // Get the current shopping list products specifically
         let shoppingListProducts = try? await repository.fetchListProducts()
-        
         print("ProductViewModel: Starting local price comparison")
         print("ProductViewModel: Shopping list products count: \(shoppingListProducts?.count ?? 0)")
-        
         guard let shoppingList = shoppingListProducts, !shoppingList.isEmpty else {
             print("ProductViewModel: No shopping list products found")
             await MainActor.run {
@@ -371,28 +335,22 @@ final class ProductViewModel: ObservableObject {
             }
             return
         }
-        
         // Print details of each shopping list item
         for (index, item) in shoppingList.enumerated() {
             print("ProductViewModel: Item \(index + 1): \(item.productName ?? "Unknown") - Store: \(item.store ?? "None") - Price: $\(item.price)")
         }
-        
         await MainActor.run {
             isLoadingPriceComparison = true
             errorMessage = nil
         }
-        
         do {
             print("ViewModel: Starting local price comparison for shopping list with \(shoppingList.count) items")
-            
             // Use the repository to get local price comparison
             let localComparison = try await repository.getLocalPriceComparison(for: shoppingList)
-            
             print("ProductViewModel: Local comparison result - \(localComparison.storePrices.count) stores")
             for storePrice in localComparison.storePrices {
                 print("ProductViewModel: Store \(storePrice.store): $\(storePrice.totalPrice)")
             }
-            
             // Convert LocalPriceComparisonResult to PriceComparison for compatibility
             let storePrices = localComparison.storePrices.map { localStorePrice in
                 StorePrice(
@@ -404,7 +362,6 @@ final class ProductViewModel: ObservableObject {
                     itemPrices: localStorePrice.itemPrices
                 )
             }
-            
             let comparison = PriceComparison(
                 storePrices: storePrices,
                 bestStore: localComparison.bestStore, // Now using String directly
@@ -413,7 +370,6 @@ final class ProductViewModel: ObservableObject {
                 totalItems: localComparison.totalItems,
                 availableItems: localComparison.availableItems
             )
-            
             await MainActor.run {
                 priceComparison = comparison
                 print("ViewModel: Local price comparison loaded successfully")
@@ -424,13 +380,11 @@ final class ProductViewModel: ObservableObject {
                 errorMessage = "Failed to load local price comparison: \(error.localizedDescription)"
             }
         }
-        
         await MainActor.run {
             isLoadingPriceComparison = false
         }
     }
 }
-
 extension ProductViewModel {
     @MainActor
     func loadTags() async {
@@ -440,7 +394,6 @@ extension ProductViewModel {
             tags = []
         }
     }
-    
     @MainActor
     func fetchAllTags() async -> [Tag] {
         do {
@@ -449,7 +402,6 @@ extension ProductViewModel {
             return []
         }
     }
-    
     @MainActor
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async {
         do {
@@ -458,22 +410,17 @@ extension ProductViewModel {
             // Optionally handle error
         }
     }
-    
     // MARK: - Location Management
-    
     @MainActor
     func loadLocations() async {
         do {
             let context = await CoreDataStack.shared.viewContext
-            
             // Get current user
             let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
             fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
             fetchRequest.fetchLimit = 1
-            
             let users = try context.fetch(fetchRequest)
             guard let currentUser = users.first else { return }
-            
             // Fetch user's locations
             let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
             locationFetchRequest.predicate = NSPredicate(format: "user == %@", currentUser)
@@ -482,9 +429,7 @@ extension ProductViewModel {
                 NSSortDescriptor(keyPath: \Location.favorited, ascending: false),
                 NSSortDescriptor(keyPath: \Location.name, ascending: true)
             ]
-            
             let fetchedLocations = try context.fetch(locationFetchRequest)
-            
             // Update on main thread since we're already @MainActor
             self.locations = fetchedLocations
         } catch {
@@ -493,5 +438,4 @@ extension ProductViewModel {
         }
     }
 }
-
 // This code was generated with the help of Claude, saving me 1 hour of research and development.
