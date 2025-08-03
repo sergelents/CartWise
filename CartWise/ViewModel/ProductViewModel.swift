@@ -199,6 +199,10 @@ final class ProductViewModel: ObservableObject {
         }
     }
     
+    func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem] {
+        return try await repository.searchProductsByBarcode(barcode)
+    }
+    
     func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, isOnSale: Bool = false) async {
         do {
             if await isDuplicateProduct(name: name) {
@@ -256,7 +260,7 @@ final class ProductViewModel: ObservableObject {
     
     func isDuplicateBarcode(_ barcode: String) async -> Bool {
         do {
-            let existingProducts = try await repository.searchProducts(by: barcode)
+            let existingProducts = try await repository.searchProductsByBarcode(barcode)
             return existingProducts.contains { product in
                 product.barcode?.lowercased() == barcode.lowercased()
             }
@@ -309,9 +313,11 @@ final class ProductViewModel: ObservableObject {
             print("ProductViewModel: Updating product with barcode: \(barcode)")
             print("ProductViewModel: Update store value: '\(store ?? "nil")'")
             
-            let existingProducts = try await repository.searchProducts(by: barcode)
+            let existingProducts = try await repository.searchProductsByBarcode(barcode)
             guard let existingProduct = existingProducts.first(where: { $0.barcode?.lowercased() == barcode.lowercased() }) else {
-                errorMessage = "Product with barcode '\(barcode)' not found"
+                // This should not happen if we checked isDuplicateBarcode first
+                // But handle gracefully just in case
+                errorMessage = "Unable to update product with barcode '\(barcode)' - product not found in database"
                 return nil
             }
             
@@ -331,32 +337,17 @@ final class ProductViewModel: ObservableObject {
                 existingProduct.isOnSale = isOnSale
             }
             
-            // Note: price and store are now handled through GroceryItemPrice relationships
-            // and will be set when creating/updating the product through the repository
+            // Handle price and store updates
+            if let price = price, let store = store, price > 0 {
+                try await repository.updateProductWithPrice(product: existingProduct, price: price, store: store, location: nil)
+            } else {
+                // Just update the product without price changes
+                try await repository.updateProduct(existingProduct)
+            }
             
-            try await repository.updateProduct(existingProduct)
             print("ProductViewModel: Product updated successfully")
             print("ProductViewModel: Final product store: '\(existingProduct.store ?? "nil")'")
             
-            await loadShoppingListProducts()
-            errorMessage = nil
-            return existingProduct
-        } catch {
-            errorMessage = error.localizedDescription
-            return nil
-        }
-    }
-    
-    func addBarcodeProductToShoppingList(barcode: String) async -> GroceryItem? {
-        do {
-            let existingProducts = try await repository.searchProducts(by: barcode)
-            guard let existingProduct = existingProducts.first(where: { $0.barcode?.lowercased() == barcode.lowercased() }) else {
-                errorMessage = "Product with barcode '\(barcode)' not found"
-                return nil
-            }
-            
-            // Add to shopping list
-            try await repository.addProductToShoppingList(existingProduct)
             await loadShoppingListProducts()
             errorMessage = nil
             return existingProduct

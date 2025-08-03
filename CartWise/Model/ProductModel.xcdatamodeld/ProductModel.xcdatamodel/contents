@@ -42,7 +42,7 @@
         <attribute name="store" optional="YES" attributeType="String"/>
         <attribute name="updatedBy" optional="YES" attributeType="String"/>
         <relationship name="groceryItem" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="GroceryItem" inverseName="prices" inverseEntity="GroceryItem"/>
-        <relationship name="location" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Location" inverseName="prices" inverseEntity="Location"/>
+        <relationship name="location" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Location" inverseName="prices" inverseEntity="Location"/>
     </entity>
     <entity name="Tag" representedClassName="Tag" syncable="YES">
         <attribute name="color" optional="YES" attributeType="String"/>

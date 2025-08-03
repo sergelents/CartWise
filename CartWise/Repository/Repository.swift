@@ -13,6 +13,7 @@ protocol ProductRepositoryProtocol: Sendable {
     func fetchListProducts() async throws -> [GroceryItem]
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool, isOnSale: Bool) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
+    func updateProductWithPrice(product: GroceryItem, price: Double, store: String, location: String?) async throws
     func deleteProduct(_ product: GroceryItem) async throws
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
     func toggleProductCompletion(_ product: GroceryItem) async throws
@@ -22,6 +23,7 @@ protocol ProductRepositoryProtocol: Sendable {
     func removeProductFromFavorites(_ product: GroceryItem) async throws
     func toggleProductFavorite(_ product: GroceryItem) async throws
     func searchProducts(by name: String) async throws -> [GroceryItem]
+    func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem]
     func getLocalPriceComparison(for shoppingList: [GroceryItem]) async throws -> LocalPriceComparisonResult
     
     // Tag-related methods
@@ -80,6 +82,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
         try await coreDataContainer.updateProduct(product)
     }
     
+    func updateProductWithPrice(product: GroceryItem, price: Double, store: String, location: String?) async throws {
+        try await coreDataContainer.updateProductWithPrice(product: product, price: price, store: store, location: location)
+    }
+    
     func deleteProduct(_ product: GroceryItem) async throws {
         // Permanently delete from local cache
         try await coreDataContainer.deleteProduct(product)
@@ -123,6 +129,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     func searchProducts(by name: String) async throws -> [GroceryItem] {
         // Local-only search
         return try await coreDataContainer.searchProducts(by: name)
+    }
+    
+    func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem] {
+        return try await coreDataContainer.searchProductsByBarcode(barcode)
     }
     
     func getLocalPriceComparison(for shoppingList: [GroceryItem]) async throws -> LocalPriceComparisonResult {

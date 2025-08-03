@@ -33,6 +33,8 @@ struct AddItemsView: View {
     @State private var showLocationPicker = false
     @State private var selectedTags: [Tag] = []
     @State private var showingTagPicker = false
+    @State private var addToShoppingList = false
+    @State private var isExistingProduct = false
     
     var body: some View {
         NavigationView {
@@ -170,9 +172,13 @@ struct AddItemsView: View {
                     availableTags: availableTags,
                     selectedTags: $selectedTags,
                     showingTagPicker: $showingTagPicker,
-                    onConfirm: { barcode, productName, company, price, category, isOnSale, location, tags in
+                    addToShoppingList: $addToShoppingList,
+                    isExistingProduct: isExistingProduct,
+                    onConfirm: { barcode, productName, company, price, category, isOnSale, location, tags, addToShoppingList in
                         showingBarcodeConfirmation = false
-                        handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale, location: location, tags: tags)
+                        Task {
+                            await handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale, location: location, tags: tags, addToShoppingList: addToShoppingList)
+                        }
                     },
                     onCancel: {
                         showingBarcodeConfirmation = false
@@ -208,10 +214,44 @@ struct AddItemsView: View {
     private func handleBarcodeScanned(_ barcode: String) {
         pendingBarcode = barcode
         showingCamera = false
-        showingBarcodeConfirmation = true
+        
+        // Check if product already exists and fetch its data
+        Task {
+            let existingProducts = try? await productViewModel.searchProductsByBarcode(barcode)
+            if let existingProduct = existingProducts?.first {
+                // Auto-fill with existing data
+                await MainActor.run {
+                    isExistingProduct = true
+                    print("Debug: Found existing product, setting isExistingProduct = true")
+                    pendingProductName = existingProduct.productName ?? ""
+                    pendingCompany = existingProduct.brand ?? ""
+                    pendingCategory = ProductCategory(rawValue: existingProduct.category ?? "") ?? .none
+                    pendingIsOnSale = existingProduct.isOnSale
+                    
+                    // Get the most recent price
+                    if let prices = existingProduct.prices as? Set<GroceryItemPrice>,
+                       let mostRecentPrice = prices.max(by: { ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) }) {
+                        pendingPrice = String(format: "%.2f", mostRecentPrice.price)
+                        // Set the location based on the most recent price
+                        if let priceLocation = mostRecentPrice.location {
+                            pendingLocation = priceLocation
+                        }
+                    }
+                }
+            } else {
+                await MainActor.run {
+                    isExistingProduct = false
+                    print("Debug: No existing product found, setting isExistingProduct = false")
+                }
+            }
+            
+            await MainActor.run {
+                showingBarcodeConfirmation = true
+            }
+        }
     }
     
-    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory, isOnSale: Bool, location: Location?, tags: [Tag]) {
+    private func handleBarcodeProcessing(barcode: String, productName: String, company: String, price: String, category: ProductCategory, isOnSale: Bool, location: Location?, tags: [Tag], addToShoppingList: Bool) async {
         scannedBarcode = barcode
         isProcessing = true
         
@@ -221,6 +261,9 @@ struct AddItemsView: View {
             
             // Get store name from location or use a default
             let storeName = location?.name ?? "Unknown Store"
+            
+            // Check if product already exists before processing
+            let wasExistingProduct = await productViewModel.isDuplicateBarcode(barcode)
             
             // Use ViewModel to create or update product
             let newProduct = await createOrUpdateProductByBarcode(
@@ -237,8 +280,10 @@ struct AddItemsView: View {
             if let newProduct = newProduct {
                 await productViewModel.addTagsToProduct(newProduct, tags: tags)
                 
-                // Add to shopping list for price comparison
-                await productViewModel.addBarcodeProductToShoppingList(barcode: barcode)
+                // Add to shopping list if requested
+                if addToShoppingList {
+                    await productViewModel.addExistingProductToShoppingList(newProduct)
+                }
                 
                 // Refresh price comparison after adding product
                 await productViewModel.loadLocalPriceComparison()
@@ -251,7 +296,8 @@ struct AddItemsView: View {
                     showingError = true
                 } else {
                     // Success - show success message and clear the scanned barcode
-                    successMessage = "Product added successfully!"
+                    let shoppingListText = addToShoppingList ? " and added to shopping list" : ""
+                    successMessage = wasExistingProduct ? "Product updated successfully!\(shoppingListText)" : "Product added successfully!\(shoppingListText)"
                     showingSuccess = true
                     scannedBarcode = ""
                     // Hide success message after 2 seconds
@@ -264,29 +310,34 @@ struct AddItemsView: View {
     }
     
     private func createOrUpdateProductByBarcode(barcode: String, productName: String, brand: String?, category: String?, price: Double, store: String, isOnSale: Bool) async -> GroceryItem? {
-        // First try to update existing product
-        if let updatedProduct = await productViewModel.updateProductByBarcode(
-            barcode: barcode,
-            productName: productName,
-            brand: brand,
-            category: category,
-            price: price,
-            store: store,
-            isOnSale: isOnSale
-        ) {
-            return updatedProduct
+        // First check if product already exists with this barcode
+        if await productViewModel.isDuplicateBarcode(barcode) {
+            // Product exists, update it
+            if let updatedProduct = await productViewModel.updateProductByBarcode(
+                barcode: barcode,
+                productName: productName,
+                brand: brand,
+                category: category,
+                price: price,
+                store: store,
+                isOnSale: isOnSale
+            ) {
+                return updatedProduct
+            }
+        } else {
+            // Product doesn't exist, create new product
+            return await productViewModel.createProductByBarcode(
+                barcode: barcode,
+                productName: productName,
+                brand: brand,
+                category: category,
+                price: price,
+                store: store,
+                isOnSale: isOnSale
+            )
         }
         
-        // If update fails (product doesn't exist), create new product
-        return await productViewModel.createProductByBarcode(
-            barcode: barcode,
-            productName: productName,
-            brand: brand,
-            category: category,
-            price: price,
-            store: store,
-            isOnSale: isOnSale
-        )
+        return nil
     }
     
     private func resetPendingData() {
@@ -298,6 +349,8 @@ struct AddItemsView: View {
         pendingIsOnSale = false
         pendingLocation = nil
         selectedTags = []
+        addToShoppingList = false
+        isExistingProduct = false
     }
     
     private func handleError(_ error: String) {
@@ -400,7 +453,9 @@ struct BarcodeConfirmationView: View {
     let availableTags: [Tag]
     @Binding var selectedTags: [Tag]
     @Binding var showingTagPicker: Bool
-    let onConfirm: (String, String, String, String, ProductCategory, Bool, Location?, [Tag]) -> Void
+    @Binding var addToShoppingList: Bool
+    let isExistingProduct: Bool
+    let onConfirm: (String, String, String, String, ProductCategory, Bool, Location?, [Tag], Bool) -> Void
     let onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
     
@@ -593,12 +648,40 @@ struct BarcodeConfirmationView: View {
                     
                     Spacer(minLength: 20)
                     
+                    // Shopping List Toggle
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Button(action: {
+                                addToShoppingList.toggle()
+                            }) {
+                                HStack {
+                                    Image(systemName: addToShoppingList ? "checkmark.square.fill" : "square")
+                                        .foregroundColor(addToShoppingList ? AppColors.accentGreen : .gray)
+                                        .font(.system(size: 20))
+                                    Text("Add to Shopping List")
+                                        .font(.headline)
+                                        .foregroundColor(AppColors.textPrimary)
+                                    Spacer()
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        .padding(.horizontal)
+                        
+                        if addToShoppingList {
+                            Text("This item will be added to your shopping list")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                                .padding(.horizontal)
+                        }
+                    }
+                    
                     // Action Buttons
                     VStack(spacing: 12) {
                         Button(action: {
-                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedLocation, selectedTags)
+                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedLocation, selectedTags, addToShoppingList)
                         }) {
-                            Text("Add Item")
+                            Text(getButtonText())
                                 .fontWeight(.semibold)
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
@@ -634,6 +717,14 @@ struct BarcodeConfirmationView: View {
                     }
                 }
             }
+        }
+    }
+    
+    private func getButtonText() -> String {
+        if isExistingProduct {
+            return addToShoppingList ? "Update Item & Add to Shopping List" : "Update Item"
+        } else {
+            return addToShoppingList ? "Add Item to Shopping List" : "Add Item to Database"
         }
     }
 }

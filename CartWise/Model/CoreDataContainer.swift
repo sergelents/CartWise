@@ -15,6 +15,7 @@ protocol CoreDataContainerProtocol: Sendable {
     // func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool, isOnSale: Bool) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
+    func updateProductWithPrice(product: GroceryItem, price: Double, store: String, location: String?) async throws
     func deleteProduct(_ product: GroceryItem) async throws
     func toggleProductCompletion(_ product: GroceryItem) async throws
     func addProductToShoppingList(_ product: GroceryItem) async throws
@@ -23,6 +24,7 @@ protocol CoreDataContainerProtocol: Sendable {
     func removeProductFromFavorites(_ product: GroceryItem) async throws
     func toggleProductFavorite(_ product: GroceryItem) async throws
     func searchProducts(by name: String) async throws -> [GroceryItem]
+    func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem]
     func searchProductsByTag(_ tag: Tag) async throws -> [GroceryItem]
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
     
@@ -193,15 +195,57 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         }
     }
     
+    func updateProductWithPrice(product: GroceryItem, price: Double, store: String, location: String?) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            
+            // Find or create the location
+            let locationEntity = try self.findOrCreateLocation(context: context, name: store, address: location)
+            
+            // Check if a price already exists for this product at this store
+            let existingPrices = productInContext.prices as? Set<GroceryItemPrice> ?? Set()
+            let existingPrice = existingPrices.first { priceEntity in
+                priceEntity.store == store && priceEntity.location == locationEntity
+            }
+            
+            if let existingPrice = existingPrice {
+                // Update existing price
+                existingPrice.price = price
+                existingPrice.lastUpdated = Date()
+                existingPrice.updatedBy = "System" // Use default for now
+            } else {
+                // Create new price entity
+                let priceEntity = GroceryItemPrice(
+                    context: context,
+                    id: UUID().uuidString,
+                    price: price,
+                    currency: "USD",
+                    store: store,
+                    groceryItem: productInContext,
+                    location: locationEntity,
+                    updatedBy: "System" // Use default for now
+                )
+            }
+            
+            productInContext.updatedAt = Date()
+            try context.save()
+        }
+    }
+    
     func deleteProduct(_ product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             let productInContext = try context.existingObject(with: objectID) as! GroceryItem
             
-            // Remove tag relationships before deletion
-            // tags property defined as NSSet, which is immutable (read-only)
-            // and removeAllObjects() is a method that only exists on NSMutableSet (mutable)
+            // Remove all relationships before deletion to prevent cascade issues
+            // Remove tag relationships
             productInContext.tags = NSSet()
+            
+            // Remove location relationships (this should not delete locations due to Nullify rule)
+            productInContext.locations = NSSet()
+            
+            // Prices will be automatically deleted due to Cascade rule
             
             context.delete(productInContext)
             try context.save()
@@ -280,6 +324,17 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         return try await context.perform {
             let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
             request.predicate = NSPredicate(format: "productName CONTAINS[cd] %@", name)
+            request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.productName, ascending: true)]
+            return try context.fetch(request)
+        }
+    }
+    
+    func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem] {
+        // Use viewContext through the actor
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            request.predicate = NSPredicate(format: "barcode == %@", barcode)
             request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.productName, ascending: true)]
             return try context.fetch(request)
         }
