@@ -13,6 +13,7 @@ struct PriceComparisonView: View {
     let isLoading: Bool
     let onRefresh: () async -> Void
     let onLocalComparison: () async -> Void
+    @State private var showingShareExperience = false
     
     var body: some View {
         VStack(spacing: 12) {
@@ -28,13 +29,22 @@ struct PriceComparisonView: View {
                     ProgressView()
                         .scaleEffect(0.8)
                 } else {
-                    Button(action: {
-                        Task {
-                            await onLocalComparison()
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            showingShareExperience = true
+                        }) {
+                            Image(systemName: "bubble.left.and.bubble.right")
+                                .foregroundColor(.blue)
                         }
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundColor(.blue)
+                        
+                        Button(action: {
+                            Task {
+                                await onLocalComparison()
+                            }
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundColor(.blue)
+                        }
                     }
                 }
             }
@@ -107,6 +117,9 @@ struct PriceComparisonView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .sheet(isPresented: $showingShareExperience) {
+            ShareExperienceView(priceComparison: priceComparison)
+        }
     }
 }
 

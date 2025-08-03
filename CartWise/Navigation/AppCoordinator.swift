@@ -24,6 +24,7 @@ enum TabItem: String, CaseIterable {
     case yourList = "Your List"
     case searchItems = "Search Items"
     case addItems = "Add Items"
+    case socialFeed = "Social Feed"
     case myProfile = "My Profile"
     
     var iconName: String {
@@ -31,6 +32,7 @@ enum TabItem: String, CaseIterable {
         case .yourList: return "list.bullet"
         case .searchItems: return "magnifyingglass"
         case .addItems: return "plus.circle"
+        case .socialFeed: return "bubble.left.and.bubble.right"
         case .myProfile: return "person.circle"
         }
     }
@@ -40,6 +42,7 @@ enum TabItem: String, CaseIterable {
         case .yourList: return "list.bullet"
         case .searchItems: return "magnifyingglass"
         case .addItems: return "plus.circle.fill"
+        case .socialFeed: return "bubble.left.and.bubble.right.fill"
         case .myProfile: return "person.circle.fill"
         }
     }
@@ -78,6 +81,14 @@ struct AppCoordinatorView: View {
                             Text(TabItem.addItems.rawValue)
                         }
                         .tag(TabItem.addItems)
+                    
+                    SocialFeedView()
+                        .tabItem {
+                            Image(systemName: coordinator.selectedTab == .socialFeed ?
+                                  TabItem.socialFeed.selectedIconName : TabItem.socialFeed.iconName)
+                            Text(TabItem.socialFeed.rawValue)
+                        }
+                        .tag(TabItem.socialFeed)
                     
                     MyProfileView()
                         .tabItem {
