@@ -35,11 +35,6 @@ final class ProductViewModel: ObservableObject {
         do {
             products = try await repository.fetchListProducts()
             
-            // Debug: Print image URLs for all products
-            for product in products {
-                print("ProductViewModel: Product '\(product.productName ?? "Unknown")' has imageURL: '\(product.imageURL ?? "nil")'")
-            }
-            
             // Fetch images for products that don't have them
             await fetchImagesForProducts()
             
@@ -139,13 +134,8 @@ final class ProductViewModel: ObservableObject {
         do {
             favoriteProducts = try await repository.fetchFavoriteProducts()
             
-            // Debug: Print image URLs for all favorite products
-            for product in favoriteProducts {
-                print("ProductViewModel: Favorite product '\(product.productName ?? "Unknown")' has imageURL: '\(product.imageURL ?? "nil")'")
-            }
-            
             // Fetch images for favorite products that don't have them
-            await fetchImagesForProducts()
+            await fetchImagesForProductArray(favoriteProducts)
             
             errorMessage = nil
         } catch {
@@ -191,16 +181,17 @@ final class ProductViewModel: ObservableObject {
     }
     
     // Image Fetching
-    /// Fetches images for products that don't have image URLs
+    // Fetches images for products that don't have image URLs
     func fetchImagesForProducts() async {
-        print("ProductViewModel: Starting image fetch for products without images")
-        
+        await fetchImagesForProductArray(products)
+    }
+    
+    // Fetches images for any array of products that don't have image URLs
+    private func fetchImagesForProductArray(_ productArray: [GroceryItem]) async {
         // Get products that don't have image URLs
-        let productsWithoutImages = products.filter { $0.imageURL == nil || $0.imageURL?.isEmpty == true }
-        print("ProductViewModel: Found \(productsWithoutImages.count) products without images")
+        let productsWithoutImages = productArray.filter { $0.imageURL == nil || $0.imageURL?.isEmpty == true }
         
         if productsWithoutImages.isEmpty {
-            print("ProductViewModel: All products already have images")
             return
         }
         
@@ -208,24 +199,18 @@ final class ProductViewModel: ObservableObject {
         for product in productsWithoutImages {
             await fetchImageForProduct(product)
         }
-        
-        print("ProductViewModel: Completed image fetching")
     }
     
-    /// Fetches image for a specific product
+    // Fetches image for a specific product
     private func fetchImageForProduct(_ product: GroceryItem) async {
         do {
             let productName = product.productName ?? ""
-            print("ProductViewModel: Fetching image for '\(productName)'")
             
             if let imageURL = try await imageService.fetchImageURL(for: productName) {
-                print("ProductViewModel: Found image for '\(productName)': \(imageURL)")
-                
                 // Update product with image URL on main thread
                 await MainActor.run {
                     // Update the product
                     product.imageURL = imageURL
-                    print("ProductViewModel: Set imageURL to '\(imageURL)' for '\(productName)'")
                     
                     // Force a UI update by triggering objectWillChange
                     self.objectWillChange.send()
@@ -233,19 +218,16 @@ final class ProductViewModel: ObservableObject {
                     // Save to Core Data
                     do {
                         try product.managedObjectContext?.save()
-                        print("ProductViewModel: Saved image URL for '\(productName)' to Core Data")
                     } catch {
                         print("ProductViewModel: Error saving image URL: \(error.localizedDescription)")
                     }
                 }
-            } else {
-                print("ProductViewModel: No image found for '\(productName)'")
             }
             
         } catch {
             print("ProductViewModel: Error fetching image for '\(product.productName ?? "")': \(error.localizedDescription)")
-        }
     }
+}
     
     func searchProducts(by name: String) async {
         do {

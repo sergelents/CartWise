@@ -21,14 +21,10 @@ class ImageService: ImageServiceProtocol {
         self.networkService = networkService
     }
     
-    /// Fetches image URL for a product from Amazon API
+    // Fetches image URL for a product from Amazon API
     func fetchImageURL(for productName: String) async throws -> String? {
         do {
-            print("ImageService: Fetching image for '\(productName)'")
-            
             let amazonProducts = try await networkService.searchProductsOnAmazon(by: productName)
-            print("ImageService: Found \(amazonProducts.count) Amazon products for '\(productName)'")
-            
             return amazonProducts.first?.image
         } catch {
             print("ImageService: Error fetching image for '\(productName)': \(error.localizedDescription)")
@@ -36,7 +32,7 @@ class ImageService: ImageServiceProtocol {
         }
     }
     
-    /// Loads image data from URL
+    // Loads image data from URL
     func loadImage(from url: URL) async throws -> UIImage? {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)

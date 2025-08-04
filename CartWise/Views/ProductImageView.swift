@@ -13,6 +13,9 @@ struct ProductImageView: View {
     let size: CGSize
     let cornerRadius: CGFloat
     let showSaleBadge: Bool
+    @State private var loadedImage: UIImage?
+    @State private var isLoading = false
+    @State private var hasError = false
     
     init(
         product: GroceryItem,
@@ -27,21 +30,67 @@ struct ProductImageView: View {
     }
     
     var body: some View {
-        if let imageURL = product.imageURL, !imageURL.isEmpty {
-            AsyncImage(url: URL(string: imageURL)) { phase in
-                switch phase {
-                case .empty:
+        Group {
+            if let imageURL = product.imageURL, !imageURL.isEmpty {
+                if let loadedImage = loadedImage {
+                    // Display loaded image
+                    Image(uiImage: loadedImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: size.width, height: size.height)
+                        .cornerRadius(cornerRadius)
+                        .overlay(saleBadgeOverlay)
+                } else if isLoading {
                     loadingView
-                case .success(let image):
-                    successView(image: image)
-                case .failure(_):
+                } else if hasError {
                     failureView
-                @unknown default:
-                    failureView
+                } else {
+                    // Start loading
+                    loadingView
+                        .onAppear {
+                            loadImageFromURL(imageURL)
+                        }
+                }
+            } else {
+                noImagePlaceholder
+            }
+        }
+        .onChange(of: product.imageURL) { newURL in
+            if let newURL = newURL, !newURL.isEmpty {
+                loadImageFromURL(newURL)
+            }
+        }
+    }
+    
+    private func loadImageFromURL(_ urlString: String) {
+        guard let url = URL(string: urlString) else {
+            hasError = true
+            return
+        }
+        
+        isLoading = true
+        hasError = false
+        
+        Task {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                if let image = UIImage(data: data) {
+                    await MainActor.run {
+                        self.loadedImage = image
+                        self.isLoading = false
+                    }
+                } else {
+                    await MainActor.run {
+                        self.hasError = true
+                        self.isLoading = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.hasError = true
+                    self.isLoading = false
                 }
             }
-        } else {
-            noImagePlaceholder
         }
     }
     
@@ -64,19 +113,7 @@ struct ProductImageView: View {
             .overlay(saleBadgeOverlay)
     }
     
-    private func successView(image: Image) -> some View {
-        ZStack {
-            image
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: size.width, height: size.height)
-                .cornerRadius(cornerRadius)
-            
-            if showSaleBadge {
-                saleBadgeOverlay
-            }
-        }
-    }
+
     
     private var failureView: some View {
         RoundedRectangle(cornerRadius: cornerRadius)
