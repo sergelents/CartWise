@@ -14,7 +14,8 @@ class ReputationManager: ObservableObject {
     private init() {}
     
     func updateUserReputation(userId: String) async {
-        let context = PersistenceController.shared.container.viewContext
+        // Use CoreDataStack to ensure we're in the right context
+        let context = await CoreDataStack.shared.viewContext
         
         do {
             let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
@@ -61,7 +62,7 @@ class ReputationManager: ObservableObject {
     }
     
     func getUserReputation(userId: String) async -> (updates: Int, level: String)? {
-        let context = PersistenceController.shared.container.viewContext
+        let context = await CoreDataStack.shared.viewContext
         
         do {
             let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
@@ -80,7 +81,7 @@ class ReputationManager: ObservableObject {
     }
     
     func getCurrentUserReputation() async -> (updates: Int, level: String)? {
-        let context = PersistenceController.shared.container.viewContext
+        let context = await CoreDataStack.shared.viewContext
         
         do {
             let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
@@ -90,12 +91,45 @@ class ReputationManager: ObservableObject {
             let users = try context.fetch(fetchRequest)
             
             if let user = users.first {
+                print("ReputationManager: Found user \(user.username ?? "Unknown") with \(user.updates) updates, level: \(user.level ?? "None")")
                 return (Int(user.updates), user.level ?? "New Shopper")
+            } else {
+                print("ReputationManager: No users found")
             }
         } catch {
             print("Error fetching current user reputation: \(error)")
         }
         
         return nil
+    }
+    
+    // Debug function to manually test reputation updates
+    func debugReputationUpdate() async {
+        let context = await CoreDataStack.shared.viewContext
+        
+        do {
+            let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            fetchRequest.fetchLimit = 1
+            
+            let users = try context.fetch(fetchRequest)
+            
+            if let user = users.first {
+                print("Debug: Current user \(user.username ?? "Unknown") has \(user.updates) updates")
+                
+                // Manually increment updates
+                user.updates += 1
+                let newLevel = ReputationSystem.shared.getCurrentLevel(updates: Int(user.updates))
+                user.level = newLevel.name
+                
+                try context.save()
+                
+                print("Debug: Updated user to \(user.updates) updates, level: \(newLevel.name)")
+            } else {
+                print("Debug: No users found")
+            }
+        } catch {
+            print("Debug: Error updating reputation: \(error)")
+        }
     }
 } 
