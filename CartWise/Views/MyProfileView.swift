@@ -12,113 +12,41 @@ struct MyProfileView: View {
     @State private var currentUsername: String = ""
     @State private var isLoadingUser: Bool = true
     @State private var showAddLocation: Bool = false
+    @State private var selectedTab: ProfileTab = .favorites
+    
+    enum ProfileTab: String, CaseIterable {
+        case favorites = "Favorites"
+        case locations = "Locations"
+    }
+    
     var body: some View {
         NavigationView {
             ZStack {
-                // Enhanced background with gradient
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        AppColors.backgroundSecondary,
-                        AppColors.backgroundSecondary.opacity(0.8),
-                        Color.white.opacity(0.1)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                // Background
+                AppColors.backgroundSecondary
+                    .ignoresSafeArea()
+                
                 ScrollView {
-                    VStack(spacing: 32) {
-                        // Enhanced Profile Card
-                        VStack(spacing: 16) {
-                            // Profile Avatar with enhanced styling
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [
-                                                AppColors.accentGreen.opacity(0.2),
-                                                AppColors.accentGreen.opacity(0.1)
-                                            ]),
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    )
-                                    .frame(width: 100, height: 100)
-                                Image(systemName: "person.crop.circle.fill")
-                                    .resizable()
-                                    .frame(width: 80, height: 80)
-                                    .foregroundColor(AppColors.accentGreen)
-                                    .shadow(color: AppColors.accentGreen.opacity(0.3), radius: 8, x: 0, y: 4)
-                            }
-                            .padding(.top, 28)
-                            if isLoadingUser {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                    .padding(.vertical, 12)
-                            } else {
-                                Text(currentUsername.isEmpty ? "User" : currentUsername)
-                                    .font(.poppins(size: 26, weight: .bold))
-                                    .foregroundColor(AppColors.textPrimary)
-                                    .shadow(color: Color.black.opacity(0.1), radius: 1, x: 0, y: 1)
-                            }
-                            Text("Manage your favorite items and account")
-                                .font(.poppins(size: 16, weight: .regular))
-                                .foregroundColor(.gray)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 20)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            RoundedRectangle(cornerRadius: 24)
-                                .fill(Color.white)
-                                .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
+                    VStack(spacing: 24) {
+                        // Profile Card
+                        ProfileCard(
+                            currentUsername: currentUsername,
+                            isLoadingUser: isLoadingUser
                         )
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                        // Enhanced Favorites Section
-                        FavoriteItemsView()
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                        // Locations Section
-                        LocationsSectionView()
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                        // Enhanced Log Out Button
-                        Button(action: {
+                        
+                        // Tabbed Content
+                        TabbedContentView(selectedTab: $selectedTab)
+                        
+                        // Logout Button
+                        LogoutButton(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 // Clear the current username when logging out
                                 UserDefaults.standard.removeObject(forKey: "currentUsername")
                                 isLoggedIn = false
                             }
-                        }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                    .font(.system(size: 18, weight: .medium))
-                                Text("Log Out")
-                                    .font(.poppins(size: 18, weight: .semibold))
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .fill(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [
-                                                AppColors.accentGreen,
-                                                AppColors.accentGreen.opacity(0.8)
-                                            ]),
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .shadow(color: AppColors.accentGreen.opacity(0.3), radius: 12, x: 0, y: 6)
-                            )
-                        }
-                        .padding(.horizontal, 20)
+                        })
+                        .padding(.horizontal)
                         .padding(.bottom, 32)
-                        .scaleEffect(1.0)
-                        .animation(.easeInOut(duration: 0.2), value: isLoggedIn)
                     }
                     .padding(.top, 16)
                 }
@@ -168,5 +96,162 @@ struct MyProfileView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Tabbed Content View
+struct TabbedContentView: View {
+    @Binding var selectedTab: MyProfileView.ProfileTab
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Tab Selector
+            TabSelector(selectedTab: $selectedTab)
+            
+            // Tab Content
+            VStack(spacing: 0) {
+                if selectedTab == .favorites {
+                    FavoriteItemsView()
+                        .transition(.opacity)
+                } else if selectedTab == .locations {
+                    LocationsSectionView()
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: selectedTab)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+        )
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Tab Selector
+struct TabSelector: View {
+    @Binding var selectedTab: MyProfileView.ProfileTab
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(MyProfileView.ProfileTab.allCases, id: \.self) { tab in
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTab = tab
+                    }
+                }) {
+                    VStack(spacing: 8) {
+                        Text(tab.rawValue)
+                            .font(.poppins(size: 16, weight: selectedTab == tab ? .semibold : .medium))
+                            .foregroundColor(selectedTab == tab ? AppColors.accentGreen : .gray)
+                        
+                        // Underline indicator
+                        Rectangle()
+                            .fill(selectedTab == tab ? AppColors.accentGreen : Color.clear)
+                            .frame(height: 2)
+                            .cornerRadius(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+    }
+}
+
+// MARK: - Profile Card Component
+struct ProfileCard: View {
+    let currentUsername: String
+    let isLoadingUser: Bool
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // Profile Avatar
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                AppColors.accentGreen.opacity(0.15),
+                                AppColors.accentGreen.opacity(0.05)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 80, height: 80)
+                
+                Image(systemName: "person.crop.circle.fill")
+                    .resizable()
+                    .frame(width: 64, height: 64)
+                    .foregroundColor(AppColors.accentGreen)
+            }
+            .padding(.top, 16)
+            
+            // User Info
+            VStack(spacing: 8) {
+                if isLoadingUser {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .padding(.vertical, 8)
+                } else {
+                    Text(currentUsername.isEmpty ? "User" : currentUsername)
+                        .font(.poppins(size: 24, weight: .bold))
+                        .foregroundColor(AppColors.textPrimary)
+                }
+                
+                Text("Manage your account and preferences")
+                    .font(.poppins(size: 14, weight: .regular))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+        )
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Logout Button Component
+struct LogoutButton: View {
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .font(.system(size: 16, weight: .medium))
+                Text("Log Out")
+                    .font(.poppins(size: 16, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                AppColors.accentRed,
+                                AppColors.accentRed.opacity(0.8)
+                            ]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .shadow(color: AppColors.accentRed.opacity(0.25), radius: 8, x: 0, y: 4)
+            )
+        }
+        .scaleEffect(1.0)
+        .animation(.easeInOut(duration: 0.2), value: true)
     }
 }
