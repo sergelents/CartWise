@@ -319,14 +319,7 @@ struct ProductDetailView: View {
                         product: product,
                         currentSelectedLocation: currentSelectedLocation ?? selectedLocation
                     )
-                    // Add to Shopping List and Add to Favorites View
-                    AddToShoppingListAndFavoritesView(
-                        product: product,
-                        onAddToShoppingList: {},
-                        onAddToFavorites: {}
-                    )
-                    .padding(.bottom, 14)
-                    // Update Price View
+                    // Update Price View - Moved up for better accessibility
                     UpdatePriceView(
                         product: product,
                         // Get actual username from user
@@ -344,6 +337,13 @@ struct ProductDetailView: View {
                         lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
                         lastUpdatedBy: "-"
                     )
+                    // Add to Shopping List and Add to Favorites View
+                    AddToShoppingListAndFavoritesView(
+                        product: product,
+                        onAddToShoppingList: {},
+                        onAddToFavorites: {}
+                    )
+                    .padding(.bottom, 14)
                 }
                 .padding(.horizontal, 24)
             }

@@ -79,6 +79,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     // createProduct was creating GroceryItem objects in background Core Data context, but ViewModel expecting objects from main context.
     func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false, isOnSale: Bool = false) async throws -> GroceryItem {
         print("CoreDataContainer: Creating product with store: '\(store ?? "nil")'")
+        let currentUsername = await getCurrentUsername()
         // Create in background context first
         let objectID = try await coreDataStack.performBackgroundTask { context in
             let product = GroceryItem(
@@ -107,7 +108,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                     store: store,
                     groceryItem: product,
                     location: locationEntity,
-                    updatedBy: "System" // Default user for now
+                    updatedBy: currentUsername
                 )
             }
             try context.save()
@@ -167,6 +168,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         }
     }
     func updateProductWithPrice(product: GroceryItem, price: Double, store: String, location: String?) async throws {
+        let currentUsername = await getCurrentUsername()
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             let productInContext = try context.existingObject(with: objectID) as! GroceryItem
@@ -181,7 +183,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 // Update existing price
                 existingPrice.price = price
                 existingPrice.lastUpdated = Date()
-                existingPrice.updatedBy = "System" // Use default for now
+                existingPrice.updatedBy = currentUsername
             } else {
                 // Create new price entity
                 let priceEntity = GroceryItemPrice(
@@ -192,7 +194,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                     store: store,
                     groceryItem: productInContext,
                     location: locationEntity,
-                    updatedBy: "System" // Use default for now
+                    updatedBy: currentUsername
                 )
             }
             productInContext.updatedAt = Date()
