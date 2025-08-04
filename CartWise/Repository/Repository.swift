@@ -28,6 +28,7 @@ protocol ProductRepositoryProtocol: Sendable {
     func createTag(id: String, name: String, color: String) async throws -> Tag
     func updateTag(_ tag: Tag) async throws
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws
+    func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func initializeDefaultTags() async throws
 }
@@ -211,6 +212,10 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     }
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws {
         try await coreDataContainer.addTagsToProduct(product, tags: tags)
+    }
+    
+    func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async throws {
+        try await coreDataContainer.replaceTagsForProduct(product, tags: tags)
     }
     func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws {
         try await coreDataContainer.removeTagsFromProduct(product, tags: tags)

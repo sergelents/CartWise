@@ -411,6 +411,15 @@ extension ProductViewModel {
             // Optionally handle error
         }
     }
+    
+    @MainActor
+    func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async {
+        do {
+            try await repository.replaceTagsForProduct(product, tags: tags)
+        } catch {
+            // Optionally handle error
+        }
+    }
     // MARK: - Location Management
     @MainActor
     func loadLocations() async {

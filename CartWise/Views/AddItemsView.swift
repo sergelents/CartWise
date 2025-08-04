@@ -231,6 +231,13 @@ struct AddItemsView: View {
                             pendingLocation = mostRecentPrice.location
                         }
                         
+                        // Load existing tags
+                        if let existingTags = existingProduct.tags as? Set<Tag> {
+                            selectedTags = Array(existingTags)
+                        } else {
+                            selectedTags = []
+                        }
+                        
                     } else {
                         isExistingProduct = false
                         // Keep fields empty for new product
@@ -277,7 +284,12 @@ struct AddItemsView: View {
             )
             // Associate tags with the new product
             if let newProduct = newProduct {
-                await productViewModel.addTagsToProduct(newProduct, tags: tags)
+                // For existing products, replace tags instead of adding to them
+                if wasExistingProduct {
+                    await productViewModel.replaceTagsForProduct(newProduct, tags: tags)
+                } else {
+                    await productViewModel.addTagsToProduct(newProduct, tags: tags)
+                }
                 // Add to shopping list if requested
                 if addToShoppingList {
                     await productViewModel.addExistingProductToShoppingList(newProduct)
@@ -705,10 +717,18 @@ struct BarcodeConfirmationView: View {
                     // Selected Tags Display
                     if !selectedTags.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Selected Tags")
-                                .font(.headline)
-                                .foregroundColor(AppColors.textPrimary)
-                                .padding(.bottom, 4)
+                            HStack {
+                                Text("Selected Tags")
+                                    .font(.headline)
+                                    .foregroundColor(AppColors.textPrimary)
+                                Spacer()
+                                Button("Edit") {
+                                    showingTagPicker = true
+                                }
+                                .font(.subheadline)
+                                .foregroundColor(AppColors.accentGreen)
+                            }
+                            .padding(.bottom, 4)
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
                                 ForEach(selectedTags, id: \.id) { tag in
                                     TagChipView(tag: tag) {
