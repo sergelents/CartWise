@@ -141,33 +141,7 @@ struct StorePriceRow: View {
                 }
             }
             
-            // Shopper Attribution
-            if let itemShoppers = storePrice.itemShoppers, !itemShoppers.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Updated by:")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    
-                    LazyVGrid(columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ], spacing: 4) {
-                        ForEach(Array(itemShoppers.prefix(4)), id: \.key) { productName, shopper in
-                            HStack(spacing: 4) {
-                                Image(systemName: "person.circle.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.blue)
-                                
-                                Text(shopper)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                            }
-                        }
-                    }
-                }
-                .padding(.leading, 24)
-            }
+
         }
         .padding(.vertical, 4)
     }
