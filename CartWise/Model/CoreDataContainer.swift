@@ -114,6 +114,24 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             }
             try context.save()
             print("CoreDataContainer: Context saved, final store: '\(product.store ?? "nil")'")
+            
+            // Update user reputation for product creation (barcode scanning)
+            if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
+                // Increment updates count
+                currentUser.updates += 1
+                
+                // Update level based on new count
+                let newLevel = ReputationSystem.shared.getCurrentLevel(updates: Int(currentUser.updates))
+                currentUser.level = newLevel.name
+                
+                // Save the context to persist the reputation update
+                try context.save()
+                
+                print("Updated reputation for product creation - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+            } else {
+                print("Warning: Could not find current user for product creation reputation update")
+            }
+            
             return product.objectID
         }
         // Then fetch from main context to ensure proper access

@@ -32,11 +32,11 @@ The CartWise reputation system has been successfully implemented to incentivize 
 ## 🔄 **Reputation Tracking**
 
 ### Automatic Updates
-When a user updates a product price, the system automatically:
+When a user updates a product price OR scans a barcode to add a new product, the system automatically:
 1. Increments their update count
 2. Recalculates their level based on new total
 3. Updates their level in Core Data
-4. Associates the price update with their username
+4. Associates the update with their username
 
 ### Price Attribution
 Each price update is tracked with:
@@ -114,7 +114,7 @@ When users view price comparisons, they can see:
 
 ## 📱 **User Experience Flow**
 
-1. **User adds/updates a price** → System tracks the update
+1. **User adds/updates a price OR scans a barcode** → System tracks the update
 2. **Reputation automatically updates** → Level recalculated
 3. **UI reflects new status** → Progress bars, level badges update
 4. **Price comparison shows attribution** → Other users see who updated prices
@@ -158,7 +158,7 @@ When users view price comparisons, they can see:
 1. **Build and run the app**
 2. **Navigate to Profile tab**
 3. **Select the new "Reputation" tab**
-4. **Update some product prices** to see reputation progression
+4. **Update product prices OR scan barcodes** to see reputation progression
 5. **View price comparisons** to see shopper attribution
 
 The reputation system is now fully integrated into the CartWise app and will automatically track user contributions and provide gamified feedback to encourage community participation. 

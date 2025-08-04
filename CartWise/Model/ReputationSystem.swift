@@ -24,7 +24,7 @@ class ReputationSystem: ObservableObject {
             icon: "cart.badge.plus",
             color: .gray,
             minUpdates: 0,
-            description: "Just getting started with price updates"
+            description: "Just getting started with product contributions"
         ),
         ShopperLevel(
             name: "Regular Shopper",
@@ -38,21 +38,21 @@ class ReputationSystem: ObservableObject {
             icon: "cart.circle.fill",
             color: .blue,
             minUpdates: 25,
-            description: "A trusted source for price information"
+            description: "A trusted source for product information"
         ),
         ShopperLevel(
             name: "Expert Shopper",
             icon: "cart.badge.checkmark",
             color: .orange,
             minUpdates: 50,
-            description: "Highly reliable price updates"
+            description: "Highly reliable product contributions"
         ),
         ShopperLevel(
             name: "Master Shopper",
             icon: "crown.fill",
             color: .yellow,
             minUpdates: 100,
-            description: "The ultimate price update authority"
+            description: "The ultimate product contribution authority"
         ),
         ShopperLevel(
             name: "Legendary Shopper",
