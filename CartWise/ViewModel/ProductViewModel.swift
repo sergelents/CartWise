@@ -7,6 +7,7 @@
 import SwiftUI
 import Combine
 import CoreData
+import Foundation
 @MainActor
 final class ProductViewModel: ObservableObject {
     @Published var products: [GroceryItem] = []
@@ -18,12 +19,14 @@ final class ProductViewModel: ObservableObject {
     @Published var locations: [Location] = []
     var errorMessage: String?
     private let repository: ProductRepositoryProtocol
+    private let imageService: ImageServiceProtocol
     // Computed property to check if all products are completed
     var allProductsCompleted: Bool {
         !products.isEmpty && products.allSatisfy { $0.isCompleted }
     }
-    init(repository: ProductRepositoryProtocol) {
+    init(repository: ProductRepositoryProtocol, imageService: ImageServiceProtocol = ImageService()) {
         self.repository = repository
+        self.imageService = imageService
         Task {
             await loadTags()
         }
@@ -31,6 +34,15 @@ final class ProductViewModel: ObservableObject {
     func loadShoppingListProducts() async {
         do {
             products = try await repository.fetchListProducts()
+            
+            // Debug: Print image URLs for all products
+            for product in products {
+                print("ProductViewModel: Product '\(product.productName ?? "Unknown")' has imageURL: '\(product.imageURL ?? "nil")'")
+            }
+            
+            // Fetch images for products that don't have them
+            await fetchImagesForProducts()
+            
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -126,6 +138,15 @@ final class ProductViewModel: ObservableObject {
     func loadFavoriteProducts() async {
         do {
             favoriteProducts = try await repository.fetchFavoriteProducts()
+            
+            // Debug: Print image URLs for all favorite products
+            for product in favoriteProducts {
+                print("ProductViewModel: Favorite product '\(product.productName ?? "Unknown")' has imageURL: '\(product.imageURL ?? "nil")'")
+            }
+            
+            // Fetch images for favorite products that don't have them
+            await fetchImagesForProducts()
+            
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -168,6 +189,64 @@ final class ProductViewModel: ObservableObject {
             return false
         }
     }
+    
+    // Image Fetching
+    /// Fetches images for products that don't have image URLs
+    func fetchImagesForProducts() async {
+        print("ProductViewModel: Starting image fetch for products without images")
+        
+        // Get products that don't have image URLs
+        let productsWithoutImages = products.filter { $0.imageURL == nil || $0.imageURL?.isEmpty == true }
+        print("ProductViewModel: Found \(productsWithoutImages.count) products without images")
+        
+        if productsWithoutImages.isEmpty {
+            print("ProductViewModel: All products already have images")
+            return
+        }
+        
+        // Fetch images for each product
+        for product in productsWithoutImages {
+            await fetchImageForProduct(product)
+        }
+        
+        print("ProductViewModel: Completed image fetching")
+    }
+    
+    /// Fetches image for a specific product
+    private func fetchImageForProduct(_ product: GroceryItem) async {
+        do {
+            let productName = product.productName ?? ""
+            print("ProductViewModel: Fetching image for '\(productName)'")
+            
+            if let imageURL = try await imageService.fetchImageURL(for: productName) {
+                print("ProductViewModel: Found image for '\(productName)': \(imageURL)")
+                
+                // Update product with image URL on main thread
+                await MainActor.run {
+                    // Update the product
+                    product.imageURL = imageURL
+                    print("ProductViewModel: Set imageURL to '\(imageURL)' for '\(productName)'")
+                    
+                    // Force a UI update by triggering objectWillChange
+                    self.objectWillChange.send()
+                    
+                    // Save to Core Data
+                    do {
+                        try product.managedObjectContext?.save()
+                        print("ProductViewModel: Saved image URL for '\(productName)' to Core Data")
+                    } catch {
+                        print("ProductViewModel: Error saving image URL: \(error.localizedDescription)")
+                    }
+                }
+            } else {
+                print("ProductViewModel: No image found for '\(productName)'")
+            }
+            
+        } catch {
+            print("ProductViewModel: Error fetching image for '\(product.productName ?? "")': \(error.localizedDescription)")
+        }
+    }
+    
     func searchProducts(by name: String) async {
         do {
             products = try await repository.searchProducts(by: name)
@@ -186,7 +265,8 @@ final class ProductViewModel: ObservableObject {
                 return
             }
             let id = UUID().uuidString
-            _ = try await repository.createProduct(
+            // Capture the created product to fetch its image
+            let savedProduct = try await repository.createProduct(
                 id: id,
                 productName: name,
                 brand: brand,
@@ -200,6 +280,10 @@ final class ProductViewModel: ObservableObject {
                 isInShoppingList: true,
                 isOnSale: isOnSale
             )
+            
+            // Fetch image for the newly created product
+            await fetchImageForProduct(savedProduct)
+            
             await loadShoppingListProducts()
             errorMessage = nil
         } catch {
@@ -257,6 +341,7 @@ final class ProductViewModel: ObservableObject {
                 return nil
             }
             let id = UUID().uuidString
+            // Capture the created product to fetch its image
             let savedProduct = try await repository.createProduct(
                 id: id,
                 productName: productName,
@@ -273,6 +358,10 @@ final class ProductViewModel: ObservableObject {
             )
             print("ProductViewModel: Product created successfully")
             print("ProductViewModel: Saved product store: '\(savedProduct.store ?? "nil")'")
+            
+            // Fetch image for the newly created product
+            await fetchImageForProduct(savedProduct)
+            
             await loadShoppingListProducts()
             errorMessage = nil
             return savedProduct

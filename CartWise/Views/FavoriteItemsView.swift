@@ -142,25 +142,14 @@ struct FavoriteItemRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 16) {
-                // Enhanced Product image placeholder
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color(.systemGray5),
-                                Color(.systemGray6)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 56, height: 56)
-                    .overlay(
-                        Image(systemName: "photo")
-                            .foregroundColor(.gray.opacity(0.6))
-                            .font(.system(size: 20, weight: .light))
-                    )
-                    .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+                                            // Product image
+                            ProductImageView(
+                                product: product,
+                                size: CGSize(width: 56, height: 56),
+                                cornerRadius: 12,
+                                showSaleBadge: false
+                            )
+                            .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(product.productName ?? "Unknown Product")
                         .font(.poppins(size: 17, weight: .semibold))
