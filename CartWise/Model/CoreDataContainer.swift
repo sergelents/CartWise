@@ -28,6 +28,7 @@ protocol CoreDataContainerProtocol: Sendable {
     // Price comparison methods
     func getAllStores() async throws -> [String]
     func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double?
+    func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double?, shopper: String?)
     // Tag-related methods
     func fetchAllTags() async throws -> [Tag]
     func createTag(id: String, name: String, color: String) async throws -> Tag
@@ -113,6 +114,24 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             }
             try context.save()
             print("CoreDataContainer: Context saved, final store: '\(product.store ?? "nil")'")
+            
+            // Update user reputation for product creation (barcode scanning)
+            if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
+                // Increment updates count
+                currentUser.updates += 1
+                
+                // Update level based on new count
+                let newLevel = ReputationSystem.shared.getCurrentLevel(updates: Int(currentUser.updates))
+                currentUser.level = newLevel.name
+                
+                // Save the context to persist the reputation update
+                try context.save()
+                
+                print("✅ REPUTATION UPDATE: Product creation - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+            } else {
+                print("⚠️ WARNING: Could not find current user for product creation reputation update")
+            }
+            
             return product.objectID
         }
         // Then fetch from main context to ensure proper access
@@ -199,6 +218,23 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             }
             productInContext.updatedAt = Date()
             try context.save()
+            
+            // Update user reputation directly in the same context
+            if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
+                // Increment updates count
+                currentUser.updates += 1
+                
+                // Update level based on new count
+                let newLevel = ReputationSystem.shared.getCurrentLevel(updates: Int(currentUser.updates))
+                currentUser.level = newLevel.name
+                
+                // Save the context to persist the reputation update
+                try context.save()
+                
+                print("✅ REPUTATION UPDATE: Price update - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+            } else {
+                print("⚠️ WARNING: Could not find current user for reputation update")
+            }
         }
     }
     func deleteProduct(_ product: GroceryItem) async throws {
@@ -386,6 +422,19 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 price.store == store
             }
             return storePrice?.price
+        }
+    }
+    
+    func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double?, shopper: String?) {
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            // Get all prices for this item
+            let prices = item.priceArray
+            // Find the price for this specific store
+            let storePrice = prices.first { price in
+                price.store == store
+            }
+            return (storePrice?.price, storePrice?.updatedBy)
         }
     }
 }

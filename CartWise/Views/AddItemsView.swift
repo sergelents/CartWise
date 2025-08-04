@@ -270,6 +270,9 @@ struct AddItemsView: View {
                 if priceValue > 0 {
                     await createSocialFeedEntryForProduct(product: newProduct, price: priceValue, location: location, isNewProduct: !wasExistingProduct)
                 }
+                
+                // Note: Reputation is updated in CoreDataContainer.createProduct() and updateProductWithPrice()
+                // No need to update here to avoid double incrementing
             }
             await MainActor.run {
                 isProcessing = false
@@ -319,6 +322,8 @@ struct AddItemsView: View {
         }
         return nil
     }
+    
+
     private func createSocialFeedEntryForProduct(product: GroceryItem, price: Double, location: Location?, isNewProduct: Bool) async {
         do {
             let context = await CoreDataStack.shared.viewContext

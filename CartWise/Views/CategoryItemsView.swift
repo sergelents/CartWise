@@ -453,6 +453,24 @@ struct ProductDetailView: View {
             }
             try context.save()
             print("Successfully updated product price to $\(newPrice) for location: \(locationInContext.name ?? "Unknown")")
+            
+            // Update user reputation directly in the same context
+            let currentUsername = await getCurrentUsername()
+            if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
+                // Increment updates count
+                currentUser.updates += 1
+                
+                // Update level based on new count
+                let newLevel = ReputationSystem.shared.getCurrentLevel(updates: Int(currentUser.updates))
+                currentUser.level = newLevel.name
+                
+                // Save the context to persist the reputation update
+                try context.save()
+                
+                print("✅ REPUTATION UPDATE: Price update (CategoryItemsView) - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+            } else {
+                print("⚠️ WARNING: Could not find current user for reputation update")
+            }
         } catch {
             print("Error updating product price: \(error)")
         }

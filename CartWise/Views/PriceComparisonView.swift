@@ -115,29 +115,33 @@ struct StorePriceRow: View {
     let isBest: Bool
     let rank: Int
     var body: some View {
-        HStack {
-            // Rank
-            Text("\(rank).")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
-                .frame(width: 20, alignment: .leading)
-            // Store name
-            Text(storePrice.store)
-                .font(.subheadline)
-                .fontWeight(isBest ? .semibold : .regular)
-                .foregroundColor(isBest ? .green : .primary)
-            Spacer()
-            // Price
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("$\(String(format: "%.2f", storePrice.totalPrice))")
+        VStack(spacing: 8) {
+            HStack {
+                // Rank
+                Text("\(rank).")
                     .font(.subheadline)
-                    .fontWeight(isBest ? .bold : .medium)
-                    .foregroundColor(isBest ? .green : .primary)
-                Text("\(storePrice.availableItems)/\(storePrice.availableItems + storePrice.unavailableItems) items")
-                    .font(.caption2)
+                    .fontWeight(.semibold)
                     .foregroundColor(.secondary)
+                    .frame(width: 20, alignment: .leading)
+                // Store name
+                Text(storePrice.store)
+                    .font(.subheadline)
+                    .fontWeight(isBest ? .semibold : .regular)
+                    .foregroundColor(isBest ? .green : .primary)
+                Spacer()
+                // Price
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("$\(String(format: "%.2f", storePrice.totalPrice))")
+                        .font(.subheadline)
+                        .fontWeight(isBest ? .bold : .medium)
+                        .foregroundColor(isBest ? .green : .primary)
+                    Text("\(storePrice.availableItems)/\(storePrice.availableItems + storePrice.unavailableItems) items")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
+            
+
         }
         .padding(.vertical, 4)
     }
