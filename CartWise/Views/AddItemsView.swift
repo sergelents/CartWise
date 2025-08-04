@@ -71,15 +71,14 @@ struct AddItemsView: View {
                         .fill(AppColors.backgroundSecondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .overlay(
-                            VStack(spacing: 12) {
-                                Image(systemName: "barcode.viewfinder")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(AppColors.accentGreen)
-                                Text("Scan barcode")
-                                    .font(.headline)
-                                    .foregroundColor(AppColors.textPrimary)
+                            VStack(spacing: 8) {
+                                Text("Review and edit the product information")
+                                    .font(.caption)
+                                    .foregroundColor(AppColors.textPrimary.opacity(0.7))
+                                    .multilineTextAlignment(.center)
                             }
                         )
+                        .padding(.top, 40)
                         .padding(.horizontal)
                 }
                 // Action Buttons
@@ -587,36 +586,21 @@ struct BarcodeConfirmationView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Image(systemName: "barcode.viewfinder")
-                            .font(.system(size: 40))
-                            .foregroundColor(AppColors.accentGreen)
-                        Text("Product Details")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        Text("Review and edit the product information")
-                            .font(.body)
-                            .foregroundColor(AppColors.textPrimary.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.top, 20)
+
                     // Form Fields
                     VStack(spacing: 16) {
                         // Barcode Field
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(spacing: 8) {
                             Text("Barcode Number")
                                 .font(.headline)
                                 .foregroundColor(AppColors.textPrimary)
-                            TextField("Barcode", text: $barcode)
+                            Text(barcode)
                                 .font(.system(.body, design: .monospaced))
-                                .padding()
-                                .background(AppColors.backgroundSecondary.opacity(0.3))
-                                .cornerRadius(8)
-                                .keyboardType(.numberPad)
-                                .disabled(true)
-                                .foregroundColor(AppColors.textPrimary.opacity(0.5))
+                                .foregroundColor(AppColors.textPrimary.opacity(0.7))
                         }
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom, 16)
                         // Product Name Field
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Product Name")
@@ -627,7 +611,6 @@ struct BarcodeConfirmationView: View {
                                 .padding()
                                 .background(AppColors.backgroundSecondary)
                                 .cornerRadius(8)
-
                         }
                         // Company Field
                         VStack(alignment: .leading, spacing: 8) {
@@ -639,7 +622,6 @@ struct BarcodeConfirmationView: View {
                                 .padding()
                                 .background(AppColors.backgroundSecondary)
                                 .cornerRadius(8)
-
                         }
                         // Category Field
                         VStack(alignment: .leading, spacing: 8) {
@@ -673,7 +655,6 @@ struct BarcodeConfirmationView: View {
                                 .background(AppColors.backgroundSecondary)
                                 .cornerRadius(8)
                                 .keyboardType(.decimalPad)
-
                         }
                         // Location Field
                         VStack(alignment: .leading, spacing: 8) {
@@ -794,8 +775,7 @@ struct BarcodeConfirmationView: View {
 
                 }
             }
-            .navigationTitle("Product Details")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
