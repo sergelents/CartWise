@@ -197,36 +197,34 @@ struct AddItemsView: View {
         }
     }
     private func handleBarcodeScanned(_ barcode: String) {
+        // Reset all pending data first to ensure clean state
+        resetPendingData()
         pendingBarcode = barcode
         showingCamera = false
+        
         // Check if product already exists and fetch its data
         Task {
             do {
                 let existingProducts = try await productViewModel.searchProductsByBarcode(barcode)
-                if let existingProduct = existingProducts.first {
-                    // Auto-fill with existing data
-                    await MainActor.run {
+                await MainActor.run {
+                    if let existingProduct = existingProducts.first {
+                        // Auto-fill with existing data
                         isExistingProduct = true
                         pendingProductName = existingProduct.productName ?? ""
                         pendingCompany = existingProduct.brand ?? ""
                         pendingCategory = ProductCategory(rawValue: existingProduct.category ?? "") ?? .none
                         pendingIsOnSale = existingProduct.isOnSale
-                        // Get the most recent price
+                        
+                        // Get the most recent price and location
                         if let prices = existingProduct.prices as? Set<GroceryItemPrice>,
                            let mostRecentPrice = prices.max(by: { ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) }) {
                             pendingPrice = String(format: "%.2f", mostRecentPrice.price)
-                            // Set the location based on the most recent price
-                            if let priceLocation = mostRecentPrice.location {
-                                pendingLocation = priceLocation
-                            }
+                            pendingLocation = mostRecentPrice.location
                         }
-                    }
-                } else {
-                    await MainActor.run {
+                    } else {
                         isExistingProduct = false
+                        // Keep fields empty for new product
                     }
-                }
-                await MainActor.run {
                     showingBarcodeConfirmation = true
                 }
             } catch {
@@ -509,6 +507,78 @@ struct BarcodeConfirmationView: View {
     let onConfirm: (String, String, String, String, ProductCategory, Bool, Location?, [Tag], Bool) -> Void
     let onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
+    
+    // Track original values to detect changes
+    @State private var originalProductName: String = ""
+    @State private var originalCompany: String = ""
+    @State private var originalPrice: String = ""
+    @State private var originalCategory: ProductCategory = .none
+    @State private var originalIsOnSale: Bool = false
+    @State private var originalLocation: Location? = nil
+    
+    // Form validation
+    private var isFormValid: Bool {
+        !barcode.isEmpty && 
+        !productName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !company.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !price.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        selectedLocation != nil &&
+        selectedCategory != .none
+    }
+    
+    private var validationMessages: [String] {
+        var messages: [String] = []
+        
+        if barcode.isEmpty {
+            messages.append("Barcode is required")
+        }
+        if productName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Product name is required")
+        }
+        if company.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Company/Brand is required")
+        }
+        if price.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Price is required")
+        }
+        if selectedLocation == nil {
+            messages.append("Location is required")
+        }
+        if selectedCategory == .none {
+            messages.append("Category is required")
+        }
+        
+        return messages
+    }
+    
+    private func shouldShowActionButton() -> Bool {
+        // For new products, always show Add button
+        if !isExistingProduct {
+            return true
+        }
+        
+        // For existing products, only show button if changes were made
+        return hasChanges()
+    }
+    
+    private func hasChanges() -> Bool {
+        guard isExistingProduct else { return false }
+        
+        // Check if any field has been modified
+        let productNameChanged = productName.trimmingCharacters(in: .whitespacesAndNewlines) != originalProductName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let companyChanged = company.trimmingCharacters(in: .whitespacesAndNewlines) != originalCompany.trimmingCharacters(in: .whitespacesAndNewlines)
+        let priceChanged = price.trimmingCharacters(in: .whitespacesAndNewlines) != originalPrice.trimmingCharacters(in: .whitespacesAndNewlines)
+        let categoryChanged = selectedCategory != originalCategory
+        let saleChanged = isOnSale != originalIsOnSale
+        let locationChanged = selectedLocation?.id != originalLocation?.id
+        
+        return productNameChanged || companyChanged || priceChanged || categoryChanged || saleChanged || locationChanged
+    }
+    
+    private func shouldShowUpdateButton() -> Bool {
+        return isExistingProduct && hasChanges()
+    }
+    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -537,15 +607,22 @@ struct BarcodeConfirmationView: View {
                             TextField("Barcode", text: $barcode)
                                 .font(.system(.body, design: .monospaced))
                                 .padding()
-                                .background(AppColors.backgroundSecondary)
+                                .background(AppColors.backgroundSecondary.opacity(0.3))
                                 .cornerRadius(8)
                                 .keyboardType(.numberPad)
+                                .disabled(true)
+                                .foregroundColor(AppColors.textPrimary.opacity(0.5))
                         }
                         // Product Name Field
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Product Name")
-                                .font(.headline)
-                                .foregroundColor(AppColors.textPrimary)
+                            HStack(spacing: 0) {
+                                Text("Product Name")
+                                    .font(.headline)
+                                    .foregroundColor(AppColors.textPrimary)
+                                Text("*")
+                                    .font(.headline)
+                                    .foregroundColor(.red)
+                            }
                             TextField("Enter product name...", text: $productName)
                                 .font(.body)
                                 .padding()
@@ -554,9 +631,14 @@ struct BarcodeConfirmationView: View {
                         }
                         // Company Field
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Company/Brand")
-                                .font(.headline)
-                                .foregroundColor(AppColors.textPrimary)
+                            HStack(spacing: 0) {
+                                Text("Company/Brand")
+                                    .font(.headline)
+                                    .foregroundColor(AppColors.textPrimary)
+                                Text("*")
+                                    .font(.headline)
+                                    .foregroundColor(.red)
+                            }
                             TextField("Enter company or brand...", text: $company)
                                 .font(.body)
                                 .padding()
@@ -565,9 +647,14 @@ struct BarcodeConfirmationView: View {
                         }
                         // Category Field
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Category")
-                                .font(.headline)
-                                .foregroundColor(AppColors.textPrimary)
+                            HStack(spacing: 0) {
+                                Text("Category")
+                                    .font(.headline)
+                                    .foregroundColor(AppColors.textPrimary)
+                                Text("*")
+                                    .font(.headline)
+                                    .foregroundColor(.red)
+                            }
                             Button(action: {
                                 showCategoryPicker = true
                             }) {
@@ -586,9 +673,14 @@ struct BarcodeConfirmationView: View {
                         }
                         // Price Field
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Price")
-                                .font(.headline)
-                                .foregroundColor(AppColors.textPrimary)
+                            HStack(spacing: 0) {
+                                Text("Price")
+                                    .font(.headline)
+                                    .foregroundColor(AppColors.textPrimary)
+                                Text("*")
+                                    .font(.headline)
+                                    .foregroundColor(.red)
+                            }
                             TextField("Enter price...", text: $price)
                                 .font(.body)
                                 .padding()
@@ -598,9 +690,14 @@ struct BarcodeConfirmationView: View {
                         }
                         // Location Field
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Location")
-                                .font(.headline)
-                                .foregroundColor(AppColors.textPrimary)
+                            HStack(spacing: 0) {
+                                Text("Location")
+                                    .font(.headline)
+                                    .foregroundColor(AppColors.textPrimary)
+                                Text("*")
+                                    .font(.headline)
+                                    .foregroundColor(.red)
+                            }
                             Button(action: {
                                 showLocationPicker = true
                             }) {
@@ -705,46 +802,49 @@ struct BarcodeConfirmationView: View {
                                 .padding(.horizontal)
                         }
                     }
-                    // Action Buttons
-                    VStack(spacing: 12) {
-                        Button(action: {
-                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedLocation, selectedTags, addToShoppingList)
-                        }) {
-                            Text(getButtonText())
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(barcode.isEmpty ? Color.gray : AppColors.accentGreen)
-                                .cornerRadius(12)
-                        }
-                        .disabled(barcode.isEmpty)
-                        .padding(.horizontal)
-                        Button(action: {
-                            onCancel()
-                        }) {
-                            Text("Cancel")
-                                .fontWeight(.semibold)
-                                .foregroundColor(AppColors.accentGreen)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(AppColors.accentGreen.opacity(0.1))
-                                .cornerRadius(12)
+                    // Validation Messages
+                    if !validationMessages.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(validationMessages, id: \.self) { message in
+                                Text(message)
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
                         }
                         .padding(.horizontal)
                     }
+                    
+
                 }
             }
             .navigationTitle("Product Details")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .navigationBarBackButtonHidden(true)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         onCancel()
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if isFormValid && shouldShowActionButton() {
+                        Button(shouldShowUpdateButton() ? "Update" : "Add") {
+                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedLocation, selectedTags, addToShoppingList)
+                        }
+                        .foregroundColor(AppColors.accentGreen)
+                    }
+                }
             }
+            .onAppear {
+                // Capture original values for change detection
+                originalProductName = productName
+                originalCompany = company
+                originalPrice = price
+                originalCategory = selectedCategory
+                originalIsOnSale = isOnSale
+                originalLocation = selectedLocation
+            }
+
         }
     }
     private func getButtonText() -> String {
