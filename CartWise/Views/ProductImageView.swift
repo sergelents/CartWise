@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct ProductImageView: View {
     @ObservedObject var product: GroceryItem
@@ -31,31 +32,44 @@ struct ProductImageView: View {
     
     var body: some View {
         Group {
-            if let imageURL = product.imageURL, !imageURL.isEmpty {
-                if let loadedImage = loadedImage {
-                    // Display loaded image
-                    Image(uiImage: loadedImage)
+            if let productImage = product.productImage {
+                if let imageData = productImage.imageData, let uiImage = UIImage(data: imageData) {
+                    // Display cached image data
+                    Image(uiImage: uiImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: size.width, height: size.height)
                         .cornerRadius(cornerRadius)
                         .overlay(saleBadgeOverlay)
-                } else if isLoading {
-                    loadingView
-                } else if hasError {
-                    failureView
+                } else if let imageURL = productImage.imageURL, !imageURL.isEmpty {
+                    // Fallback to loading from URL if no cached data
+                    if let loadedImage = loadedImage {
+                        // Display loaded image
+                        Image(uiImage: loadedImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: size.width, height: size.height)
+                            .cornerRadius(cornerRadius)
+                            .overlay(saleBadgeOverlay)
+                    } else if isLoading {
+                        loadingView
+                    } else if hasError {
+                        failureView
+                    } else {
+                        // Start loading
+                        loadingView
+                            .onAppear {
+                                loadImageFromURL(imageURL)
+                            }
+                    }
                 } else {
-                    // Start loading
-                    loadingView
-                        .onAppear {
-                            loadImageFromURL(imageURL)
-                        }
+                    noImagePlaceholder
                 }
             } else {
                 noImagePlaceholder
             }
         }
-        .onChange(of: product.imageURL) { newURL in
+        .onChange(of: product.productImage?.imageURL) { newURL in
             if let newURL = newURL, !newURL.isEmpty {
                 loadImageFromURL(newURL)
             }

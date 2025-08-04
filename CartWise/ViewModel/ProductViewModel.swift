@@ -208,27 +208,31 @@ final class ProductViewModel: ObservableObject {
             let productName = product.productName ?? ""
             
             if let imageURL = try await imageService.fetchImageURL(for: productName) {
-                // Update product with image URL on main thread
-                await MainActor.run {
-                    // Update the product
-                    product.imageURL = imageURL
+                // Download image data
+                if let url = URL(string: imageURL) {
+                    let (imageData, _) = try await URLSession.shared.data(from: url)
                     
-                    // Force a UI update by triggering objectWillChange
-                    self.objectWillChange.send()
-                    
-                    // Save to Core Data
-                    do {
-                        try product.managedObjectContext?.save()
-                    } catch {
-                        print("ProductViewModel: Error saving image URL: \(error.localizedDescription)")
+                    // Update product with image data on main thread
+                    await MainActor.run {
+                        // Save image to Core Data using new ProductImage entity
+                        Task {
+                            do {
+                                try await repository.saveProductImage(for: product, imageURL: imageURL, imageData: imageData)
+                                
+                                // Force a UI update by triggering objectWillChange
+                                self.objectWillChange.send()
+                            } catch {
+                                print("ProductViewModel: Error saving image data: \(error.localizedDescription)")
+                            }
+                        }
                     }
                 }
             }
             
         } catch {
             print("ProductViewModel: Error fetching image for '\(product.productName ?? "")': \(error.localizedDescription)")
+        }
     }
-}
     
     func searchProducts(by name: String) async {
         do {
