@@ -71,9 +71,12 @@ struct AddItemsView: View {
                         .fill(AppColors.backgroundSecondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .overlay(
-                            VStack(spacing: 8) {
-                                Text("Review and edit the product information")
-                                    .font(.caption)
+                            VStack(spacing: 12) {
+                                Image(systemName: "barcode.viewfinder")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(AppColors.accentGreen)
+                                Text("Scan a barcode to add or edit it")
+                                    .font(.body)
                                     .foregroundColor(AppColors.textPrimary.opacity(0.7))
                                     .multilineTextAlignment(.center)
                             }
