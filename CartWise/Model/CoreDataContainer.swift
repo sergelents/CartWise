@@ -127,9 +127,9 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 // Save the context to persist the reputation update
                 try context.save()
                 
-                print("Updated reputation for product creation - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+                print("✅ REPUTATION UPDATE: Product creation - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
             } else {
-                print("Warning: Could not find current user for product creation reputation update")
+                print("⚠️ WARNING: Could not find current user for product creation reputation update")
             }
             
             return product.objectID
@@ -231,9 +231,9 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 // Save the context to persist the reputation update
                 try context.save()
                 
-                print("Updated reputation for user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+                print("✅ REPUTATION UPDATE: Price update - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
             } else {
-                print("Warning: Could not find current user for reputation update")
+                print("⚠️ WARNING: Could not find current user for reputation update")
             }
         }
     }

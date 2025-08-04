@@ -271,8 +271,8 @@ struct AddItemsView: View {
                     await createSocialFeedEntryForProduct(product: newProduct, price: priceValue, location: location, isNewProduct: !wasExistingProduct)
                 }
                 
-                // Update user reputation for barcode scanning
-                await updateReputationForBarcodeScanning()
+                // Note: Reputation is updated in CoreDataContainer.createProduct() and updateProductWithPrice()
+                // No need to update here to avoid double incrementing
             }
             await MainActor.run {
                 isProcessing = false
@@ -323,38 +323,7 @@ struct AddItemsView: View {
         return nil
     }
     
-    // Update user reputation for barcode scanning
-    private func updateReputationForBarcodeScanning() async {
-        do {
-            let context = await CoreDataStack.shared.viewContext
-            let currentUsername = UserDefaults.standard.string(forKey: "currentUsername") ?? "Unknown User"
-            
-            // Find the current user
-            let userFetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
-            userFetchRequest.predicate = NSPredicate(format: "username == %@", currentUsername)
-            userFetchRequest.fetchLimit = 1
-            
-            let users = try context.fetch(userFetchRequest)
-            
-            if let currentUser = users.first {
-                // Increment updates count for barcode scanning
-                currentUser.updates += 1
-                
-                // Update level based on new count
-                let newLevel = ReputationSystem.shared.getCurrentLevel(updates: Int(currentUser.updates))
-                currentUser.level = newLevel.name
-                
-                // Save the context to persist the reputation update
-                try context.save()
-                
-                print("Updated reputation for barcode scanning - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
-            } else {
-                print("Warning: Could not find current user for barcode scanning reputation update")
-            }
-        } catch {
-            print("Error updating reputation for barcode scanning: \(error)")
-        }
-    }
+
     private func createSocialFeedEntryForProduct(product: GroceryItem, price: Double, location: Location?, isNewProduct: Bool) async {
         do {
             let context = await CoreDataStack.shared.viewContext

@@ -467,9 +467,9 @@ struct ProductDetailView: View {
                 // Save the context to persist the reputation update
                 try context.save()
                 
-                print("Updated reputation for user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+                print("✅ REPUTATION UPDATE: Price update (CategoryItemsView) - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
             } else {
-                print("Warning: Could not find current user for reputation update")
+                print("⚠️ WARNING: Could not find current user for reputation update")
             }
         } catch {
             print("Error updating product price: \(error)")
