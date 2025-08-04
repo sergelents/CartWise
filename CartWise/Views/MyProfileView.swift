@@ -13,6 +13,8 @@ struct MyProfileView: View {
     @State private var isLoadingUser: Bool = true
     @State private var showAddLocation: Bool = false
     @State private var selectedTab: ProfileTab = .favorites
+    @State private var showSeedSuccess: Bool = false
+    @State private var showClearSuccess: Bool = false
     
     enum ProfileTab: String, CaseIterable {
         case favorites = "Favorites"
@@ -37,6 +39,49 @@ struct MyProfileView: View {
                         // Tabbed Content
                         TabbedContentView(selectedTab: $selectedTab)
                         
+                        // Test Data Buttons (for development)
+                        VStack(spacing: 12) {
+                            Button(action: {
+                                TestDataSeeder.shared.seedTestData()
+                                showSeedSuccess = true
+                            }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 16, weight: .medium))
+                                    Text("Seed Test Data")
+                                        .font(.poppins(size: 14, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(AppColors.accentGreen)
+                                )
+                            }
+                            
+                            Button(action: {
+                                TestDataSeeder.shared.clearTestData()
+                                showClearSuccess = true
+                            }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "trash.circle.fill")
+                                        .font(.system(size: 16, weight: .medium))
+                                    Text("Clear Test Data")
+                                        .font(.poppins(size: 14, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(AppColors.accentRed)
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 16)
+                        
                         // Logout Button
                         LogoutButton(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -56,10 +101,20 @@ struct MyProfileView: View {
             .task {
                 await loadCurrentUser()
             }
-            .sheet(isPresented: $showAddLocation) {
-                AddLocationView()
-                    .environmentObject(productViewModel)
-            }
+                                    .sheet(isPresented: $showAddLocation) {
+                            AddLocationView()
+                                .environmentObject(productViewModel)
+                        }
+                        .alert("Test Data Seeded", isPresented: $showSeedSuccess) {
+                            Button("OK") { }
+                        } message: {
+                            Text("Successfully seeded 200 items with prices across 6 stores!")
+                        }
+                        .alert("Test Data Cleared", isPresented: $showClearSuccess) {
+                            Button("OK") { }
+                        } message: {
+                            Text("All test data has been cleared.")
+                        }
         }
     }
     private func loadCurrentUser() async {
