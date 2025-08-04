@@ -436,6 +436,15 @@ struct TagPickerView: View {
                         .foregroundColor(.gray)
                     TextField("Search tags...", text: $searchText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                    
+                    if !searchText.isEmpty {
+                        Button(action: {
+                            searchText = ""
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.gray)
+                        }
+                    }
                 }
                 .padding(.horizontal)
                 .padding(.top)
