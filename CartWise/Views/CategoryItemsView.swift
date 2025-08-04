@@ -903,8 +903,7 @@ struct AddToShoppingListAndFavoritesView: View {
             } else {
                 // Add the existing product to shopping list
                 await productViewModel.addExistingProductToShoppingList(product)
-                // Refresh the shopping list to show the new item
-                await productViewModel.loadShoppingListProducts()
+                // Note: loadShoppingListProducts() is not called here to avoid affecting category views
                 // Update the local state
                 await MainActor.run {
                     isInShoppingList = true

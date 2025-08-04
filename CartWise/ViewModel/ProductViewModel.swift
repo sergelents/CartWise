@@ -123,7 +123,8 @@ final class ProductViewModel: ObservableObject {
     func addExistingProductToShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.addProductToShoppingList(product)
-            await loadShoppingListProducts()
+            // Don't call loadShoppingListProducts() here as it would affect category views
+            // The shopping list view will refresh when it appears
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
