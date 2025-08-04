@@ -7,9 +7,7 @@
 //  Enhanced with AI assistance from Cursor AI for UI improvements and category navigation.
 //  This saved me 1-2 hours of work implementing the category grid and navigation.
 //
-
 import SwiftUI
-
 struct SearchItemsView: View {
     // State variable for search bar input
     @State private var searchText = ""
@@ -19,18 +17,14 @@ struct SearchItemsView: View {
     @State private var showingTagPicker = false
     @State private var selectedLocation: Location? = nil
     @State private var userLocations: [Location] = []
-
     @EnvironmentObject var viewModel: ProductViewModel
-    
     // Computed property for search results that updates automatically
     private var searchResults: [GroceryItem] {
         guard !searchText.isEmpty else { return [] }
-        
         // If a tag is selected, filter from products that have that tag
-        let productsToSearch = selectedTag != nil ? 
+        let productsToSearch = selectedTag != nil ?
             viewModel.products.filter { $0.tagArray.contains(selectedTag!) } :
             viewModel.products
-        
         // Filter products to match search text
         let filtered = productsToSearch.filter { product in
             guard let name = product.productName?.lowercased() else { return false }
@@ -38,27 +32,22 @@ struct SearchItemsView: View {
         }
         return filtered
     }
-    
     // Computed property for tag-filtered results
     private var tagFilteredResults: [GroceryItem] {
         guard let selectedTag = selectedTag else { return [] }
-        
         // If we have search text, use searchResults (which already respects the tag)
         if !searchText.isEmpty {
             return searchResults
         }
-        
         // Otherwise filter from all products
         return viewModel.products.filter { product in
             product.tagArray.contains(selectedTag)
         }
     }
-
     // Returns categories matching search text, or all if search is empty
     // Predefined categories
     var filteredCategories: [ProductCategory] {
         let allCategoriesExceptNone = ProductCategory.allCases.filter { $0 != .none }
-        
         if searchText.isEmpty {
             return allCategoriesExceptNone
         } else {
@@ -66,7 +55,6 @@ struct SearchItemsView: View {
             return allCategoriesExceptNone.filter { $0.rawValue.localizedCaseInsensitiveContains(searchText) }
         }
     }
-    
     // Get unique categories from actual products
     var availableCategories: [ProductCategory] {
         let categories = Set(viewModel.products.compactMap { groceryItem in
@@ -74,12 +62,10 @@ struct SearchItemsView: View {
         })
         return Array(categories).sorted { $0.rawValue < $1.rawValue }
     }
-
     var body: some View {
         NavigationStack {
             VStack {
                 searchBarView
-                
                 if !searchText.isEmpty && !searchResults.isEmpty {
                     searchResultsView
                 } else if selectedTag != nil {
@@ -98,9 +84,7 @@ struct SearchItemsView: View {
             }
         }
     }
-    
     // MARK: - View Components
-    
     private var searchBarView: some View {
         VStack(spacing: 8) {
             HStack {
@@ -115,12 +99,10 @@ struct SearchItemsView: View {
                             await performSearch()
                         }
                     }
-                
                 if isSearching {
                     ProgressView()
                         .scaleEffect(0.8)
                 }
-                
                 if !searchText.isEmpty {
                     Button(action: {
                         searchText = ""
@@ -130,7 +112,6 @@ struct SearchItemsView: View {
                             .font(.system(size: 18))
                     }
                 }
-                
                 // Tag filter button
                 Button(action: {
                     showingTagPicker = true
@@ -139,7 +120,6 @@ struct SearchItemsView: View {
                         .foregroundColor(selectedTag != nil ? .blue : .gray)
                         .font(.system(size: 20))
                 }
-                
                 if selectedTag != nil {
                     Button(action: {
                         selectedTag = nil
@@ -152,16 +132,13 @@ struct SearchItemsView: View {
             }
             .padding(.horizontal)
             .padding(.top)
-            
             // Show selected category if any
             if let selectedCategory = selectedCategory {
                 HStack {
                     Text("Category: \(selectedCategory.rawValue)")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.blue)
-                    
                     Spacer()
-
                     .font(.system(size: 12))
                     .foregroundColor(.red)
                 }
@@ -173,7 +150,6 @@ struct SearchItemsView: View {
             SingleTagPickerView(selectedTag: $selectedTag, tags: viewModel.tags)
         }
     }
-    
     private var searchResultsView: some View {
         List(searchResults, id: \.id) { product in
             NavigationLink(destination: ProductDetailView(product: product, selectedLocation: selectedLocation)) {
@@ -183,29 +159,24 @@ struct SearchItemsView: View {
         }
         .listStyle(PlainListStyle())
     }
-    
     private var tagFilteredResultsView: some View {
         VStack {
             if tagFilteredResults.isEmpty {
                 VStack(spacing: 20) {
                     Spacer()
-                    
                     Image(systemName: "tag")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 60, height: 60)
                         .foregroundColor(.gray.opacity(0.7))
-                    
                     Text("No products found with tag '\(selectedTag?.displayName ?? "Unknown")'")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
-                    
                     Text("Try selecting a different tag or adding tags to products")
                         .font(.system(size: 14))
                         .foregroundColor(.gray.opacity(0.7))
                         .multilineTextAlignment(.center)
-                    
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -221,7 +192,6 @@ struct SearchItemsView: View {
             }
         }
     }
-    
     private var categoryGridView: some View {
         ScrollView {
             VStack(spacing: 16) {
@@ -229,10 +199,8 @@ struct SearchItemsView: View {
             }
         }
     }
-    
     private var categoryGrid: some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
-        
         return LazyVGrid(columns: columns, spacing: 16) {
             ForEach(filteredCategories, id: \.self) { category in
                 NavigationLink(destination: CategoryItemsView(category: category)) {
@@ -245,29 +213,23 @@ struct SearchItemsView: View {
         }
         .padding()
     }
-
     // MARK: - Helper Functions
     private func performSearch() async {
         guard !searchText.isEmpty else {
             return
         }
-        
         await MainActor.run {
             isSearching = true
         }
-        
         defer {
             Task { @MainActor in
                 isSearching = false
             }
         }
-        
         // Search Core Data for existing products only (offline-first)
         await viewModel.searchProducts(by: searchText)
-        
         print("Search completed: \(viewModel.products.count) local results")
     }
-    
     private func selectCategory(_ category: ProductCategory) {
         selectedCategory = category
         // Automatically perform search with selected category
@@ -275,21 +237,17 @@ struct SearchItemsView: View {
             await performSearch()
         }
     }
-    
     // MARK: - Helper Functions
     private func loadUserLocations() async {
         await viewModel.loadLocations()
         userLocations = viewModel.locations
-        
         // Set selected location to default or first favorited location
         selectedLocation = userLocations.first { $0.isDefault } ?? userLocations.first { $0.favorited } ?? userLocations.first
     }
 }
-
 // MARK: - Search Result Row
 struct SearchResultRowView: View {
     @ObservedObject var product: GroceryItem
-    
     var body: some View {
         HStack(spacing: 12) {
             // Product image placeholder
@@ -300,26 +258,21 @@ struct SearchResultRowView: View {
                     Image(systemName: "photo")
                         .foregroundColor(.gray)
                 )
-            
             VStack(alignment: .leading, spacing: 4) {
                 Text(product.productName ?? "Unknown Product")
                     .font(.system(size: 16, weight: .medium))
                     .lineLimit(2)
-                
                 if let brand = product.brand, !brand.isEmpty {
                     Text(brand)
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
-                
                 // Show tags if they exist
                 if !product.tagArray.isEmpty {
                     TagDisplayView(tags: product.tagArray)
                 }
             }
-            
             Spacer()
-            
             VStack(alignment: .trailing, spacing: 4) {
                 if let category = product.category {
                     Text(category)
@@ -331,11 +284,9 @@ struct SearchResultRowView: View {
         .padding(.vertical, 4)
     }
 }
-
 // MARK: - Category Card View
 struct CategoryCard: View {
     let category: ProductCategory
-    
     var body: some View {
         VStack(spacing: 12) {
             // Category icon
@@ -348,7 +299,6 @@ struct CategoryCard: View {
                         endPoint: .trailing
                     )
                 )
-            
             // Category name
             Text(category.rawValue)
                 .font(.system(size: 14, weight: .medium))
@@ -362,7 +312,6 @@ struct CategoryCard: View {
         .background(Color(.systemGray6))
         .cornerRadius(12)
     }
-    
     // Icon name for each category - need to change to better icons..
     private var iconName: String {
         switch category {
@@ -378,15 +327,12 @@ struct CategoryCard: View {
         }
     }
 }
-
-
 // MARK: - Single Tag Picker View
 struct SingleTagPickerView: View {
     @Binding var selectedTag: Tag?
     let tags: [Tag]
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
-    
     // Search tags
     var filteredTags: [Tag] {
         if searchText.isEmpty {
@@ -397,7 +343,6 @@ struct SingleTagPickerView: View {
             }
         }
     }
-    
     var body: some View {
         NavigationView {
             VStack {
@@ -410,7 +355,6 @@ struct SingleTagPickerView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
-                
                 List {
                     ForEach(filteredTags, id: \.id) { tag in
                         Button(action: {
@@ -420,9 +364,7 @@ struct SingleTagPickerView: View {
                             HStack {
                                 Text(tag.displayName)
                                     .foregroundColor(.primary)
-                                
                                 Spacer()
-                                
                                 if selectedTag?.id == tag.id {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.blue)
@@ -445,11 +387,9 @@ struct SingleTagPickerView: View {
         }
     }
 }
-
 // MARK: - Tag Display View - contains the individual tag chips
 struct TagDisplayView: View {
     let tags: [Tag]
-    
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 4) {
@@ -460,11 +400,9 @@ struct TagDisplayView: View {
         }
     }
 }
-
 // MARK: - Individual Tag Chip View
 struct SearchTagChipView: View {
     let tag: Tag
-    
     var body: some View {
         Text(tag.displayName)
             .font(.system(size: 10))
@@ -475,7 +413,6 @@ struct SearchTagChipView: View {
             .cornerRadius(8)
     }
 }
-
 #Preview {
     SearchItemsView()
 }

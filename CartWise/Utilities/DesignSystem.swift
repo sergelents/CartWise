@@ -4,9 +4,7 @@
 //
 //  Created by Alex Kumar on 7/12/25.
 //
-
 import SwiftUI
-
 struct DesignSystem {
     static let primaryColor = Color(hex: "#007AFF") // Blue, matching iOS/Figma
     static let accentColor = Color(hex: "#FF9500") // Orange, for links/buttons
@@ -14,7 +12,6 @@ struct DesignSystem {
     static let bodyFont = Font.system(size: 16, weight: .regular)
     static let buttonFont = Font.system(size: 16, weight: .bold)
 }
-
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")

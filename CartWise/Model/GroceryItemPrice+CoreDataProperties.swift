@@ -4,16 +4,12 @@
 //
 //  Created by AI Assistant on 12/19/24.
 //
-
 import Foundation
 import CoreData
-
 extension GroceryItemPrice {
-
     @nonobjc public class func fetchRequest() -> NSFetchRequest<GroceryItemPrice> {
         return NSFetchRequest<GroceryItemPrice>(entityName: "GroceryItemPrice")
     }
-
     @NSManaged public var id: String?
     @NSManaged public var price: Double
     @NSManaged public var currency: String?
@@ -23,9 +19,7 @@ extension GroceryItemPrice {
     @NSManaged public var updatedBy: String?
     @NSManaged public var groceryItem: GroceryItem?
     @NSManaged public var location: Location?
-
 }
-
 extension GroceryItemPrice {
     convenience init(context: NSManagedObjectContext, id: String, price: Double, currency: String = "USD", store: String? = nil, groceryItem: GroceryItem, location: Location, updatedBy: String? = nil) {
         self.init(context: context)
@@ -40,7 +34,5 @@ extension GroceryItemPrice {
         self.lastUpdated = Date()
     }
 }
-
 extension GroceryItemPrice : Identifiable {
-    
-} 
+}

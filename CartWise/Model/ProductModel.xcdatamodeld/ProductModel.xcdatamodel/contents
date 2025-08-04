@@ -17,6 +17,7 @@
         <relationship name="tags" optional="YES" toMany="YES" deletionRule="Deny" destinationEntity="Tag" inverseName="products" inverseEntity="Tag"/>
         <relationship name="locations" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Location" inverseName="groceryItems" inverseEntity="Location"/>
         <relationship name="prices" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="GroceryItemPrice" inverseName="groceryItem" inverseEntity="GroceryItemPrice"/>
+        <relationship name="experiences" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ShoppingExperience" inverseName="groceryItem" inverseEntity="ShoppingExperience"/>
     </entity>
     <entity name="Location" representedClassName="Location" syncable="YES">
         <attribute name="address" optional="YES" attributeType="String"/>
@@ -32,6 +33,7 @@
         <relationship name="groceryItems" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="GroceryItem" inverseName="locations" inverseEntity="GroceryItem"/>
         <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="UserEntity" inverseName="locations" inverseEntity="UserEntity"/>
         <relationship name="prices" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="GroceryItemPrice" inverseName="location" inverseEntity="GroceryItemPrice"/>
+        <relationship name="experiences" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ShoppingExperience" inverseName="location" inverseEntity="ShoppingExperience"/>
     </entity>
     <entity name="GroceryItemPrice" representedClassName="GroceryItemPrice" syncable="YES">
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
@@ -42,7 +44,18 @@
         <attribute name="store" optional="YES" attributeType="String"/>
         <attribute name="updatedBy" optional="YES" attributeType="String"/>
         <relationship name="groceryItem" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="GroceryItem" inverseName="prices" inverseEntity="GroceryItem"/>
-        <relationship name="location" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Location" inverseName="prices" inverseEntity="Location"/>
+        <relationship name="location" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Location" inverseName="prices" inverseEntity="Location"/>
+    </entity>
+    <entity name="ShoppingExperience" representedClassName="ShoppingExperience" syncable="YES">
+        <attribute name="comment" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="rating" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+        <relationship name="groceryItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="GroceryItem" inverseName="experiences" inverseEntity="GroceryItem"/>
+        <relationship name="location" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Location" inverseName="experiences" inverseEntity="Location"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="UserEntity" inverseName="experiences" inverseEntity="UserEntity"/>
+        <relationship name="comments" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="UserComment" inverseName="experience" inverseEntity="UserComment"/>
     </entity>
     <entity name="Tag" representedClassName="Tag" syncable="YES">
         <attribute name="color" optional="YES" attributeType="String"/>
@@ -52,6 +65,14 @@
         <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <relationship name="products" optional="YES" toMany="YES" deletionRule="Deny" destinationEntity="GroceryItem" inverseName="tags" inverseEntity="GroceryItem"/>
     </entity>
+    <entity name="UserComment" representedClassName="UserComment" syncable="YES">
+        <attribute name="comment" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="rating" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="experience" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="ShoppingExperience" inverseName="comments" inverseEntity="ShoppingExperience"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="UserEntity" inverseName="comments" inverseEntity="UserEntity"/>
+    </entity>
     <entity name="UserEntity" representedClassName="UserEntity" syncable="YES">
         <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="String"/>
@@ -59,6 +80,8 @@
         <attribute name="password" optional="YES" attributeType="String"/>
         <attribute name="updates" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="username" optional="YES" attributeType="String"/>
+        <relationship name="comments" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="UserComment" inverseName="user" inverseEntity="UserComment"/>
+        <relationship name="experiences" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ShoppingExperience" inverseName="user" inverseEntity="ShoppingExperience"/>
         <relationship name="locations" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Location" inverseName="user" inverseEntity="Location"/>
     </entity>
 </model>

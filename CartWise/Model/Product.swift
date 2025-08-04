@@ -4,10 +4,8 @@
 //
 //  Created by Serg Tsogtbaatar on 7/7/25.
 //
-
 import Foundation
 import CoreData
-
 // Product categories enum
 enum ProductCategory: String, CaseIterable {
     case none = "Select Category"
@@ -20,21 +18,18 @@ enum ProductCategory: String, CaseIterable {
     case frozen = "Frozen Foods"
     case household = "Household & Personal Care"
 }
-
 // MARK: - Main Response Model
 struct APIResponse: Codable {
     let success: Bool
     let pagination: Pagination?
     let products: [APIProduct]
 }
-
 // MARK: - Pagination Model
 struct Pagination: Codable {
     let currentPage: Int
     let nextPage: Int?
     let totalPages: Int  // Note: This comes as string, not int
 }
-
 // MARK: - Product Model
 struct APIProduct: Codable {
     let name: String
@@ -47,7 +42,6 @@ struct APIProduct: Codable {
     let image: String
     let boughtInfo: String  // Can be empty string
 }
-
 struct Product: Identifiable, Codable {
     let id: String
     let name: String
@@ -61,26 +55,21 @@ struct Product: Identifiable, Codable {
     let barcode: String?
     let isOnSale: Bool
 }
-
 // Local price comparison model
 struct LocalPriceComparison: Codable, Sendable {
     let productName: String
     let localPrices: [Double]
-    
     var averagePrice: Double {
         guard !localPrices.isEmpty else { return 0.0 }
         return localPrices.reduce(0, +) / Double(localPrices.count)
     }
-    
     var minPrice: Double {
         localPrices.min() ?? 0.0
     }
-    
     var maxPrice: Double {
         localPrices.max() ?? 0.0
     }
 }
-
 // Local store price model
 struct LocalStorePrice: Codable, Sendable {
     let store: String
@@ -90,7 +79,6 @@ struct LocalStorePrice: Codable, Sendable {
     let unavailableItems: Int
     let itemPrices: [String: Double] // productName -> price
 }
-
 // Local price comparison result
 struct LocalPriceComparisonResult: Codable, Sendable {
     let storePrices: [LocalStorePrice]
@@ -100,7 +88,6 @@ struct LocalPriceComparisonResult: Codable, Sendable {
     let totalItems: Int
     let availableItems: Int
 }
-
 // Price comparison models for UI
 struct StorePrice: Codable, Sendable {
     let store: String
@@ -110,7 +97,6 @@ struct StorePrice: Codable, Sendable {
     let unavailableItems: Int
     let itemPrices: [String: Double] // productName -> price
 }
-
 struct PriceComparison: Codable, Sendable {
     let storePrices: [StorePrice]
     let bestStore: String?

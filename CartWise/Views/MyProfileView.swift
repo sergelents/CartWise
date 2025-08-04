@@ -4,10 +4,8 @@
 //
 //  Created by Serg Tsogtbaatar on 7/5/25.
 //
-
 import SwiftUI
 import CoreData
-
 struct MyProfileView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @EnvironmentObject var productViewModel: ProductViewModel
@@ -42,6 +40,8 @@ struct MyProfileView: View {
                         // Logout Button
                         LogoutButton(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
+                                // Clear the current username when logging out
+                                UserDefaults.standard.removeObject(forKey: "currentUsername")
                                 isLoggedIn = false
                             }
                         })
@@ -62,21 +62,16 @@ struct MyProfileView: View {
             }
         }
     }
-    
     private func loadCurrentUser() async {
         isLoadingUser = true
-        
         do {
             let context = PersistenceController.shared.container.viewContext
             let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
-            
             // Since we don't have a direct way to identify the current user,
             // we'll fetch the most recently created user (assuming the last logged in user)
             fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
             fetchRequest.fetchLimit = 1
-            
             let users = try context.fetch(fetchRequest)
-            
             if let currentUser = users.first, let username = currentUser.username {
                 await MainActor.run {
                     withAnimation(.easeInOut(duration: 0.3)) {

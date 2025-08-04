@@ -4,16 +4,14 @@
 //
 //  Created by Serg Tsogtbaatar on 7/19/25.
 //
-
 import SwiftUI
 import Foundation
-
 struct PriceComparisonView: View {
     let priceComparison: PriceComparison?
     let isLoading: Bool
     let onRefresh: () async -> Void
     let onLocalComparison: () async -> Void
-    
+    @State private var showingShareExperience = false
     var body: some View {
         VStack(spacing: 12) {
             // Header
@@ -21,26 +19,31 @@ struct PriceComparisonView: View {
                 Text("Price Comparison")
                     .font(.system(size: 15, weight: .regular))
                     .foregroundColor(.gray)
-                
                 Spacer()
-                
                 if isLoading {
                     ProgressView()
                         .scaleEffect(0.8)
                 } else {
-                    Button(action: {
-                        Task {
-                            await onLocalComparison()
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            showingShareExperience = true
+                        }) {
+                            Image(systemName: "bubble.left.and.bubble.right")
+                                .foregroundColor(.blue)
                         }
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundColor(.blue)
+                        Button(action: {
+                            Task {
+                                await onLocalComparison()
+                            }
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundColor(.blue)
+                        }
                     }
                 }
             }
             .padding(.horizontal)
             .padding(.top, 8)
-            
             // Price comparison content
             if let comparison = priceComparison {
                 if comparison.storePrices.isEmpty {
@@ -48,7 +51,6 @@ struct PriceComparisonView: View {
                         Text("No price data available")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        
                         Text("Add items with store information to see price comparisons")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -64,9 +66,7 @@ struct PriceComparisonView: View {
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.green)
-                                
                                 Spacer()
-                                
                                 Text("$\(String(format: "%.2f", comparison.bestTotalPrice))")
                                     .font(.subheadline)
                                     .fontWeight(.bold)
@@ -77,7 +77,6 @@ struct PriceComparisonView: View {
                             .background(Color.green.opacity(0.1))
                             .cornerRadius(8)
                         }
-                        
                         // Store rankings
                         ForEach(Array(comparison.storePrices.enumerated()), id: \.offset) { index, storePrice in
                             StorePriceRow(
@@ -94,7 +93,6 @@ struct PriceComparisonView: View {
                     Text("No price comparison available")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    
                     Text("Scan barcodes to add items with store information")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -107,14 +105,15 @@ struct PriceComparisonView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .sheet(isPresented: $showingShareExperience) {
+            ShareExperienceView(priceComparison: priceComparison)
+        }
     }
 }
-
 struct StorePriceRow: View {
     let storePrice: StorePrice
     let isBest: Bool
     let rank: Int
-    
     var body: some View {
         HStack {
             // Rank
@@ -123,22 +122,18 @@ struct StorePriceRow: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
                 .frame(width: 20, alignment: .leading)
-            
             // Store name
             Text(storePrice.store)
                 .font(.subheadline)
                 .fontWeight(isBest ? .semibold : .regular)
                 .foregroundColor(isBest ? .green : .primary)
-            
             Spacer()
-            
             // Price
             VStack(alignment: .trailing, spacing: 2) {
                 Text("$\(String(format: "%.2f", storePrice.totalPrice))")
                     .font(.subheadline)
                     .fontWeight(isBest ? .bold : .medium)
                     .foregroundColor(isBest ? .green : .primary)
-                
                 Text("\(storePrice.availableItems)/\(storePrice.availableItems + storePrice.unavailableItems) items")
                     .font(.caption2)
                     .foregroundColor(.secondary)

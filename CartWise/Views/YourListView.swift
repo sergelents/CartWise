@@ -4,12 +4,10 @@
 //
 //  Created by Serg Tsogtbaatar on 7/5/25.
 //  Edited by Brenna Wilson on 7/10/25 - 7/13/25
-//  Enhanced with AI assistance from Cursor AI for UI improvements and functionality. 
+//  Enhanced with AI assistance from Cursor AI for UI improvements and functionality.
 //  This saved me 6-9 hours of work learning swift UI syntax.
 //
-
 import SwiftUI
-
 struct YourListView: View {
     @EnvironmentObject var productViewModel: ProductViewModel
     @State private var suggestedStore: String = "Whole Foods Market"
@@ -23,7 +21,6 @@ struct YourListView: View {
     @State private var showingDuplicateAlert = false
     @State private var duplicateProductName = ""
     @State private var showingCheckAllConfirmation = false
-    
     var body: some View {
         NavigationStack {
             MainContentView(
@@ -74,7 +71,6 @@ struct YourListView: View {
                 Task {
                     await productViewModel.loadShoppingListProducts()
                     print("YourListView: Loaded \(productViewModel.products.count) shopping list products")
-                    
                     await productViewModel.loadLocalPriceComparison()
                     print("YourListView: Price comparison loaded: \(productViewModel.priceComparison?.storePrices.count ?? 0) stores")
                     if let comparison = productViewModel.priceComparison {
@@ -87,7 +83,6 @@ struct YourListView: View {
             }
         }
     }
-    
     private func addProductToSystem(name: String, brand: String?, category: String?, price: Double? = nil) {
         Task {
             // Check for duplicate first
@@ -96,20 +91,17 @@ struct YourListView: View {
                 showingDuplicateAlert = true
                 return
             }
-            
             // Proceed with creation if no duplicate
             if let brand = brand, !brand.isEmpty {
                 await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category)
             } else {
                 await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
             }
-            
             // Refresh price comparison after adding product
             await productViewModel.loadLocalPriceComparison()
         }
     }
 }
-
 // Main Content View, edited by AI
 struct MainContentView: View {
     @EnvironmentObject var productViewModel: ProductViewModel
@@ -122,22 +114,18 @@ struct MainContentView: View {
     @Binding var showingRatingPrompt: Bool
     @Binding var showingAddProductModal: Bool
     @Binding var showingCheckAllConfirmation: Bool
-    
     // private func calculateTotal() -> Double {
     //     return productViewModel.products.reduce(0.0) { total, product in
     //         total + product.price
     //     }
     // }
-    
     var body: some View {
         ZStack {
             // Background
             AppColors.backgroundSecondary
                 .ignoresSafeArea()
-            
             // Main Content
             VStack(alignment: .leading, spacing: 24) {
-
                 // Item List Card
                 ShoppingListCard(
                     isEditing: $isEditing,
@@ -147,7 +135,6 @@ struct MainContentView: View {
                     showingAddProductModal: $showingAddProductModal,
                     showingCheckAllConfirmation: $showingCheckAllConfirmation
                 )
-
                 // Price Comparison Card
                 PriceComparisonView(
                     priceComparison: productViewModel.priceComparison,
@@ -160,14 +147,12 @@ struct MainContentView: View {
                     }
                 )
                 .padding(.horizontal)
-
                 Spacer()
             }
             .padding(.top)
         }
     }
 }
-
 // Shopping List Card
 struct ShoppingListCard: View {
     @EnvironmentObject var productViewModel: ProductViewModel
@@ -177,7 +162,6 @@ struct ShoppingListCard: View {
     @Binding var showingRatingPrompt: Bool
     @Binding var showingAddProductModal: Bool
     @Binding var showingCheckAllConfirmation: Bool
-    
     var body: some View {
         VStack(spacing: 12) {
             // Header
@@ -197,7 +181,7 @@ struct ShoppingListCard: View {
                             selectedItemsForDeletion.removeAll()
                         }) {
                             Text("Delete")
-                                .font(.poppins(size:15, weight: .regular))
+                                .font(.poppins(size: 15, weight: .regular))
                                 .underline()
                                 .foregroundColor(.red)
                         }
@@ -209,7 +193,7 @@ struct ShoppingListCard: View {
                             }
                         }) {
                             Text(selectedItemsForDeletion.count == productViewModel.products.count ? "Deselect All" : "Select All")
-                                .font(.poppins(size:15, weight: .regular))
+                                .font(.poppins(size: 15, weight: .regular))
                                 .underline()
                                 .foregroundColor(.blue)
                         }
@@ -220,29 +204,27 @@ struct ShoppingListCard: View {
                         selectedItemsForDeletion.removeAll()
                     }) {
                         Text("Cancel")
-                            .font(.poppins(size:15, weight: .regular))
+                            .font(.poppins(size: 15, weight: .regular))
                             .underline()
                             .foregroundColor(.gray)
                     }
                 } else {
                     Text("\(productViewModel.products.count) Items")
-                        .font(.poppins(size:15, weight: .regular))
+                        .font(.poppins(size: 15, weight: .regular))
                         .foregroundColor(.gray)
                     Spacer()
                     Button(action: {
                         isEditing.toggle()
                     }) {
                         Text("Edit")
-                            .font(.poppins(size:15, weight: .regular))
+                            .font(.poppins(size: 15, weight: .regular))
                             .underline()
                             .foregroundColor(.gray)
                     }
                 }
             }
             .padding(.horizontal)
-
             Divider()
-            
             // Item List
             if productViewModel.products.isEmpty {
                 VStack(spacing: 16) {
@@ -263,7 +245,6 @@ struct ShoppingListCard: View {
                     }
                         .font(.poppins(size: 15, weight: .regular))
                         .foregroundColor(.gray.opacity(0.7))
-
                 }
                 .frame(maxWidth: .infinity, minHeight: 120)
                 .padding(.vertical, 24)
@@ -309,8 +290,7 @@ struct ShoppingListCard: View {
                 .listStyle(PlainListStyle())
                 .background(Color.clear)
             }
-
-            // Add Button & Check All Button 
+            // Add Button & Check All Button
             HStack(spacing: 56) {
                 Button(action: {
                     showingAddProductModal = true
@@ -325,7 +305,6 @@ struct ShoppingListCard: View {
                         .fill(AppColors.accentGreen)
                         .shadow(color: AppColors.accentGreen.opacity(0.3), radius: 8, x: 0, y: 4)
                 )
-                
                 Button(action: {
                     // Check if we're about to complete all items (not uncheck them)
                     let allCompleted = productViewModel.products.allSatisfy { $0.isCompleted }
@@ -360,9 +339,6 @@ struct ShoppingListCard: View {
         .padding(.horizontal)
     }
 }
-
-
-
 // Store Location Modal - commented out
 // struct StoreLocationModal: View {
 //     @Environment(\.dismiss) private var dismiss
@@ -370,7 +346,7 @@ struct ShoppingListCard: View {
 //     @State private var selectedStore: StoreLocation?
 //     @State private var isSearchFocused = false
 //     @FocusState private var isSearchFocusedState: Bool
-//     
+//
 //     // Sample store data - will be replaced with API data later
 //     let sampleStores = [
 //         StoreLocation(name: "Safeway", address: "123 Main St, Portland, OR", distance: "0.3 mi"),
@@ -379,7 +355,7 @@ struct ShoppingListCard: View {
 //         StoreLocation(name: "Whole Foods Market", address: "321 Elm St, Portland, OR", distance: "1.5 mi"),
 //         StoreLocation(name: "New Seasons Market", address: "654 Maple Dr, Portland, OR", distance: "2.1 mi")
 //     ]
-//     
+//
 //     var filteredStores: [StoreLocation] {
 //         if searchText.isEmpty {
 //             return sampleStores
@@ -390,7 +366,7 @@ struct ShoppingListCard: View {
 //             }
 //         }
 //     }
-//     
+//
 //     var body: some View {
 //         NavigationView {
 //             VStack(spacing: 0) {
@@ -399,12 +375,12 @@ struct ShoppingListCard: View {
 //                     Text("Change Store Location")
 //                         .font(.poppins(size: 24, weight: .bold))
 //                         .padding(.top)
-//                     
+//
 //                     // Search Bar
 //                     HStack {
 //                         Image(systemName: "magnifyingglass")
 //                             .foregroundColor(.gray)
-//                             
+//
 //                         TextField("Search stores...", text: $searchText)
 //                             .font(.poppins(size: 16, weight: .regular))
 //                             .focused($isSearchFocusedState)
@@ -418,7 +394,7 @@ struct ShoppingListCard: View {
 //                     .padding(.horizontal)
 //                 }
 //                 .padding(.bottom)
-//                 
+//
 //                 // Store List
 //                 ScrollView {
 //                     LazyVStack(spacing: 12) {
@@ -433,7 +409,7 @@ struct ShoppingListCard: View {
 //                     }
 //                     .padding(.horizontal)
 //                 }
-//                 
+//
 //                 // Select Button
 //                 if let selectedStore = selectedStore {
 //                     Button("Select \(selectedStore.name)") {
@@ -466,13 +442,12 @@ struct ShoppingListCard: View {
 //         }
 //     }
 // }
-
 // Store Location Row - commented out
 // struct StoreLocationRow: View {
 //     let store: StoreLocation
 //     let isSelected: Bool
 //     let onTap: () -> Void
-//     
+//
 //     var body: some View {
 //         Button(action: onTap) {
 //             HStack(spacing: 12) {
@@ -483,25 +458,25 @@ struct ShoppingListCard: View {
 //                     .frame(width: 40, height: 40)
 //                     .background(AppColors.accentGreen.opacity(0.1))
 //                     .cornerRadius(8)
-//                 
+//
 //                 // Store Info
 //                 VStack(alignment: .leading, spacing: 4) {
 //                     Text(store.name)
 //                         .font(.poppins(size: 16, weight: .semibold))
 //                         .foregroundColor(.primary)
-//                     
+//
 //                     Text(store.address)
 //                         .font(.poppins(size: 14, weight: .regular))
 //                         .foregroundColor(.gray)
 //                     .lineLimit(1)
-//                     
+//
 //                     Text(store.distance)
 //                         .font(.poppins(size: 12, weight: .regular))
 //                         .foregroundColor(AppColors.accentGreen)
 //                 }
-//                 
+//
 //                 Spacer()
-//                 
+//
 //                 // Selection Indicator
 //                 if isSelected {
 //                     Image(systemName: "checkmark.circle.fill")
@@ -522,7 +497,6 @@ struct ShoppingListCard: View {
 //         .buttonStyle(PlainButtonStyle())
 //     }
 // }
-
 // Store Location Model - commented out
 // struct StoreLocation: Identifiable {
 //     let id = UUID()
@@ -530,7 +504,6 @@ struct ShoppingListCard: View {
 //     let address: String
 //     let distance: String
 // }
-
 struct SmartAddProductModal: View {
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
@@ -539,7 +512,6 @@ struct SmartAddProductModal: View {
     @FocusState private var isSearchFocused: Bool
     @EnvironmentObject var productViewModel: ProductViewModel
     let onAdd: (String, String?, String?, Double?) -> Void
-    
     var body: some View {
         NavigationView {
             GeometryReader { geometry in
@@ -549,12 +521,10 @@ struct SmartAddProductModal: View {
                         Text("Add to Your List")
                             .font(.poppins(size: 24, weight: .bold))
                             .padding(.top)
-                        
                         // Search Bar
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundColor(.gray)
-                            
                             ZStack(alignment: .leading) {
                                 TextField("", text: $searchText)
                                     .font(.poppins(size: 16, weight: .regular))
@@ -566,7 +536,6 @@ struct SmartAddProductModal: View {
                                             showCursor = false
                                         }
                                     }
-                                
                                 // Placeholder text when not focused
                                 if searchText.isEmpty && !isSearchFocused {
                                     Text("Search products...")
@@ -574,7 +543,6 @@ struct SmartAddProductModal: View {
                                         .foregroundColor(.gray)
                                         .allowsHitTesting(false)
                                 }
-                                
                                 // Solid cursor when focused
                                 if searchText.isEmpty && isSearchFocused {
                                     Rectangle()
@@ -591,7 +559,6 @@ struct SmartAddProductModal: View {
                     }
                     .padding(.bottom)
                     .background(AppColors.backgroundSecondary)
-                    
                     // Scrollable Content Area
                     ScrollView {
                         VStack(spacing: 0) {
@@ -645,12 +612,9 @@ struct SmartAddProductModal: View {
                         }
                 }
             }
-
         }
     }
 }
-
-
 struct SearchResultsSection: View {
     let searchText: String
     let onAdd: (String, String?, String?, Double?) -> Void
@@ -660,13 +624,11 @@ struct SearchResultsSection: View {
     @State private var searchResults: [GroceryItem] = []
     @State private var isSearching = false
     @State private var showingBarcodeScanner = false
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Search Results")
                 .font(.poppins(size: 18, weight: .semibold))
                 .padding(.horizontal)
-            
             if isSearching {
                 HStack {
                     ProgressView()
@@ -682,16 +644,13 @@ struct SearchResultsSection: View {
                     Image(systemName: "barcode.viewfinder")
                         .font(.system(size: 48))
                         .foregroundColor(AppColors.accentGreen)
-                    
                     Text("No products found")
                         .font(.poppins(size: 18, weight: .semibold))
                         .foregroundColor(.primary)
-                    
                     Text("Use the barcode scanner to add \"\(searchText)\" to your list")
                         .font(.poppins(size: 14, weight: .regular))
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
-                    
                     Button(action: {
                         showingBarcodeScanner = true
                     }) {
@@ -727,11 +686,9 @@ struct SearchResultsSection: View {
                     .padding(.horizontal)
                 }
                 .frame(maxHeight: UIScreen.main.bounds.height * 0.6) // Larger scroll area for full-screen modal
-                
                 // Divider and barcode scanner option
                 Divider()
                     .padding(.horizontal)
-                
                 Button(action: {
                     showingBarcodeScanner = true
                 }) {
@@ -761,18 +718,14 @@ struct SearchResultsSection: View {
             AddItemsView(availableTags: productViewModel.tags)
         }
     }
-    
     private func performSearch() {
         guard !searchText.isEmpty else { return }
-        
         isSearching = true
         Task {
             // Store current products to restore them later
             let currentProducts = productViewModel.products
-            
             // Perform search
             await productViewModel.searchProducts(by: searchText)
-            
             await MainActor.run {
                 // Store search results and restore original products
                 searchResults = productViewModel.products
@@ -781,14 +734,10 @@ struct SearchResultsSection: View {
             }
         }
     }
-    
-
 }
-
 struct SearchResultRow: View {
     @ObservedObject var product: GroceryItem
     let onAdd: () -> Void
-    
     var body: some View {
         Button(action: onAdd) {
             HStack {
@@ -796,24 +745,19 @@ struct SearchResultRow: View {
                     Text(product.productName ?? "Unknown Product")
                         .font(.poppins(size: 16, weight: .medium))
                         .foregroundColor(.primary)
-                    
                     if let brand = product.brand, !brand.isEmpty {
                         Text(brand)
                             .font(.poppins(size: 14, weight: .regular))
                             .foregroundColor(.gray)
                     }
-                    
                     if let category = product.category, !category.isEmpty {
                         Text(category)
                             .font(.poppins(size: 12, weight: .regular))
                             .foregroundColor(.gray.opacity(0.7))
                     }
                 }
-                
                 Spacer()
-                
                 Spacer()
-                
                 // Add button - no price display since prices vary by store
                 Image(systemName: "plus.circle.fill")
                     .foregroundColor(AppColors.accentGreen)
@@ -826,11 +770,9 @@ struct SearchResultRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
-
 struct CategoryPickerView: View {
     @Binding var selectedCategory: ProductCategory
     @Environment(\.dismiss) private var dismiss
-    
     var body: some View {
         NavigationView {
             List(ProductCategory.allCases, id: \.self) { category in
@@ -862,7 +804,6 @@ struct CategoryPickerView: View {
         }
     }
 }
-
 // Shopping List circle logic
 struct ShoppingListItemRow: View {
     @ObservedObject var product: GroceryItem
@@ -870,7 +811,6 @@ struct ShoppingListItemRow: View {
     let isSelected: Bool
     let onToggle: () -> Void
     let onDelete: () -> Void
-
     var body: some View {
         HStack(alignment: .center) {
             Button(action: onToggle) {
@@ -899,27 +839,23 @@ struct ShoppingListItemRow: View {
             }
             .buttonStyle(PlainButtonStyle())
             .frame(width: 20, height: 20)
-
             VStack(alignment: .leading, spacing: 2) {
                 Text(product.productName ?? "Unknown Product")
-                    .font(.poppins(size:15, weight: .regular))
+                    .font(.poppins(size: 15, weight: .regular))
                     .foregroundColor(product.isCompleted ? .gray : .primary)
                     .strikethrough(product.isCompleted)
-
                 if let brand = product.brand, !brand.isEmpty {
                     Text(brand)
-                        .font(.poppins(size:12, weight: .regular))
+                        .font(.poppins(size: 12, weight: .regular))
                         .foregroundColor(.gray)
                 }
                 if let category = product.category, !category.isEmpty {
                     Text(category)
-                        .font(.poppins(size:10, weight: .regular))
+                        .font(.poppins(size: 10, weight: .regular))
                         .foregroundColor(.gray.opacity(0.7))
                 }
             }
-            
             Spacer()
-            
             // No price display since prices vary by store
         }
         .padding(.vertical, 10)
@@ -938,12 +874,10 @@ struct ShoppingListItemRow: View {
         .padding(.horizontal, 2)
     }
 }
-
 // Rating Prompt View
 struct RatingPromptView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showRatingScreen = false
-    
     var body: some View {
         VStack(spacing: 24) {
             // Header
@@ -951,26 +885,22 @@ struct RatingPromptView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 48))
                     .foregroundColor(AppColors.accentGreen)
-                
                 Text("Have you finished shopping?")
-                    .font(.poppins(size:24, weight: .bold))
+                    .font(.poppins(size: 24, weight: .bold))
                     .foregroundColor(.primary)
-                
                 Text("Rate your experience")
-                    .font(.poppins(size:16, weight: .regular))
+                    .font(.poppins(size: 16, weight: .regular))
                     .foregroundColor(.gray)
             }
             .padding(.top, 40)
-            
             Spacer()
-            
             // Action Buttons
             VStack(spacing: 12) {
                 Button(action: {
                     showRatingScreen = true
                 }) {
                     Text("Rate my experience")
-                        .font(.poppins(size:16, weight: .semibold))
+                        .font(.poppins(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
@@ -978,12 +908,11 @@ struct RatingPromptView: View {
                         .cornerRadius(12)
                         .contentShape(Rectangle())
                 }
-                
                 Button(action: {
                     dismiss()
                 }) {
                     Text("No thanks")
-                        .font(.poppins(size:16, weight: .regular))
+                        .font(.poppins(size: 16, weight: .regular))
                         .foregroundColor(.gray)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
@@ -998,38 +927,35 @@ struct RatingPromptView: View {
         .background(AppColors.backgroundSecondary)
         .sheet(isPresented: $showRatingScreen) {
             ShoppingExperienceRatingView(dismissAll: {
-                dismiss() 
-                showRatingScreen = false 
+                dismiss()
+                showRatingScreen = false
             })
         }
     }
 }
-
 // Shopping Experience Rating View
 struct ShoppingExperienceRatingView: View {
     var dismissAll: () -> Void
     @State private var pricingRating: Int = 0
     @State private var overallRating: Int = 0
-    
     var body: some View {
         VStack(spacing: 32) {
             Text("Rate your shopping Experience!")
-                .font(.poppins(size:28, weight: .bold))
+                .font(.poppins(size: 28, weight: .bold))
                 .multilineTextAlignment(.center)
                 .padding(.top, 32)
-            
             VStack(alignment: .leading, spacing: 12) {
                 Text("Grocery Store")
-                    .font(.poppins(size:20, weight: .bold))
+                    .font(.poppins(size: 20, weight: .bold))
                 // TODO: Connect to Google Maps API for live store info
                 HStack {
                     Image(systemName: "mappin.and.ellipse")
                         .foregroundColor(AppColors.accentGreen)
                     Text("Whole Foods Market")
-                        .font(.poppins(size:17, weight: .semibold))
+                        .font(.poppins(size: 17, weight: .semibold))
                     Spacer()
                     Text("1701 Wewatta St.")
-                        .font(.poppins(size:15, weight: .regular))
+                        .font(.poppins(size: 15, weight: .regular))
                         .foregroundColor(.gray)
                 }
                 .padding(12)
@@ -1037,23 +963,19 @@ struct ShoppingExperienceRatingView: View {
                 .cornerRadius(16)
             }
             .padding(.horizontal, 16)
-            
             VStack(alignment: .leading, spacing: 8) {
                 Text("Pricing Accuracy")
-                    .font(.poppins(size:20, weight: .bold))
+                    .font(.poppins(size: 20, weight: .bold))
                 StarRatingView(rating: $pricingRating, accentColor: AppColors.accentGreen)
             }
             .padding(.horizontal, 16)
-            
             VStack(alignment: .leading, spacing: 8) {
                 Text("Overall Experience")
-                    .font(.poppins(size:20, weight: .bold))
+                    .font(.poppins(size: 20, weight: .bold))
                 StarRatingView(rating: $overallRating, accentColor: AppColors.accentGreen)
             }
             .padding(.horizontal, 16)
-            
             Spacer()
-            
             // Action Buttons
             VStack(spacing: 12) {
                 Button(action: {
@@ -1061,7 +983,7 @@ struct ShoppingExperienceRatingView: View {
                     dismissAll()
                 }) {
                     Text("Submit")
-                        .font(.poppins(size:16, weight: .semibold))
+                        .font(.poppins(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
@@ -1069,12 +991,11 @@ struct ShoppingExperienceRatingView: View {
                         .cornerRadius(12)
                         .contentShape(Rectangle())
                 }
-                
                 Button(action: {
                     dismissAll()
                 }) {
                     Text("Cancel")
-                        .font(.poppins(size:16, weight: .regular))
+                        .font(.poppins(size: 16, weight: .regular))
                         .foregroundColor(.gray)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
@@ -1091,13 +1012,11 @@ struct ShoppingExperienceRatingView: View {
         .padding(8)
     }
 }
-
 // Star Rating View
 struct StarRatingView: View {
     @Binding var rating: Int
     var accentColor: Color = .yellow
     let maxRating = 5
-    
     var body: some View {
         HStack(spacing: 16) {
             ForEach(1...maxRating, id: \.self) { index in
@@ -1113,11 +1032,10 @@ struct StarRatingView: View {
         }
     }
 }
-
 // struct RecentProductRow: View {
 //     let product: GroceryItem
 //     let onAdd: () -> Void
-//     
+//
 //     var body: some View {
 //         Button(action: onAdd) {
 //             HStack {
@@ -1125,22 +1043,22 @@ struct StarRatingView: View {
 //                     Text(product.productName ?? "Unknown Product")
 //                         .font(.poppins(size: 16, weight: .medium))
 //                         .foregroundColor(.primary)
-//                     
+//
 //                     if let brand = product.brand, !brand.isEmpty {
 //                         Text(brand)
 //                             .font(.poppins(size: 14, weight: .regular))
 //                             .foregroundColor(.gray)
 //                     }
-//                     
+//
 //                     if let category = product.category, !category.isEmpty {
 //                         Text(category)
 //                             .font(.poppins(size: 12, weight: .regular))
 //                             .foregroundColor(.gray.opacity(0.7))
 //                     }
 //                 }
-//                 
+//
 //                 Spacer()
-//                 
+//
 //                 Image(systemName: "plus.circle.fill")
 //                     .foregroundColor(AppColors.accentGreen)
 //                     .font(.system(size: 20))
@@ -1152,16 +1070,11 @@ struct StarRatingView: View {
 //         .buttonStyle(PlainButtonStyle())
 //     }
 // }
-
-
-
-
 // Amazon Price Results View
 struct AmazonPriceResultsView: View {
     let results: [GroceryItem]
     let onSelectPrice: (Double) -> Void
     @Environment(\.dismiss) private var dismiss
-    
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -1170,13 +1083,11 @@ struct AmazonPriceResultsView: View {
                     Text("Amazon Price Results")
                         .font(.poppins(size: 24, weight: .bold))
                         .padding(.top)
-                    
                     Text("Select a price from Amazon")
                         .font(.poppins(size: 16, weight: .regular))
                         .foregroundColor(.gray)
                 }
                 .padding(.bottom)
-                
                 // Results List
                 if results.isEmpty {
                     VStack(spacing: 16) {
@@ -1203,7 +1114,6 @@ struct AmazonPriceResultsView: View {
                         .padding(.horizontal)
                     }
                 }
-                
                 Spacer()
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -1219,12 +1129,10 @@ struct AmazonPriceResultsView: View {
         }
     }
 }
-
 // Amazon Price Result Row
 struct AmazonPriceResultRow: View {
     @ObservedObject var product: GroceryItem
     let onSelect: () -> Void
-    
     var body: some View {
         Button(action: onSelect) {
             HStack {
@@ -1232,22 +1140,18 @@ struct AmazonPriceResultRow: View {
                     Text(product.productName ?? "Unknown Product")
                         .font(.poppins(size: 16, weight: .medium))
                         .foregroundColor(.primary)
-                    
                     if let brand = product.brand, !brand.isEmpty {
                         Text(brand)
                             .font(.poppins(size: 14, weight: .regular))
                             .foregroundColor(.gray)
                     }
-                    
                     if let store = product.store, !store.isEmpty {
                         Text(store)
                             .font(.poppins(size: 12, weight: .regular))
                             .foregroundColor(.gray.opacity(0.7))
                     }
                 }
-                
                 Spacer()
-                
                 // Price display - always on the right
                 HStack(spacing: 8) {
                     if product.price > 0 {
@@ -1261,7 +1165,6 @@ struct AmazonPriceResultRow: View {
                             .font(.poppins(size: 16, weight: .semibold))
                             .frame(minWidth: 60, alignment: .trailing)
                     }
-                    
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14))
                         .foregroundColor(.gray)
@@ -1274,9 +1177,6 @@ struct AmazonPriceResultRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
-
-
-
 #Preview {
     YourListView()
 }

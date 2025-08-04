@@ -4,21 +4,16 @@
 //
 //  Created by Alex Kumar on 7/12/25.
 //
-
 import SwiftUI
-
 struct LoginView: View {
     @Environment(\.managedObjectContext) private var context
     @StateObject private var viewModel: AuthViewModel
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-
     @State private var username = ""
     @State private var password = ""
-
     init() {
         _viewModel = StateObject(wrappedValue: AuthViewModel(context: PersistenceController.shared.container.viewContext))
     }
-
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
@@ -27,16 +22,13 @@ struct LoginView: View {
                     .font(.system(size: 60))
                     .foregroundColor(AppColors.accentGreen)
                     .padding(.top, 50)
-                
                 // App Logo/Title
                 Text("CartWise")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .foregroundColor(AppColors.textPrimary)
                     .padding(.top, 10)
-                
                 Spacer()
-                
                 VStack(spacing: 20) {
                     // Username Field
                     VStack(alignment: .leading, spacing: 5) {
@@ -48,7 +40,6 @@ struct LoginView: View {
                             .autocapitalization(.none)
                             .textContentType(.username)
                     }
-                    
                     // Password Field
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Password")
@@ -60,7 +51,6 @@ struct LoginView: View {
                     }
                 }
                 .padding(.horizontal)
-
                 // Error Message
                 if let error = viewModel.error {
                     Text(error)
@@ -68,7 +58,6 @@ struct LoginView: View {
                         .font(.caption)
                         .padding(.horizontal)
                 }
-
                 // Login Button
                 Button(action: {
                     Task {
@@ -97,13 +86,11 @@ struct LoginView: View {
                 .cornerRadius(10)
                 .padding(.horizontal)
                 .disabled(viewModel.isLoading || username.isEmpty || password.isEmpty)
-
                 // Sign Up Link
                 NavigationLink("Don't have an account? Sign Up", destination: SignUpView())
                     .foregroundColor(AppColors.textPrimary)
                     .font(.system(size: 16, weight: .medium))
                     .padding(.top, 10)
-                
                 Spacer()
             }
             .background(AppColors.backgroundPrimary)
@@ -112,7 +99,6 @@ struct LoginView: View {
         }
     }
 }
-
 // Preview
 struct LoginView_Previews: PreviewProvider {
     static var previews: some View {

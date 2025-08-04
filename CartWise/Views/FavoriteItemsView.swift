@@ -4,14 +4,11 @@
 //
 //  Created by AI Assistant on 7/17/25.
 //
-
 import SwiftUI
-
 struct FavoriteItemsView: View {
     @EnvironmentObject var productViewModel: ProductViewModel
     @State private var showingProductDetail = false
     @State private var selectedProduct: GroceryItem?
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             // Enhanced Header
@@ -29,7 +26,6 @@ struct FavoriteItemsView: View {
                             )
                         )
                         .frame(width: 40, height: 40)
-                    
                     Image(systemName: "heart.fill")
                         .foregroundColor(AppColors.accentGreen)
                         .font(.system(size: 18, weight: .medium))
@@ -46,7 +42,6 @@ struct FavoriteItemsView: View {
                 }
                 
                 Spacer()
-                
                 Text("\(productViewModel.favoriteProducts.count) items")
                     .font(.poppins(size: 15, weight: .medium))
                     .foregroundColor(.gray)
@@ -83,17 +78,14 @@ struct FavoriteItemsView: View {
                                 )
                             )
                             .frame(width: 80, height: 80)
-                        
                         Image(systemName: "heart")
                             .font(.system(size: 36, weight: .light))
                             .foregroundColor(.gray.opacity(0.6))
                     }
-                    
                     VStack(spacing: 8) {
                         Text("No favorite items yet")
                             .font(.poppins(size: 20, weight: .semibold))
                             .foregroundColor(.gray)
-                        
                         Text("Add items to your favorites to see them here")
                             .font(.poppins(size: 15, weight: .regular))
                             .foregroundColor(.gray.opacity(0.7))
@@ -143,12 +135,10 @@ struct FavoriteItemsView: View {
         }
     }
 }
-
 struct FavoriteItemRow: View {
     let product: GroceryItem
     let onTap: () -> Void
     let onRemoveFromFavorites: () -> Void
-    
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 16) {
@@ -171,21 +161,18 @@ struct FavoriteItemRow: View {
                             .font(.system(size: 20, weight: .light))
                     )
                     .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-                
                 VStack(alignment: .leading, spacing: 6) {
                     Text(product.productName ?? "Unknown Product")
                         .font(.poppins(size: 17, weight: .semibold))
                         .foregroundColor(.primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                    
                     if let brand = product.brand, !brand.isEmpty {
                         Text(brand)
                             .font(.poppins(size: 14, weight: .regular))
                             .foregroundColor(.gray)
                             .lineLimit(1)
                     }
-                    
                     if let store = product.store, !store.isEmpty {
                         HStack(spacing: 4) {
                             Image(systemName: "mappin.circle.fill")
@@ -198,16 +185,13 @@ struct FavoriteItemRow: View {
                         }
                     }
                 }
-                
                 Spacer()
-                
                 VStack(alignment: .trailing, spacing: 8) {
                     if product.price > 0 {
                         Text("$\(String(format: "%.2f", product.price))")
                             .font(.poppins(size: 17, weight: .bold))
                             .foregroundColor(AppColors.accentGreen)
                     }
-                    
                     // Enhanced Remove from favorites button
                     Button(action: onRemoveFromFavorites) {
                         ZStack {
@@ -223,7 +207,6 @@ struct FavoriteItemRow: View {
                                     )
                                 )
                                 .frame(width: 32, height: 32)
-                            
                             Image(systemName: "heart.fill")
                                 .foregroundColor(AppColors.accentGreen)
                                 .font(.system(size: 14, weight: .medium))
@@ -242,7 +225,6 @@ struct FavoriteItemRow: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
-
 #Preview {
     FavoriteItemsView()
-} 
+}

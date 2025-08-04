@@ -4,21 +4,16 @@
 //
 //  Created by Alex Kumar on 7/13/25.
 //
-
 import SwiftUI
-
 struct SignUpView: View {
     @Environment(\.managedObjectContext) private var context
     @StateObject private var viewModel: AuthViewModel
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-
     @State private var username = ""
     @State private var password = ""
-
     init() {
         _viewModel = StateObject(wrappedValue: AuthViewModel(context: PersistenceController.shared.container.viewContext))
     }
-
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
@@ -27,15 +22,12 @@ struct SignUpView: View {
                     .font(.system(size: 60))
                     .foregroundColor(AppColors.accentGreen)
                     .padding(.top, 50)
-                
                 Text("CartWise")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .foregroundColor(AppColors.textPrimary)
                     .padding(.top, 10)
-                
                 Spacer()
-                
                 VStack(spacing: 20) {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Username")
@@ -46,7 +38,6 @@ struct SignUpView: View {
                             .autocapitalization(.none)
                             .textContentType(.username)
                     }
-                    
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Password")
                             .font(.headline)
@@ -57,14 +48,12 @@ struct SignUpView: View {
                     }
                 }
                 .padding(.horizontal)
-
                 if let error = viewModel.error {
                     Text(error)
                         .foregroundColor(AppColors.accentRed)
                         .font(.caption)
                         .padding(.horizontal)
                 }
-
                 Button(action: {
                     Task {
                         print("Sign up button tapped with username: \(username)")
@@ -92,12 +81,10 @@ struct SignUpView: View {
                 .cornerRadius(10)
                 .padding(.horizontal)
                 .disabled(viewModel.isLoading || username.isEmpty || password.isEmpty)
-
                 NavigationLink("Already have an account? Log In", destination: LoginView())
                     .foregroundColor(AppColors.textPrimary)
                     .font(.system(size: 16, weight: .medium))
                     .padding(.top, 10)
-                
                 Spacer()
             }
             .background(AppColors.backgroundPrimary)
@@ -106,7 +93,6 @@ struct SignUpView: View {
         }
     }
 }
-
 // Preview
 struct SignUpView_Previews: PreviewProvider {
     static var previews: some View {

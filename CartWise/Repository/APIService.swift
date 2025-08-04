@@ -4,11 +4,8 @@
 //
 //  Created by Serg Tsogtbaatar on 7/10/25.
 //
-
-
 import Foundation
 import CoreData
-
 protocol NetworkServiceProtocol: Sendable {
     func fetchProduct(by name: String) async throws -> APIProduct?
     func searchProducts(by name: String) async throws -> [APIProduct]
@@ -17,11 +14,9 @@ protocol NetworkServiceProtocol: Sendable {
     func fetchProductWithRetry(by name: String, retries: Int) async throws -> APIProduct?
     func searchGroceryPrice(productName: String, store: Store) async throws -> APIProduct?
 }
-
 enum Store: String, CaseIterable, Codable {
     case amazon = "Amazon"
     case walmart = "Walmart"
-    
     var endpoint: String {
         switch self {
         case .amazon:
@@ -31,51 +26,41 @@ enum Store: String, CaseIterable, Codable {
         }
     }
 }
-
 final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     private let session: URLSession
-    private let baseURL = "https://api-to-find-grocery-prices.p.rapidapi.com"
+    private let baseURL = "https: //api-to-find-grocery-prices.p.rapidapi.com"
     private let apiKey = "84e64a5488msh5075a47a5c27140p17850bjsnb78c0cf33881"
-    
     init(session: URLSession = .shared) {
         self.session = session
     }
-    
     func searchProducts(by name: String) async throws -> [APIProduct] {
         let url = try buildSearchURL(for: name)
         let response = try await performRequest(url: url, responseType: APIResponse.self)
         return response.products
     }
-    
     func searchProductsOnAmazon(by query: String) async throws -> [APIProduct] {
         let url = try buildStoreSearchURL(for: query, store: .amazon)
         let response = try await performRequest(url: url, responseType: APIResponse.self)
         return response.products
     }
-    
     func searchProductsOnWalmart(by query: String) async throws -> [APIProduct] {
         let url = try buildStoreSearchURL(for: query, store: .walmart)
         let response = try await performRequest(url: url, responseType: APIResponse.self)
         return response.products
     }
-    
     func searchGroceryPrice(productName: String, store: Store) async throws -> APIProduct? {
         let url = try buildStoreSearchURL(for: productName, store: store)
         let response = try await performRequest(url: url, responseType: APIResponse.self)
-        
         // Return the first product from the API response
         return response.products.first
     }
-    
     func fetchProduct(by name: String) async throws -> APIProduct? {
         // For grocery prices API, we search by name and return the first result
         let products = try await searchProducts(by: name)
         return products.first
     }
-    
     func fetchProductWithRetry(by name: String, retries: Int = 3) async throws -> APIProduct? {
         var lastError: Error?
-        
         for attempt in 1...retries {
             do {
                 return try await fetchProduct(by: name)
@@ -86,57 +71,43 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
                 }
             }
         }
-        
         throw lastError ?? NetworkError.maxRetriesExceeded
     }
-    
-
-    
     // MARK: - Private Methods
-    
     private func buildSearchURL(for name: String) throws -> URL {
         var components = URLComponents(string: "\(baseURL)/search")!
         components.queryItems = [
             URLQueryItem(name: "query", value: name)
         ]
-        
         guard let url = components.url else {
             throw NetworkError.invalidURL
         }
         return url
     }
-    
     private func buildStoreSearchURL(for query: String, store: Store) throws -> URL {
         var components = URLComponents(string: "\(baseURL)/\(store.endpoint)")!
         components.queryItems = [
             URLQueryItem(name: "query", value: query)
         ]
-        
         guard let url = components.url else {
             throw NetworkError.invalidURL
         }
         return url
     }
-    
     private func performRequest<T: Decodable>(url: URL, responseType: T.Type) async throws -> T {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
-        
         // Add RapidAPI headers
         request.setValue(apiKey, forHTTPHeaderField: "X-RapidAPI-Key")
         request.setValue("api-to-find-grocery-prices.p.rapidapi.com", forHTTPHeaderField: "X-RapidAPI-Host")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
         let (data, response) = try await session.data(for: request)
-        
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
-        
         // Debug: Print raw response
         if let jsonString = String(data: data, encoding: .utf8) {
             print("APIService: Raw JSON response: \(jsonString)")
         }
-        
         switch httpResponse.statusCode {
         case 200:
             do {
@@ -158,10 +129,7 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         }
     }
 }
-
-
 // MARK: - Enhanced Error Handling
-
 enum NetworkError: Error, LocalizedError, Sendable {
     case invalidURL
     case invalidResponse
@@ -172,7 +140,6 @@ enum NetworkError: Error, LocalizedError, Sendable {
     case httpError(Int)
     case decodingError(Error)
     case maxRetriesExceeded
-    
     var errorDescription: String? {
         switch self {
         case .invalidURL:
@@ -195,7 +162,6 @@ enum NetworkError: Error, LocalizedError, Sendable {
             return "Maximum retry attempts exceeded"
         }
     }
-    
     var recoverySuggestion: String? {
         switch self {
         case .productNotFound:
