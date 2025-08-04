@@ -31,6 +31,9 @@ struct AddItemsView: View {
     @State private var showingTagPicker = false
     @State private var addToShoppingList = false
     @State private var isExistingProduct = false
+    @State private var isScanInProgress = false
+    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
@@ -145,7 +148,7 @@ struct AddItemsView: View {
             .onAppear {
                 // Tags are now passed as parameter, no need to fetch
             }
-            .sheet(isPresented: $showingBarcodeConfirmation) {
+                                        .fullScreenCover(isPresented: $showingBarcodeConfirmation) {
                 BarcodeConfirmationView(
                     barcode: $pendingBarcode,
                     productName: $pendingProductName,
@@ -160,9 +163,11 @@ struct AddItemsView: View {
                     selectedTags: $selectedTags,
                     showingTagPicker: $showingTagPicker,
                     addToShoppingList: $addToShoppingList,
-                    isExistingProduct: isExistingProduct,
+                    isExistingProduct: $isExistingProduct,
+                    isScanInProgress: isScanInProgress,
                     onConfirm: { barcode, productName, company, price, category, isOnSale, location, tags, addToShoppingList in
                         showingBarcodeConfirmation = false
+                        isScanInProgress = false
                         Task {
                             await handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale, location: location, tags: tags, addToShoppingList: addToShoppingList)
                         }
@@ -170,8 +175,10 @@ struct AddItemsView: View {
                     onCancel: {
                         showingBarcodeConfirmation = false
                         resetPendingData()
+                        isScanInProgress = false
                     }
                 )
+                .id("BarcodeConfirmation-\(isExistingProduct)")
                 .sheet(isPresented: $showCategoryPicker) {
                     CategoryPickerView(selectedCategory: $pendingCategory)
                 }
@@ -197,6 +204,9 @@ struct AddItemsView: View {
         }
     }
     private func handleBarcodeScanned(_ barcode: String) {
+        // Set scan in progress to disable button
+        isScanInProgress = true
+        
         // Reset all pending data first to ensure clean state
         resetPendingData()
         pendingBarcode = barcode
@@ -221,16 +231,27 @@ struct AddItemsView: View {
                             pendingPrice = String(format: "%.2f", mostRecentPrice.price)
                             pendingLocation = mostRecentPrice.location
                         }
+                        
                     } else {
                         isExistingProduct = false
                         // Keep fields empty for new product
                     }
-                    showingBarcodeConfirmation = true
+                    // Reset scan in progress after data is loaded
+                    isScanInProgress = false
+                    // Small delay to ensure state is set before showing sheet
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        showingBarcodeConfirmation = true
+                    }
                 }
             } catch {
                 await MainActor.run {
                     isExistingProduct = false
-                    showingBarcodeConfirmation = true
+                    // Reset scan in progress after error
+                    isScanInProgress = false
+                    // Small delay to ensure state is set before showing sheet
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        showingBarcodeConfirmation = true
+                    }
                 }
             }
         }
@@ -503,18 +524,11 @@ struct BarcodeConfirmationView: View {
     @Binding var selectedTags: [Tag]
     @Binding var showingTagPicker: Bool
     @Binding var addToShoppingList: Bool
-    let isExistingProduct: Bool
+    @Binding var isExistingProduct: Bool
+    let isScanInProgress: Bool
     let onConfirm: (String, String, String, String, ProductCategory, Bool, Location?, [Tag], Bool) -> Void
     let onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
-    
-    // Track original values to detect changes
-    @State private var originalProductName: String = ""
-    @State private var originalCompany: String = ""
-    @State private var originalPrice: String = ""
-    @State private var originalCategory: ProductCategory = .none
-    @State private var originalIsOnSale: Bool = false
-    @State private var originalLocation: Location? = nil
     
     // Form validation
     private var isFormValid: Bool {
@@ -552,31 +566,21 @@ struct BarcodeConfirmationView: View {
     }
     
     private func shouldShowActionButton() -> Bool {
-        // For new products, always show Add button
-        if !isExistingProduct {
-            return true
+        // Don't show button during scan processing
+        if isScanInProgress {
+            return false
         }
         
-        // For existing products, only show button if changes were made
-        return hasChanges()
-    }
-    
-    private func hasChanges() -> Bool {
-        guard isExistingProduct else { return false }
-        
-        // Check if any field has been modified
-        let productNameChanged = productName.trimmingCharacters(in: .whitespacesAndNewlines) != originalProductName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let companyChanged = company.trimmingCharacters(in: .whitespacesAndNewlines) != originalCompany.trimmingCharacters(in: .whitespacesAndNewlines)
-        let priceChanged = price.trimmingCharacters(in: .whitespacesAndNewlines) != originalPrice.trimmingCharacters(in: .whitespacesAndNewlines)
-        let categoryChanged = selectedCategory != originalCategory
-        let saleChanged = isOnSale != originalIsOnSale
-        let locationChanged = selectedLocation?.id != originalLocation?.id
-        
-        return productNameChanged || companyChanged || priceChanged || categoryChanged || saleChanged || locationChanged
+        // Always show button when form is valid
+        return true
     }
     
     private func shouldShowUpdateButton() -> Bool {
-        return isExistingProduct && hasChanges()
+        return isExistingProduct
+    }
+    
+    private var buttonText: String {
+        return isExistingProduct ? "Update" : "Add"
     }
     
     var body: some View {
@@ -615,46 +619,33 @@ struct BarcodeConfirmationView: View {
                         }
                         // Product Name Field
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 0) {
-                                Text("Product Name")
-                                    .font(.headline)
-                                    .foregroundColor(AppColors.textPrimary)
-                                Text("*")
-                                    .font(.headline)
-                                    .foregroundColor(.red)
-                            }
+                            Text("Product Name")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
                             TextField("Enter product name...", text: $productName)
                                 .font(.body)
                                 .padding()
                                 .background(AppColors.backgroundSecondary)
                                 .cornerRadius(8)
+
                         }
                         // Company Field
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 0) {
-                                Text("Company/Brand")
-                                    .font(.headline)
-                                    .foregroundColor(AppColors.textPrimary)
-                                Text("*")
-                                    .font(.headline)
-                                    .foregroundColor(.red)
-                            }
+                            Text("Company/Brand")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
                             TextField("Enter company or brand...", text: $company)
                                 .font(.body)
                                 .padding()
                                 .background(AppColors.backgroundSecondary)
                                 .cornerRadius(8)
+
                         }
                         // Category Field
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 0) {
-                                Text("Category")
-                                    .font(.headline)
-                                    .foregroundColor(AppColors.textPrimary)
-                                Text("*")
-                                    .font(.headline)
-                                    .foregroundColor(.red)
-                            }
+                            Text("Category")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
                             Button(action: {
                                 showCategoryPicker = true
                             }) {
@@ -673,31 +664,22 @@ struct BarcodeConfirmationView: View {
                         }
                         // Price Field
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 0) {
-                                Text("Price")
-                                    .font(.headline)
-                                    .foregroundColor(AppColors.textPrimary)
-                                Text("*")
-                                    .font(.headline)
-                                    .foregroundColor(.red)
-                            }
+                            Text("Price")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
                             TextField("Enter price...", text: $price)
                                 .font(.body)
                                 .padding()
                                 .background(AppColors.backgroundSecondary)
                                 .cornerRadius(8)
                                 .keyboardType(.decimalPad)
+
                         }
                         // Location Field
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 0) {
-                                Text("Location")
-                                    .font(.headline)
-                                    .foregroundColor(AppColors.textPrimary)
-                                Text("*")
-                                    .font(.headline)
-                                    .foregroundColor(.red)
-                            }
+                            Text("Location")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
                             Button(action: {
                                 showLocationPicker = true
                             }) {
@@ -712,25 +694,6 @@ struct BarcodeConfirmationView: View {
                                 .padding()
                                 .background(AppColors.backgroundSecondary)
                                 .cornerRadius(8)
-                            }
-                        }
-                        // Sale Checkbox
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Button(action: {
-                                    isOnSale.toggle()
-                                }) {
-                                    HStack(spacing: 12) {
-                                        Image(systemName: isOnSale ? "checkmark.square.fill" : "square")
-                                            .foregroundColor(isOnSale ? AppColors.accentOrange : .gray)
-                                            .font(.system(size: 28))
-                                        Text("On Sale")
-                                            .font(.headline)
-                                            .foregroundColor(AppColors.textPrimary)
-                                    }
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                Spacer()
                             }
                         }
                     }
@@ -775,24 +738,27 @@ struct BarcodeConfirmationView: View {
                         }
                         .padding(.horizontal)
                     }
-                    Spacer(minLength: 20)
+                    // On Sale Toggle
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("On Sale")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            Spacer()
+                            Toggle("", isOn: $isOnSale)
+                                .toggleStyle(SwitchToggleStyle(tint: AppColors.accentOrange))
+                        }
+                        .padding(.horizontal)
+                    }
                     // Shopping List Toggle
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Button(action: {
-                                addToShoppingList.toggle()
-                            }) {
-                                HStack {
-                                    Image(systemName: addToShoppingList ? "checkmark.square.fill" : "square")
-                                        .foregroundColor(addToShoppingList ? AppColors.accentGreen : .gray)
-                                        .font(.system(size: 20))
-                                    Text("Add to Shopping List")
-                                        .font(.headline)
-                                        .foregroundColor(AppColors.textPrimary)
-                                    Spacer()
-                                }
-                            }
-                            .buttonStyle(PlainButtonStyle())
+                            Text("Add to Shopping List")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            Spacer()
+                            Toggle("", isOn: $addToShoppingList)
+                                .toggleStyle(SwitchToggleStyle(tint: AppColors.accentGreen))
                         }
                         .padding(.horizontal)
                         if addToShoppingList {
@@ -802,18 +768,29 @@ struct BarcodeConfirmationView: View {
                                 .padding(.horizontal)
                         }
                     }
-                    // Validation Messages
-                    if !validationMessages.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(validationMessages, id: \.self) { message in
-                                Text(message)
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
                     
+                    // Action Buttons - Center Bottom
+                    VStack(spacing: 16) {
+                        // Always show for testing
+                        Button(action: {
+                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedLocation, selectedTags, addToShoppingList)
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: isExistingProduct ? "arrow.clockwise" : "plus")
+                                    .font(.system(size: 18, weight: .semibold))
+                                Text(isExistingProduct ? "Update Item" : "Add Item")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(AppColors.accentGreen)
+                            .cornerRadius(12)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+
 
                 }
             }
@@ -826,34 +803,15 @@ struct BarcodeConfirmationView: View {
                         onCancel()
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if isFormValid && shouldShowActionButton() {
-                        Button(shouldShowUpdateButton() ? "Update" : "Add") {
-                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedLocation, selectedTags, addToShoppingList)
-                        }
-                        .foregroundColor(AppColors.accentGreen)
-                    }
-                }
             }
-            .onAppear {
-                // Capture original values for change detection
-                originalProductName = productName
-                originalCompany = company
-                originalPrice = price
-                originalCategory = selectedCategory
-                originalIsOnSale = isOnSale
-                originalLocation = selectedLocation
-            }
+
+
+
+
 
         }
     }
-    private func getButtonText() -> String {
-        if isExistingProduct {
-            return addToShoppingList ? "Update Item & Add to Shopping List" : "Update Item"
-        } else {
-            return addToShoppingList ? "Add Item to Shopping List" : "Add Item to Database"
-        }
-    }
+
 }
 // MARK: - Manual Barcode Entry View
 struct ManualBarcodeEntryView: View {
