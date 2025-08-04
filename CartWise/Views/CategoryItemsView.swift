@@ -453,6 +453,16 @@ struct ProductDetailView: View {
             }
             try context.save()
             print("Successfully updated product price to $\(newPrice) for location: \(locationInContext.name ?? "Unknown")")
+            
+            // Update user reputation
+            let currentUsername = await getCurrentUsername()
+            if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
+                // Use Task to avoid potential context issues
+                Task {
+                    await ReputationManager.shared.updateUserReputation(userId: currentUser.id ?? "")
+                    print("Updated reputation for user: \(currentUsername)")
+                }
+            }
         } catch {
             print("Error updating product price: \(error)")
         }

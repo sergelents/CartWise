@@ -17,6 +17,7 @@ struct MyProfileView: View {
     enum ProfileTab: String, CaseIterable {
         case favorites = "Favorites"
         case locations = "Locations"
+        case reputation = "Reputation"
     }
     
     var body: some View {
@@ -115,6 +116,9 @@ struct TabbedContentView: View {
                         .transition(.opacity)
                 } else if selectedTab == .locations {
                     LocationsSectionView()
+                        .transition(.opacity)
+                } else if selectedTab == .reputation {
+                    ReputationTabView()
                         .transition(.opacity)
                 }
             }
@@ -253,5 +257,51 @@ struct LogoutButton: View {
         }
         .scaleEffect(1.0)
         .animation(.easeInOut(duration: 0.2), value: true)
+    }
+}
+
+// MARK: - Reputation Tab View
+struct ReputationTabView: View {
+    @State private var userUpdates: Int = 0
+    @State private var userLevel: String = "New Shopper"
+    @State private var isLoading: Bool = true
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            if isLoading {
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    
+                    Text("Loading reputation data...")
+                        .font(.poppins(size: 14, weight: .medium))
+                        .foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ReputationCardView(updates: userUpdates, level: userLevel)
+                    .padding(.horizontal)
+            }
+        }
+        .padding(.vertical, 20)
+        .task {
+            await loadUserReputation()
+        }
+    }
+    
+    private func loadUserReputation() async {
+        if let reputation = await ReputationManager.shared.getCurrentUserReputation() {
+            await MainActor.run {
+                userUpdates = reputation.updates
+                userLevel = reputation.level
+                isLoading = false
+            }
+        } else {
+            await MainActor.run {
+                userUpdates = 0
+                userLevel = "New Shopper"
+                isLoading = false
+            }
+        }
     }
 }

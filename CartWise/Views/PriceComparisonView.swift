@@ -115,28 +115,58 @@ struct StorePriceRow: View {
     let isBest: Bool
     let rank: Int
     var body: some View {
-        HStack {
-            // Rank
-            Text("\(rank).")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
-                .frame(width: 20, alignment: .leading)
-            // Store name
-            Text(storePrice.store)
-                .font(.subheadline)
-                .fontWeight(isBest ? .semibold : .regular)
-                .foregroundColor(isBest ? .green : .primary)
-            Spacer()
-            // Price
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("$\(String(format: "%.2f", storePrice.totalPrice))")
+        VStack(spacing: 8) {
+            HStack {
+                // Rank
+                Text("\(rank).")
                     .font(.subheadline)
-                    .fontWeight(isBest ? .bold : .medium)
-                    .foregroundColor(isBest ? .green : .primary)
-                Text("\(storePrice.availableItems)/\(storePrice.availableItems + storePrice.unavailableItems) items")
-                    .font(.caption2)
+                    .fontWeight(.semibold)
                     .foregroundColor(.secondary)
+                    .frame(width: 20, alignment: .leading)
+                // Store name
+                Text(storePrice.store)
+                    .font(.subheadline)
+                    .fontWeight(isBest ? .semibold : .regular)
+                    .foregroundColor(isBest ? .green : .primary)
+                Spacer()
+                // Price
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("$\(String(format: "%.2f", storePrice.totalPrice))")
+                        .font(.subheadline)
+                        .fontWeight(isBest ? .bold : .medium)
+                        .foregroundColor(isBest ? .green : .primary)
+                    Text("\(storePrice.availableItems)/\(storePrice.availableItems + storePrice.unavailableItems) items")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            // Shopper Attribution
+            if let itemShoppers = storePrice.itemShoppers, !itemShoppers.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Updated by:")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 4) {
+                        ForEach(Array(itemShoppers.prefix(4)), id: \.key) { productName, shopper in
+                            HStack(spacing: 4) {
+                                Image(systemName: "person.circle.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.blue)
+                                
+                                Text(shopper)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+                .padding(.leading, 24)
             }
         }
         .padding(.vertical, 4)

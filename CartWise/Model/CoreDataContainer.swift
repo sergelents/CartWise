@@ -28,6 +28,7 @@ protocol CoreDataContainerProtocol: Sendable {
     // Price comparison methods
     func getAllStores() async throws -> [String]
     func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double?
+    func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double?, shopper: String?)
     // Tag-related methods
     func fetchAllTags() async throws -> [Tag]
     func createTag(id: String, name: String, color: String) async throws -> Tag
@@ -199,6 +200,15 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             }
             productInContext.updatedAt = Date()
             try context.save()
+            
+            // Update user reputation
+            if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
+                // Use Task to avoid potential context issues
+                Task {
+                    await ReputationManager.shared.updateUserReputation(userId: currentUser.id ?? "")
+                    print("Updated reputation for user: \(currentUsername)")
+                }
+            }
         }
     }
     func deleteProduct(_ product: GroceryItem) async throws {
@@ -386,6 +396,19 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 price.store == store
             }
             return storePrice?.price
+        }
+    }
+    
+    func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double?, shopper: String?) {
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            // Get all prices for this item
+            let prices = item.priceArray
+            // Find the price for this specific store
+            let storePrice = prices.first { price in
+                price.store == store
+            }
+            return (storePrice?.price, storePrice?.updatedBy)
         }
     }
 }
