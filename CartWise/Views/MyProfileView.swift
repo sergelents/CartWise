@@ -279,21 +279,8 @@ struct ReputationTabView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                VStack(spacing: 16) {
-                    ReputationCardView(updates: userUpdates, level: userLevel)
-                        .padding(.horizontal)
-                    
-                    // Debug button for testing
-                    Button("Test Reputation Update") {
-                        Task {
-                            await ReputationManager.shared.debugReputationUpdate()
-                            await loadUserReputation()
-                        }
-                    }
-                    .padding()
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(8)
-                }
+                ReputationCardView(updates: userUpdates, level: userLevel)
+                    .padding(.horizontal)
             }
         }
         .padding(.vertical, 20)
