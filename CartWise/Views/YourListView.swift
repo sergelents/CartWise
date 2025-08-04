@@ -283,10 +283,9 @@ struct ShoppingListCard: View {
                         )
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                     }
                 }
-                .frame(maxHeight: 200)
                 .listStyle(PlainListStyle())
                 .background(Color.clear)
             }
@@ -849,14 +848,37 @@ struct ShoppingListItemRow: View {
                         .font(.poppins(size: 12, weight: .regular))
                         .foregroundColor(.gray)
                 }
-                if let category = product.category, !category.isEmpty {
-                    Text(category)
-                        .font(.poppins(size: 10, weight: .regular))
+            }
+            Spacer()
+            // Display lowest price and store
+            VStack(alignment: .trailing, spacing: 2) {
+                if let lowestPrice = product.getLowestPrice(), lowestPrice.price > 0 {
+                    Text("$\(String(format: "%.2f", lowestPrice.price))")
+                        .font(.poppins(size: 15, weight: .semibold))
+                        .foregroundColor(product.isCompleted ? .gray : AppColors.accentGreen)
+                        .strikethrough(product.isCompleted)
+                    if let store = lowestPrice.store, !store.isEmpty {
+                        Text(store)
+                            .font(.poppins(size: 10, weight: .regular))
+                            .foregroundColor(.gray)
+                    }
+                    // Display update information
+                    if let updatedBy = lowestPrice.updatedBy, !updatedBy.isEmpty {
+                        Text("Updated by \(updatedBy)")
+                            .font(.poppins(size: 8, weight: .regular))
+                            .foregroundColor(.gray.opacity(0.6))
+                    }
+                    if let lastUpdated = lowestPrice.lastUpdated {
+                        Text(formatDate(lastUpdated))
+                            .font(.poppins(size: 8, weight: .regular))
+                            .foregroundColor(.gray.opacity(0.6))
+                    }
+                } else {
+                    Text("No price")
+                        .font(.poppins(size: 12, weight: .regular))
                         .foregroundColor(.gray.opacity(0.7))
                 }
             }
-            Spacer()
-            // No price display since prices vary by store
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
@@ -872,6 +894,26 @@ struct ShoppingListItemRow: View {
             }
         }
         .padding(.horizontal, 2)
+    }
+}
+// Helper function to format dates
+private func formatDate(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    let now = Date()
+    let calendar = Calendar.current
+    
+    if calendar.isDateInToday(date) {
+        formatter.timeStyle = .short
+        return "Today \(formatter.string(from: date))"
+    } else if calendar.isDateInYesterday(date) {
+        formatter.timeStyle = .short
+        return "Yesterday \(formatter.string(from: date))"
+    } else if calendar.dateInterval(of: .weekOfYear, for: now)?.contains(date) == true {
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: date)
+    } else {
+        formatter.dateStyle = .short
+        return formatter.string(from: date)
     }
 }
 // Rating Prompt View
