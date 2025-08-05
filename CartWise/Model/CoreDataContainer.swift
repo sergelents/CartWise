@@ -34,6 +34,7 @@ protocol CoreDataContainerProtocol: Sendable {
     func createTag(id: String, name: String, color: String) async throws -> Tag
     func updateTag(_ tag: Tag) async throws
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws
+    func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func initializeDefaultTags() async throws
     // ProductImage methods
@@ -442,6 +443,19 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             let currentTags = productInContext.tags as? Set<Tag> ?? Set()
             let newTags = currentTags.union(Set(tagsInContext))
             productInContext.tags = NSSet(set: newTags)
+            try context.save()
+        }
+    }
+    
+    func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            // Get the tags in the current context
+            let tagObjectIDs = tags.map { $0.objectID }
+            let tagsInContext = try tagObjectIDs.map { try context.existingObject(with: $0) as! Tag }
+            // Replace tags for product
+            productInContext.tags = NSSet(set: Set(tagsInContext))
             try context.save()
         }
     }

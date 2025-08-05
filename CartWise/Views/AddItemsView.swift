@@ -31,6 +31,9 @@ struct AddItemsView: View {
     @State private var showingTagPicker = false
     @State private var addToShoppingList = false
     @State private var isExistingProduct = false
+    @State private var isScanInProgress = false
+    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
@@ -70,13 +73,15 @@ struct AddItemsView: View {
                         .overlay(
                             VStack(spacing: 12) {
                                 Image(systemName: "barcode.viewfinder")
-                                    .font(.system(size: 40))
+                                    .font(.system(size: 60))
                                     .foregroundColor(AppColors.accentGreen)
-                                Text("Scan barcode")
-                                    .font(.headline)
-                                    .foregroundColor(AppColors.textPrimary)
+                                Text("Scan a barcode to add or edit it")
+                                    .font(.body)
+                                    .foregroundColor(AppColors.textPrimary.opacity(0.7))
+                                    .multilineTextAlignment(.center)
                             }
                         )
+                        .padding(.top, 40)
                         .padding(.horizontal)
                 }
                 // Action Buttons
@@ -145,7 +150,7 @@ struct AddItemsView: View {
             .onAppear {
                 // Tags are now passed as parameter, no need to fetch
             }
-            .sheet(isPresented: $showingBarcodeConfirmation) {
+                                        .fullScreenCover(isPresented: $showingBarcodeConfirmation) {
                 BarcodeConfirmationView(
                     barcode: $pendingBarcode,
                     productName: $pendingProductName,
@@ -160,9 +165,11 @@ struct AddItemsView: View {
                     selectedTags: $selectedTags,
                     showingTagPicker: $showingTagPicker,
                     addToShoppingList: $addToShoppingList,
-                    isExistingProduct: isExistingProduct,
+                    isExistingProduct: $isExistingProduct,
+                    isScanInProgress: isScanInProgress,
                     onConfirm: { barcode, productName, company, price, category, isOnSale, location, tags, addToShoppingList in
                         showingBarcodeConfirmation = false
+                        isScanInProgress = false
                         Task {
                             await handleBarcodeProcessing(barcode: barcode, productName: productName, company: company, price: price, category: category, isOnSale: isOnSale, location: location, tags: tags, addToShoppingList: addToShoppingList)
                         }
@@ -170,8 +177,10 @@ struct AddItemsView: View {
                     onCancel: {
                         showingBarcodeConfirmation = false
                         resetPendingData()
+                        isScanInProgress = false
                     }
                 )
+                .id("BarcodeConfirmation-\(isExistingProduct)")
                 .sheet(isPresented: $showCategoryPicker) {
                     CategoryPickerView(selectedCategory: $pendingCategory)
                 }
@@ -197,42 +206,61 @@ struct AddItemsView: View {
         }
     }
     private func handleBarcodeScanned(_ barcode: String) {
+        // Set scan in progress to disable button
+        isScanInProgress = true
+        
+        // Reset all pending data first to ensure clean state
+        resetPendingData()
         pendingBarcode = barcode
         showingCamera = false
+        
         // Check if product already exists and fetch its data
         Task {
             do {
                 let existingProducts = try await productViewModel.searchProductsByBarcode(barcode)
-                if let existingProduct = existingProducts.first {
-                    // Auto-fill with existing data
-                    await MainActor.run {
+                await MainActor.run {
+                    if let existingProduct = existingProducts.first {
+                        // Auto-fill with existing data
                         isExistingProduct = true
                         pendingProductName = existingProduct.productName ?? ""
                         pendingCompany = existingProduct.brand ?? ""
                         pendingCategory = ProductCategory(rawValue: existingProduct.category ?? "") ?? .none
                         pendingIsOnSale = existingProduct.isOnSale
-                        // Get the most recent price
+                        
+                        // Get the most recent price and location
                         if let prices = existingProduct.prices as? Set<GroceryItemPrice>,
                            let mostRecentPrice = prices.max(by: { ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) }) {
                             pendingPrice = String(format: "%.2f", mostRecentPrice.price)
-                            // Set the location based on the most recent price
-                            if let priceLocation = mostRecentPrice.location {
-                                pendingLocation = priceLocation
-                            }
+                            pendingLocation = mostRecentPrice.location
                         }
-                    }
-                } else {
-                    await MainActor.run {
+                        
+                        // Load existing tags
+                        if let existingTags = existingProduct.tags as? Set<Tag> {
+                            selectedTags = Array(existingTags)
+                        } else {
+                            selectedTags = []
+                        }
+                        
+                    } else {
                         isExistingProduct = false
+                        // Keep fields empty for new product
                     }
-                }
-                await MainActor.run {
-                    showingBarcodeConfirmation = true
+                    // Reset scan in progress after data is loaded
+                    isScanInProgress = false
+                    // Small delay to ensure state is set before showing sheet
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        showingBarcodeConfirmation = true
+                    }
                 }
             } catch {
                 await MainActor.run {
                     isExistingProduct = false
-                    showingBarcodeConfirmation = true
+                    // Reset scan in progress after error
+                    isScanInProgress = false
+                    // Small delay to ensure state is set before showing sheet
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        showingBarcodeConfirmation = true
+                    }
                 }
             }
         }
@@ -259,7 +287,12 @@ struct AddItemsView: View {
             )
             // Associate tags with the new product
             if let newProduct = newProduct {
-                await productViewModel.addTagsToProduct(newProduct, tags: tags)
+                // For existing products, replace tags instead of adding to them
+                if wasExistingProduct {
+                    await productViewModel.replaceTagsForProduct(newProduct, tags: tags)
+                } else {
+                    await productViewModel.addTagsToProduct(newProduct, tags: tags)
+                }
                 // Add to shopping list if requested
                 if addToShoppingList {
                     await productViewModel.addExistingProductToShoppingList(newProduct)
@@ -514,42 +547,84 @@ struct BarcodeConfirmationView: View {
     @Binding var selectedTags: [Tag]
     @Binding var showingTagPicker: Bool
     @Binding var addToShoppingList: Bool
-    let isExistingProduct: Bool
+    @Binding var isExistingProduct: Bool
+    let isScanInProgress: Bool
     let onConfirm: (String, String, String, String, ProductCategory, Bool, Location?, [Tag], Bool) -> Void
     let onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
+    
+    // Form validation
+    private var isFormValid: Bool {
+        !barcode.isEmpty && 
+        !productName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !company.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !price.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        selectedLocation != nil &&
+        selectedCategory != .none
+    }
+    
+    private var validationMessages: [String] {
+        var messages: [String] = []
+        
+        if barcode.isEmpty {
+            messages.append("Barcode is required")
+        }
+        if productName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Product name is required")
+        }
+        if company.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Company/Brand is required")
+        }
+        if price.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append("Price is required")
+        }
+        if selectedLocation == nil {
+            messages.append("Location is required")
+        }
+        if selectedCategory == .none {
+            messages.append("Category is required")
+        }
+        
+        return messages
+    }
+    
+    private func shouldShowActionButton() -> Bool {
+        // Don't show button during scan processing
+        if isScanInProgress {
+            return false
+        }
+        
+        // Always show button when form is valid
+        return true
+    }
+    
+    private func shouldShowUpdateButton() -> Bool {
+        return isExistingProduct
+    }
+    
+    private var buttonText: String {
+        return isExistingProduct ? "Update" : "Add"
+    }
+    
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Image(systemName: "barcode.viewfinder")
-                            .font(.system(size: 40))
-                            .foregroundColor(AppColors.accentGreen)
-                        Text("Product Details")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        Text("Review and edit the product information")
-                            .font(.body)
-                            .foregroundColor(AppColors.textPrimary.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.top, 20)
+
                     // Form Fields
                     VStack(spacing: 16) {
                         // Barcode Field
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(spacing: 8) {
                             Text("Barcode Number")
                                 .font(.headline)
                                 .foregroundColor(AppColors.textPrimary)
-                            TextField("Barcode", text: $barcode)
+                            Text(barcode)
                                 .font(.system(.body, design: .monospaced))
-                                .padding()
-                                .background(AppColors.backgroundSecondary)
-                                .cornerRadius(8)
-                                .keyboardType(.numberPad)
+                                .foregroundColor(AppColors.textPrimary.opacity(0.7))
                         }
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom, 16)
                         // Product Name Field
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Product Name")
@@ -626,25 +701,6 @@ struct BarcodeConfirmationView: View {
                                 .cornerRadius(8)
                             }
                         }
-                        // Sale Checkbox
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Button(action: {
-                                    isOnSale.toggle()
-                                }) {
-                                    HStack(spacing: 12) {
-                                        Image(systemName: isOnSale ? "checkmark.square.fill" : "square")
-                                            .foregroundColor(isOnSale ? AppColors.accentOrange : .gray)
-                                            .font(.system(size: 28))
-                                        Text("On Sale")
-                                            .font(.headline)
-                                            .foregroundColor(AppColors.textPrimary)
-                                    }
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                Spacer()
-                            }
-                        }
                     }
                     .padding(.horizontal)
                     // Tag Selection Field
@@ -673,10 +729,18 @@ struct BarcodeConfirmationView: View {
                     // Selected Tags Display
                     if !selectedTags.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Selected Tags")
-                                .font(.headline)
-                                .foregroundColor(AppColors.textPrimary)
-                                .padding(.bottom, 4)
+                            HStack {
+                                Text("Selected Tags")
+                                    .font(.headline)
+                                    .foregroundColor(AppColors.textPrimary)
+                                Spacer()
+                                Button("Edit") {
+                                    showingTagPicker = true
+                                }
+                                .font(.subheadline)
+                                .foregroundColor(AppColors.accentGreen)
+                            }
+                            .padding(.bottom, 4)
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
                                 ForEach(selectedTags, id: \.id) { tag in
                                     TagChipView(tag: tag) {
@@ -687,24 +751,27 @@ struct BarcodeConfirmationView: View {
                         }
                         .padding(.horizontal)
                     }
-                    Spacer(minLength: 20)
+                    // On Sale Toggle
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("On Sale")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            Spacer()
+                            Toggle("", isOn: $isOnSale)
+                                .toggleStyle(SwitchToggleStyle(tint: AppColors.accentOrange))
+                        }
+                        .padding(.horizontal)
+                    }
                     // Shopping List Toggle
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Button(action: {
-                                addToShoppingList.toggle()
-                            }) {
-                                HStack {
-                                    Image(systemName: addToShoppingList ? "checkmark.square.fill" : "square")
-                                        .foregroundColor(addToShoppingList ? AppColors.accentGreen : .gray)
-                                        .font(.system(size: 20))
-                                    Text("Add to Shopping List")
-                                        .font(.headline)
-                                        .foregroundColor(AppColors.textPrimary)
-                                    Spacer()
-                                }
-                            }
-                            .buttonStyle(PlainButtonStyle())
+                            Text("Add to Shopping List")
+                                .font(.headline)
+                                .foregroundColor(AppColors.textPrimary)
+                            Spacer()
+                            Toggle("", isOn: $addToShoppingList)
+                                .toggleStyle(SwitchToggleStyle(tint: AppColors.accentGreen))
                         }
                         .padding(.horizontal)
                         if addToShoppingList {
@@ -714,55 +781,49 @@ struct BarcodeConfirmationView: View {
                                 .padding(.horizontal)
                         }
                     }
-                    // Action Buttons
-                    VStack(spacing: 12) {
+                    
+                    // Action Buttons - Center Bottom
+                    VStack(spacing: 16) {
+                        // Always show for testing
                         Button(action: {
                             onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedLocation, selectedTags, addToShoppingList)
                         }) {
-                            Text(getButtonText())
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(barcode.isEmpty ? Color.gray : AppColors.accentGreen)
-                                .cornerRadius(12)
+                            HStack(spacing: 8) {
+                                Image(systemName: isExistingProduct ? "arrow.clockwise" : "plus")
+                                    .font(.system(size: 18, weight: .semibold))
+                                Text(isExistingProduct ? "Update Item" : "Add Item")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(AppColors.accentGreen)
+                            .cornerRadius(12)
                         }
-                        .disabled(barcode.isEmpty)
-                        .padding(.horizontal)
-                        Button(action: {
-                            onCancel()
-                        }) {
-                            Text("Cancel")
-                                .fontWeight(.semibold)
-                                .foregroundColor(AppColors.accentGreen)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(AppColors.accentGreen.opacity(0.1))
-                                .cornerRadius(12)
-                        }
-                        .padding(.horizontal)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+
+
                 }
             }
-            .navigationTitle("Product Details")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         onCancel()
                     }
                 }
             }
+
+
+
+
+
         }
     }
-    private func getButtonText() -> String {
-        if isExistingProduct {
-            return addToShoppingList ? "Update Item & Add to Shopping List" : "Update Item"
-        } else {
-            return addToShoppingList ? "Add Item to Shopping List" : "Add Item to Database"
-        }
-    }
+
 }
 // MARK: - Manual Barcode Entry View
 struct ManualBarcodeEntryView: View {
