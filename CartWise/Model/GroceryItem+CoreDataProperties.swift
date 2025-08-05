@@ -6,6 +6,7 @@
 //
 import Foundation
 import CoreData
+import UIKit
 extension GroceryItem {
     @nonobjc public class func fetchRequest() -> NSFetchRequest<GroceryItem> {
         return NSFetchRequest<GroceryItem>(entityName: "GroceryItem")
@@ -15,8 +16,8 @@ extension GroceryItem {
     @NSManaged public var brand: String?
     @NSManaged public var category: String?
     @NSManaged public var lastUpdated: Date?
-    @NSManaged public var imageURL: String?
     @NSManaged public var barcode: String?
+    @NSManaged public var productImage: ProductImage?
     @NSManaged public var isCompleted: Bool
     @NSManaged public var isInShoppingList: Bool
     @NSManaged public var isFavorite: Bool
@@ -29,13 +30,12 @@ extension GroceryItem {
     @NSManaged public var experiences: NSSet?
 }
 extension GroceryItem {
-    convenience init(context: NSManagedObjectContext, id: String, productName: String, brand: String? = nil, category: String? = nil, imageURL: String? = nil, barcode: String? = nil, isOnSale: Bool = false) {
+    convenience init(context: NSManagedObjectContext, id: String, productName: String, brand: String? = nil, category: String? = nil, barcode: String? = nil, isOnSale: Bool = false) {
         self.init(context: context)
         self.id = id
         self.productName = productName
         self.brand = brand
         self.category = category
-        self.imageURL = imageURL
         self.barcode = barcode
         self.isCompleted = false
         self.isInShoppingList = false
@@ -95,5 +95,18 @@ extension GroceryItem : Identifiable {
     }
     var currency: String? {
         return getLowestPrice()?.currency
+    }
+    
+    // Image compatibility properties
+    var imageURL: String? {
+        return productImage?.imageURL
+    }
+    
+    var imageData: Data? {
+        return productImage?.imageData
+    }
+    
+    var uiImage: UIImage? {
+        return productImage?.uiImage
     }
 }

@@ -248,14 +248,14 @@ struct ProductCard: View {
             showingDetail = true
         }) {
             HStack(spacing: 12) {
-                // Product image placeholder
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.systemGray5))
-                    .frame(width: 60, height: 60)
-                    .overlay(
-                        Image(systemName: "photo")
-                            .foregroundColor(.gray)
-                    )
+                // Product image
+                ProductImageView(
+                    product: product,
+                    size: CGSize(width: 60, height: 60),
+                    cornerRadius: 8,
+                    showSaleBadge: false
+                )
+                
                 VStack(alignment: .leading, spacing: 4) {
                     Text(product.productName ?? "Unknown Product")
                         .font(.system(size: 16, weight: .medium))
@@ -301,7 +301,7 @@ struct ProductDetailView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .center, spacing: 20) {
                     // Store View
                     StoreView(
                         selectedLocation: currentSelectedLocation ?? selectedLocation,
@@ -311,8 +311,15 @@ struct ProductDetailView: View {
                     )
                     // Product Name View
                     ProductNameView(product: product)
-                    // Product Image View
-                    ProductImageView(product: product)
+                                                // Product Image View
+                            ProductImageView(
+                                product: product,
+                                size: CGSize(width: 180, height: 180),
+                                cornerRadius: 12,
+                                showSaleBadge: true
+                            )
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 8)
                     // Product Price View
                     // TODO: Need to update data model to include last updated info?
                     ProductPriceView(
@@ -643,35 +650,7 @@ struct ProductNameView: View {
         }
     }
 }
-// Product Image View
-struct ProductImageView: View {
-    @ObservedObject var product: GroceryItem
-        var body: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(Color(.systemGray5))
-            .frame(height: 250)
-            .overlay(
-                Image(systemName: "photo")
-                    .font(.system(size: 40))
-                    .foregroundColor(.gray)
-            )
-            .overlay(
-                VStack {
-                    // Show sale badge if item is marked as on sale
-                    if product.isOnSale {
-                        Text("Sale")
-                            .font(.system(size: 14, weight: .bold))
-                            .frame(width: 100, height: 24)
-                            .foregroundColor(.white)
-                            .background(Color.accentColorOrange.opacity(0.9))
-                            .cornerRadius(8)
-                    }
-                    Spacer()
-                }
-                .padding(.top, 12)
-            )
-    }
-}
+
 // Product Price View
 struct ProductPriceView: View {
     @ObservedObject var product: GroceryItem
@@ -901,7 +880,7 @@ struct AddToShoppingListAndFavoritesView: View {
                 }
             )
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 20)
         .padding(.top, 4)
         .task {
             // Check if product is in shopping list
@@ -942,8 +921,7 @@ struct AddToShoppingListAndFavoritesView: View {
             } else {
                 // Add the existing product to shopping list
                 await productViewModel.addExistingProductToShoppingList(product)
-                // Refresh the shopping list to show the new item
-                await productViewModel.loadShoppingListProducts()
+                // Note: loadShoppingListProducts() is not called here to avoid affecting category views
                 // Update the local state
                 await MainActor.run {
                     isInShoppingList = true

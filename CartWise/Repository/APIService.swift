@@ -28,7 +28,7 @@ enum Store: String, CaseIterable, Codable {
 }
 final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     private let session: URLSession
-    private let baseURL = "https: //api-to-find-grocery-prices.p.rapidapi.com"
+    private let baseURL = "https://api-to-find-grocery-prices.p.rapidapi.com"
     private let apiKey = "84e64a5488msh5075a47a5c27140p17850bjsnb78c0cf33881"
     init(session: URLSession = .shared) {
         self.session = session
