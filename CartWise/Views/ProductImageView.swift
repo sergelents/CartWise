@@ -134,15 +134,17 @@ struct ProductImageView: View {
             .fill(Color(.systemGray5))
             .frame(width: size.width, height: size.height)
             .overlay(
-                VStack {
+                VStack(spacing: 4) {
                     Image(systemName: "photo")
                         .foregroundColor(.gray)
-                        .font(.system(size: 40))
+                        .font(.system(size: min(size.width, size.height) * 0.3))
                     Text("Image unavailable")
-                        .font(.system(size: 14))
+                        .font(.system(size: min(size.width, size.height) * 0.08))
                         .foregroundColor(.gray)
-                        .padding(.top, 8)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
                 }
+                .padding(.horizontal, 8)
             )
             .overlay(saleBadgeOverlay)
     }
@@ -152,15 +154,17 @@ struct ProductImageView: View {
             .fill(Color(.systemGray5))
             .frame(width: size.width, height: size.height)
             .overlay(
-                VStack {
+                VStack(spacing: 4) {
                     Image(systemName: "photo")
                         .foregroundColor(.gray)
-                        .font(.system(size: 40))
+                        .font(.system(size: min(size.width, size.height) * 0.3))
                     Text("No image available")
-                        .font(.system(size: 14))
+                        .font(.system(size: min(size.width, size.height) * 0.08))
                         .foregroundColor(.gray)
-                        .padding(.top, 8)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
                 }
+                .padding(.horizontal, 8)
             )
             .overlay(saleBadgeOverlay)
     }
