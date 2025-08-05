@@ -206,8 +206,10 @@ final class ProductViewModel: ObservableObject {
     private func fetchImageForProduct(_ product: GroceryItem) async {
         do {
             let productName = product.productName ?? ""
+            let brand = product.brand
+            let category = product.category
             
-            if let imageURL = try await imageService.fetchImageURL(for: productName) {
+            if let imageURL = try await imageService.fetchImageURL(for: productName, brand: brand, category: category) {
                 // Download image data
                 if let url = URL(string: imageURL) {
                     let (imageData, _) = try await URLSession.shared.data(from: url)
