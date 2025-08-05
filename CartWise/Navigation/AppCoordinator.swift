@@ -7,12 +7,21 @@
 import SwiftUI
 class AppCoordinator: ObservableObject {
     @Published var selectedTab: TabItem = .yourList
+    @Published var showSplash = true
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
+    
     func selectTab(_ tab: TabItem) {
         selectedTab = tab
     }
+    
     func logout() {
         isLoggedIn = false
+    }
+    
+    func hideSplash() {
+        withAnimation(.easeInOut(duration: 0.5)) {
+            showSplash = false
+        }
     }
 }
 enum TabItem: String, CaseIterable {
@@ -44,10 +53,13 @@ struct AppCoordinatorView: View {
     @ObservedObject var coordinator: AppCoordinator
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @EnvironmentObject var productViewModel: ProductViewModel
+    
     var body: some View {
-        Group {
-            if isLoggedIn {
-                TabView(selection: $coordinator.selectedTab) {
+        ZStack {
+            // Main app content
+            Group {
+                if isLoggedIn {
+                    TabView(selection: $coordinator.selectedTab) {
                     YourListView()
                         .tabItem {
                             Image(systemName: coordinator.selectedTab == .yourList ?
@@ -88,6 +100,19 @@ struct AppCoordinatorView: View {
             } else {
                 LoginView()
             }
+        }
+        
+        // Splash screen overlay
+        if coordinator.showSplash {
+            SplashScreenView()
+                .transition(.opacity)
+                .onAppear {
+                    // Hide splash after 2.5 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        coordinator.hideSplash()
+                    }
+                }
+        }
         }
     }
 }

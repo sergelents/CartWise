@@ -158,8 +158,12 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     print("Repository: \(productName) not available at \(store)")
                 }
             }
-            // Only include stores that have at least one item with a price
-            if availableItems > 0 {
+            // Calculate availability percentage
+            let availabilityPercentage = Double(availableItems) / Double(shoppingList.count)
+            let minimumAvailability = 0.85 // 85% minimum availability threshold
+            
+            // Only include stores that have at least 85% of items available
+            if availableItems > 0 && availabilityPercentage >= minimumAvailability {
                 let storePrice = LocalStorePrice(
                     store: store,
                     totalPrice: totalPrice,
@@ -170,7 +174,9 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     itemShoppers: itemShoppers.isEmpty ? nil : itemShoppers
                 )
                 storePrices.append(storePrice)
-                print("Repository: Store \(store) total: $\(totalPrice), available: \(availableItems)/\(shoppingList.count)")
+                print("Repository: Store \(store) total: $\(totalPrice), available: \(availableItems)/\(shoppingList.count) (\(String(format: "%.1f", availabilityPercentage * 100))%) - INCLUDED")
+            } else {
+                print("Repository: Store \(store) available: \(availableItems)/\(shoppingList.count) (\(String(format: "%.1f", availabilityPercentage * 100))%) - EXCLUDED (below 85% threshold)")
             }
         }
         // Sort by total price (cheapest first) and take top 3
