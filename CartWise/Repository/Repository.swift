@@ -30,6 +30,10 @@ protocol ProductRepositoryProtocol: Sendable {
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func initializeDefaultTags() async throws
+    // ProductImage methods
+    func saveProductImage(for product: GroceryItem, imageURL: String, imageData: Data?) async throws
+    func getProductImage(for product: GroceryItem) async throws -> ProductImage?
+    func deleteProductImage(for product: GroceryItem) async throws
 }
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     private let coreDataContainer: CoreDataContainerProtocol
@@ -217,6 +221,19 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     }
     func initializeDefaultTags() async throws {
         try await coreDataContainer.initializeDefaultTags()
+    }
+    
+    // MARK: - ProductImage Methods
+    func saveProductImage(for product: GroceryItem, imageURL: String, imageData: Data?) async throws {
+        try await coreDataContainer.saveProductImage(for: product, imageURL: imageURL, imageData: imageData)
+    }
+    
+    func getProductImage(for product: GroceryItem) async throws -> ProductImage? {
+        return try await coreDataContainer.getProductImage(for: product)
+    }
+    
+    func deleteProductImage(for product: GroceryItem) async throws {
+        try await coreDataContainer.deleteProductImage(for: product)
     }
 }
 // This code was generated with the help of Claude, saving me 7 hours of research and development.

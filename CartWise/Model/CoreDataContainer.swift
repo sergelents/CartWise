@@ -36,6 +36,10 @@ protocol CoreDataContainerProtocol: Sendable {
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws
     func initializeDefaultTags() async throws
+    // ProductImage methods
+    func saveProductImage(for product: GroceryItem, imageURL: String, imageData: Data?) async throws
+    func getProductImage(for product: GroceryItem) async throws -> ProductImage?
+    func deleteProductImage(for product: GroceryItem) async throws
 }
 final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     private let coreDataStack: CoreDataStack
@@ -89,13 +93,23 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 productName: productName,
                 brand: brand,
                 category: category,
-                imageURL: imageURL,
                 barcode: barcode,
                 isOnSale: isOnSale
             )
             print("CoreDataContainer: Product created, store set to: '\(product.store ?? "nil")'")
             // Set shopping list status based on parameter
             product.isInShoppingList = isInShoppingList
+            
+            // Create ProductImage if imageURL is provided
+            if let imageURL = imageURL {
+                let productImage = ProductImage(
+                    context: context,
+                    id: UUID().uuidString,
+                    imageURL: imageURL
+                )
+                product.productImage = productImage
+            }
+            
             // If we have price and store information, create a GroceryItemPrice
             if price > 0, let store = store {
                 // Find or create the location
@@ -160,6 +174,63 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         newLocation.updatedAt = Date()
         return newLocation
     }
+
+    // ProductImage Methods
+    func saveProductImage(for product: GroceryItem, imageURL: String, imageData: Data? = nil) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            
+            // Create or update ProductImage
+            let productImage: ProductImage
+            if let existingImage = productInContext.productImage {
+                // Update existing image
+                let imageObjectID = existingImage.objectID
+                productImage = try context.existingObject(with: imageObjectID) as! ProductImage
+                productImage.imageURL = imageURL
+                if let imageData = imageData {
+                    productImage.imageData = imageData
+                }
+                productImage.updatedAt = Date()
+            } else {
+                // Create new image
+                productImage = ProductImage(
+                    context: context,
+                    id: UUID().uuidString,
+                    imageURL: imageURL,
+                    imageData: imageData
+                )
+                productInContext.productImage = productImage
+            }
+            
+            try context.save()
+        }
+    }
+    
+    func getProductImage(for product: GroceryItem) async throws -> ProductImage? {
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            return productInContext.productImage
+        }
+    }
+    
+    func deleteProductImage(for product: GroceryItem) async throws {
+        try await coreDataStack.performBackgroundTask { context in
+            let objectID = product.objectID
+            let productInContext = try context.existingObject(with: objectID) as! GroceryItem
+            
+            if let productImage = productInContext.productImage {
+                let imageObjectID = productImage.objectID
+                let imageInContext = try context.existingObject(with: imageObjectID) as! ProductImage
+                context.delete(imageInContext)
+                productInContext.productImage = nil
+                try context.save()
+            }
+        }
+    }
+    
     // Helper method to get current username
     private func getCurrentUsername() async -> String {
         do {

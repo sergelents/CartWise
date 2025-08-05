@@ -7,6 +7,7 @@
 import SwiftUI
 import Combine
 import CoreData
+import Foundation
 @MainActor
 final class ProductViewModel: ObservableObject {
     @Published var products: [GroceryItem] = []
@@ -18,12 +19,14 @@ final class ProductViewModel: ObservableObject {
     @Published var locations: [Location] = []
     var errorMessage: String?
     private let repository: ProductRepositoryProtocol
+    private let imageService: ImageServiceProtocol
     // Computed property to check if all products are completed
     var allProductsCompleted: Bool {
         !products.isEmpty && products.allSatisfy { $0.isCompleted }
     }
-    init(repository: ProductRepositoryProtocol) {
+    init(repository: ProductRepositoryProtocol, imageService: ImageServiceProtocol = ImageService()) {
         self.repository = repository
+        self.imageService = imageService
         Task {
             await loadTags()
         }
@@ -31,6 +34,10 @@ final class ProductViewModel: ObservableObject {
     func loadShoppingListProducts() async {
         do {
             products = try await repository.fetchListProducts()
+            
+            // Fetch images for products that don't have them
+            await fetchImagesForProducts()
+            
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -116,7 +123,8 @@ final class ProductViewModel: ObservableObject {
     func addExistingProductToShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.addProductToShoppingList(product)
-            await loadShoppingListProducts()
+            // Don't call loadShoppingListProducts() here as it would affect category views
+            // The shopping list view will refresh when it appears
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -126,6 +134,10 @@ final class ProductViewModel: ObservableObject {
     func loadFavoriteProducts() async {
         do {
             favoriteProducts = try await repository.fetchFavoriteProducts()
+            
+            // Fetch images for favorite products that don't have them
+            await fetchImagesForProductArray(favoriteProducts)
+            
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -168,6 +180,62 @@ final class ProductViewModel: ObservableObject {
             return false
         }
     }
+    
+    // Image Fetching
+    // Fetches images for products that don't have image URLs
+    func fetchImagesForProducts() async {
+        await fetchImagesForProductArray(products)
+    }
+    
+    // Fetches images for any array of products that don't have image URLs
+    private func fetchImagesForProductArray(_ productArray: [GroceryItem]) async {
+        // Get products that don't have image URLs
+        let productsWithoutImages = productArray.filter { $0.imageURL == nil || $0.imageURL?.isEmpty == true }
+        
+        if productsWithoutImages.isEmpty {
+            return
+        }
+        
+        // Fetch images for each product
+        for product in productsWithoutImages {
+            await fetchImageForProduct(product)
+        }
+    }
+    
+    // Fetches image for a specific product
+    private func fetchImageForProduct(_ product: GroceryItem) async {
+        do {
+            let productName = product.productName ?? ""
+            let brand = product.brand
+            let category = product.category
+            
+            if let imageURL = try await imageService.fetchImageURL(for: productName, brand: brand, category: category) {
+                // Download image data
+                if let url = URL(string: imageURL) {
+                    let (imageData, _) = try await URLSession.shared.data(from: url)
+                    
+                    // Update product with image data on main thread
+                    await MainActor.run {
+                        // Save image to Core Data using new ProductImage entity
+                        Task {
+                            do {
+                                try await repository.saveProductImage(for: product, imageURL: imageURL, imageData: imageData)
+                                
+                                // Force a UI update by triggering objectWillChange
+                                self.objectWillChange.send()
+                            } catch {
+                                print("ProductViewModel: Error saving image data: \(error.localizedDescription)")
+                            }
+                        }
+                    }
+                }
+            }
+            
+        } catch {
+            print("ProductViewModel: Error fetching image for '\(product.productName ?? "")': \(error.localizedDescription)")
+        }
+    }
+    
     func searchProducts(by name: String) async {
         do {
             products = try await repository.searchProducts(by: name)
@@ -186,7 +254,8 @@ final class ProductViewModel: ObservableObject {
                 return
             }
             let id = UUID().uuidString
-            _ = try await repository.createProduct(
+            // Capture the created product to fetch its image
+            let savedProduct = try await repository.createProduct(
                 id: id,
                 productName: name,
                 brand: brand,
@@ -200,6 +269,10 @@ final class ProductViewModel: ObservableObject {
                 isInShoppingList: true,
                 isOnSale: isOnSale
             )
+            
+            // Fetch image for the newly created product
+            await fetchImageForProduct(savedProduct)
+            
             await loadShoppingListProducts()
             errorMessage = nil
         } catch {
@@ -257,6 +330,7 @@ final class ProductViewModel: ObservableObject {
                 return nil
             }
             let id = UUID().uuidString
+            // Capture the created product to fetch its image
             let savedProduct = try await repository.createProduct(
                 id: id,
                 productName: productName,
@@ -273,6 +347,10 @@ final class ProductViewModel: ObservableObject {
             )
             print("ProductViewModel: Product created successfully")
             print("ProductViewModel: Saved product store: '\(savedProduct.store ?? "nil")'")
+            
+            // Fetch image for the newly created product
+            await fetchImageForProduct(savedProduct)
+            
             await loadShoppingListProducts()
             errorMessage = nil
             return savedProduct

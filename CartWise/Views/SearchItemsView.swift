@@ -250,14 +250,13 @@ struct SearchResultRowView: View {
     @ObservedObject var product: GroceryItem
     var body: some View {
         HStack(spacing: 12) {
-            // Product image placeholder
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.systemGray5))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Image(systemName: "photo")
-                        .foregroundColor(.gray)
-                )
+                                    // Product image
+                        ProductImageView(
+                            product: product,
+                            size: CGSize(width: 50, height: 50),
+                            cornerRadius: 8,
+                            showSaleBadge: false
+                        )
             VStack(alignment: .leading, spacing: 4) {
                 Text(product.productName ?? "Unknown Product")
                     .font(.system(size: 16, weight: .medium))

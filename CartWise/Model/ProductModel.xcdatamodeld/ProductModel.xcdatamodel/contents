@@ -18,6 +18,15 @@
         <relationship name="locations" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Location" inverseName="groceryItems" inverseEntity="Location"/>
         <relationship name="prices" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="GroceryItemPrice" inverseName="groceryItem" inverseEntity="GroceryItemPrice"/>
         <relationship name="experiences" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="ShoppingExperience" inverseName="groceryItem" inverseEntity="ShoppingExperience"/>
+        <relationship name="productImage" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="ProductImage" inverseName="groceryItem" inverseEntity="ProductImage"/>
+    </entity>
+    <entity name="ProductImage" representedClassName="ProductImage" syncable="YES">
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="imageData" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES"/>
+        <attribute name="imageURL" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="groceryItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="GroceryItem" inverseName="productImage" inverseEntity="GroceryItem"/>
     </entity>
     <entity name="Location" representedClassName="Location" syncable="YES">
         <attribute name="address" optional="YES" attributeType="String"/>
