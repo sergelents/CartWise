@@ -309,14 +309,14 @@ struct ProductDetailView: View {
                     )
                     
                     Spacer()
-                        .frame(height: 20)
+                        .frame(height: 8)
                     
                     // Product Name View
                     ProductNameView(product: product)
                         // Product Image View
                         ProductImageView(
                             product: product,
-                            size: CGSize(width: 240, height: 240),
+                            size: CGSize(width: 280, height: 280),
                             cornerRadius: 12,
                             showSaleBadge: true,
                             showCameraButton: true
@@ -651,7 +651,7 @@ struct StoreView: View {
 struct ProductNameView: View {
     @ObservedObject var product: GroceryItem
     var body: some View {
-        VStack(alignment: .center, spacing: 10) {
+        VStack(alignment: .center, spacing: 6) {
             // Brand and Store
             HStack {
                 // Brand
@@ -667,7 +667,7 @@ struct ProductNameView: View {
                 .font(.system(size: 20, weight: .regular))
                 .foregroundColor(.primary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 6)
             // Category info
             VStack(alignment: .leading, spacing: 8) {
                 if let category = product.category {

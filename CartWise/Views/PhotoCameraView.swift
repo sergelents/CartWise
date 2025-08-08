@@ -193,7 +193,7 @@ struct PhotoCameraView: View {
                         Image(systemName: "arrow.clockwise")
                         Text("Retake")
                     }
-                    .font(.poppins(size: 18, weight: .semibold))
+                    .font(.poppins(size: 18, weight: .bold))
                     .foregroundColor(.primary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -210,7 +210,7 @@ struct PhotoCameraView: View {
                         Image(systemName: "checkmark")
                         Text("Use Photo")
                     }
-                    .font(.poppins(size: 18, weight: .semibold))
+                    .font(.poppins(size: 18, weight: .bold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
