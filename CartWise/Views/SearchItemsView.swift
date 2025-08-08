@@ -17,14 +17,15 @@ struct SearchItemsView: View {
     @State private var showingTagPicker = false
     @State private var selectedLocation: Location? = nil
     @State private var userLocations: [Location] = []
+    @State private var searchProducts: [GroceryItem] = [] // Separate array for search products
     @EnvironmentObject var viewModel: ProductViewModel
     // Computed property for search results that updates automatically
     private var searchResults: [GroceryItem] {
         guard !searchText.isEmpty else { return [] }
         // If a tag is selected, filter from products that have that tag
         let productsToSearch = selectedTag != nil ?
-            viewModel.products.filter { $0.tagArray.contains(selectedTag!) } :
-            viewModel.products
+            searchProducts.filter { $0.tagArray.contains(selectedTag!) } :
+            searchProducts
         // Filter products to match search text
         let filtered = productsToSearch.filter { product in
             guard let name = product.productName?.lowercased() else { return false }
@@ -40,7 +41,7 @@ struct SearchItemsView: View {
             return searchResults
         }
         // Otherwise filter from all products
-        return viewModel.products.filter { product in
+        return searchProducts.filter { product in
             product.tagArray.contains(selectedTag)
         }
     }
@@ -57,7 +58,7 @@ struct SearchItemsView: View {
     }
     // Get unique categories from actual products
     var availableCategories: [ProductCategory] {
-        let categories = Set(viewModel.products.compactMap { groceryItem in
+        let categories = Set(searchProducts.compactMap { groceryItem in
             ProductCategory(rawValue: groceryItem.category ?? "")
         })
         return Array(categories).sorted { $0.rawValue < $1.rawValue }
@@ -77,7 +78,8 @@ struct SearchItemsView: View {
             .navigationTitle("Search")
             .onAppear {
                 Task {
-                    await viewModel.loadProducts()
+                    // Load products into local array without affecting viewModel.products
+                    await loadSearchProducts()
                     await viewModel.loadTags()
                     await loadUserLocations()
                 }
@@ -214,6 +216,20 @@ struct SearchItemsView: View {
         .padding()
     }
     // MARK: - Helper Functions
+    private func loadSearchProducts() async {
+        // Save current shopping list products
+        let currentShoppingListProducts = viewModel.products
+        
+        // Load all products temporarily
+        await viewModel.loadProducts()
+        
+        // Store search products and restore shopping list
+        await MainActor.run {
+            searchProducts = viewModel.products
+            viewModel.products = currentShoppingListProducts
+        }
+    }
+    
     private func performSearch() async {
         guard !searchText.isEmpty else {
             return
@@ -226,9 +242,20 @@ struct SearchItemsView: View {
                 isSearching = false
             }
         }
+        
+        // Save current shopping list products
+        let currentShoppingListProducts = viewModel.products
+        
         // Search Core Data for existing products only (offline-first)
         await viewModel.searchProducts(by: searchText)
-        print("Search completed: \(viewModel.products.count) local results")
+        
+        // Update local search products and restore shopping list
+        await MainActor.run {
+            searchProducts = viewModel.products
+            viewModel.products = currentShoppingListProducts
+        }
+        
+        print("Search completed: \(searchProducts.count) local results")
     }
     private func selectCategory(_ category: ProductCategory) {
         selectedCategory = category
