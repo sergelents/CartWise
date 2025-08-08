@@ -1475,7 +1475,6 @@ struct ProductEditView: View {
     @State private var selectedTags: [Tag] = []
     
     // UI state
-    @State private var showCategoryPicker = false
     @State private var showLocationPicker = false
     @State private var showingTagPicker = false
     @State private var availableTags: [Tag] = []
@@ -1485,6 +1484,10 @@ struct ProductEditView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
+                    // Add spacing after header
+                    Spacer()
+                        .frame(height: 20)
+                    
                     // Form Fields
                     VStack(spacing: 16) {
                         // Product Name Field
@@ -1511,27 +1514,7 @@ struct ProductEditView: View {
                                 .cornerRadius(8)
                         }
                         
-                        // Category Field
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Category")
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            Button(action: {
-                                showCategoryPicker = true
-                            }) {
-                                HStack {
-                                    Text(category.rawValue)
-                                        .font(.body)
-                                        .foregroundColor(.primary)
-                                    Spacer()
-                                    Image(systemName: "chevron.down")
-                                        .foregroundColor(.gray)
-                                }
-                                .padding()
-                                .background(Color(UIColor.systemGray6))
-                                .cornerRadius(8)
-                            }
-                        }
+
                         
                         // Price Field
                         VStack(alignment: .leading, spacing: 8) {
@@ -1669,9 +1652,6 @@ struct ProductEditView: View {
         .onAppear {
             loadProductData()
             loadAvailableData()
-        }
-        .sheet(isPresented: $showCategoryPicker) {
-            ProductDetailCategoryPickerView(selectedCategory: $category)
         }
         .sheet(isPresented: $showLocationPicker) {
             LocationPickerModal(
@@ -1837,43 +1817,7 @@ struct ProductEditView: View {
     }
 }
 
-// Product Edit Category Picker View
-struct ProductDetailCategoryPickerView: View {
-    @Binding var selectedCategory: ProductCategory
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            List {
-                ForEach(ProductCategory.allCases, id: \.self) { category in
-                    Button(action: {
-                        selectedCategory = category
-                        dismiss()
-                    }) {
-                        HStack {
-                            Text(category.rawValue)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            if selectedCategory == category {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Select Category")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-}
+
 
 // Product Edit Tag Picker View
 struct ProductEditTagPickerView: View {
