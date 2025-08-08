@@ -126,6 +126,22 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+    
+    func clearShoppingList() async {
+        do {
+            // Remove all products from shopping list without deleting the actual product data
+            for product in products {
+                try await repository.removeProductFromShoppingList(product)
+            }
+            // Clear the local products array
+            await MainActor.run {
+                products.removeAll()
+            }
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
     func addExistingProductToShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.addProductToShoppingList(product)

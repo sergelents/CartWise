@@ -51,21 +51,17 @@ struct YourListView: View {
             } message: {
                 Text("A product named \"\(duplicateProductName)\" already exists in your list.")
             }
-            .alert("Complete All Items", isPresented: $showingCheckAllConfirmation) {
+            .alert("All done shopping?", isPresented: $showingCheckAllConfirmation) {
                 Button("Cancel", role: .cancel) {
                     // Do nothing, just dismiss the alert
                 }
-                Button("Complete All") {
+                Button("Clear List") {
                     Task {
-                        await productViewModel.toggleAllProductsCompletion()
-                        // Only show rating prompt if all items are actually completed
-                        // if productViewModel.allProductsCompleted {
-                        //     showingRatingPrompt = true
-                        // }
+                        await productViewModel.clearShoppingList()
                     }
                 }
             } message: {
-                Text("Are you sure you want to mark all items as completed?")
+                Text("Want to clear your shopping list?")
             }
             .onAppear {
                 Task {
@@ -329,8 +325,11 @@ struct ShoppingListCard: View {
                             await productViewModel.toggleAllProductsCompletion()
                         }
                     } else {
-                        // If not all are completed, show confirmation before completing all
+                        // If not all are completed, show alert immediately and check items in background
                         showingCheckAllConfirmation = true
+                        Task {
+                            await productViewModel.toggleAllProductsCompletion()
+                        }
                     }
                 }) {
                     Image(systemName: "checkmark.circle")
