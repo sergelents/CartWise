@@ -69,6 +69,7 @@ struct YourListView: View {
             }
             .onAppear {
                 Task {
+                    // Always refresh shopping list when view appears to prevent stale data
                     await productViewModel.loadShoppingListProducts()
                     print("YourListView: Loaded \(productViewModel.products.count) shopping list products")
                     await productViewModel.loadLocalPriceComparison()
