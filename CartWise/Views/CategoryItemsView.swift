@@ -10,6 +10,7 @@
 import SwiftUI
 import CoreData
 import Foundation
+
 struct CategoryItemsView: View {
     let category: ProductCategory
     @EnvironmentObject var viewModel: ProductViewModel
@@ -105,7 +106,7 @@ struct CategoryItemsView: View {
                     ProgressView()
                         .scaleEffect(1.2)
                     Text("Loading products...")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.poppins(size: 16, weight: .medium))
                         .foregroundColor(.gray)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -117,10 +118,10 @@ struct CategoryItemsView: View {
                         .frame(width: 60, height: 60)
                         .foregroundColor(.gray.opacity(0.7))
                     Text("No products found in this category")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.poppins(size: 18, weight: .semibold))
                         .foregroundColor(.gray)
                     Text("Products will appear here when available")
-                        .font(.system(size: 14))
+                        .font(.poppins(size: 14, weight: .regular))
                         .foregroundColor(.gray.opacity(0.7))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -221,6 +222,7 @@ struct CategoryItemsView: View {
         // Load all products from Core Data, then filter by category
         await viewModel.loadProducts()
     }
+    // Load user locations
     private func loadUserLocations() async {
         await viewModel.loadLocations()
         userLocations = viewModel.locations
@@ -235,6 +237,7 @@ struct CategoryItemsView: View {
     //     print("Database cleared")
     // }
 }
+
 // Product Card View
 struct ProductCard: View {
     @ObservedObject var product: GroceryItem
@@ -259,13 +262,13 @@ struct ProductCard: View {
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(product.productName ?? "Unknown Product")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.poppins(size: 18, weight: .medium))
                         .foregroundColor(.primary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     if let brand = product.brand {
                         Text(brand)
-                            .font(.system(size: 14))
+                            .font(.poppins(size: 16, weight: .regular))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                     }
@@ -284,6 +287,7 @@ struct ProductCard: View {
         }
     }
 }
+
 // Product Detail View
 struct ProductDetailView: View {
     @ObservedObject var product: GroceryItem // Use ObservedObject for live updates
@@ -315,12 +319,12 @@ struct ProductDetailView: View {
                     // Product Image View
                     ProductImageView(
                         product: product,
-                        size: CGSize(width: 180, height: 180),
+                        size: CGSize(width: 200, height: 200),
                         cornerRadius: 12,
                         showSaleBadge: true
                     )
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 6)
                     
                     // Product Price View
                     ProductPriceView(
@@ -584,100 +588,6 @@ struct ProductDetailView: View {
     }
 }
 
-// MARK: - Tags Button View
-struct TagsButtonView: View {
-    let product: GroceryItem
-    @State private var showingTagsPopup = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Tags")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.primary)
-                Spacer()
-                Button(action: {
-                    showingTagsPopup = true
-                }) {
-                    HStack {
-                        Text(product.tagArray.isEmpty ? "No tags" : "\(product.tagArray.count) tags")
-                            .font(.system(size: 14))
-                            .foregroundColor(product.tagArray.isEmpty ? .secondary : .primary)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 24)
-        .sheet(isPresented: $showingTagsPopup) {
-            TagsPopupView(product: product)
-        }
-    }
-}
-
-// MARK: - Tags Popup View
-struct TagsPopupView: View {
-    let product: GroceryItem
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                if product.tagArray.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "tag")
-                            .font(.system(size: 40))
-                            .foregroundColor(.gray)
-                        Text("No Tags")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.primary)
-                        Text("This product doesn't have any tags yet.")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
-                            ForEach(product.tagArray, id: \.id) { tag in
-                                ReadOnlyTagChipView(tag: tag)
-                            }
-                        }
-                        .padding()
-                    }
-                }
-            }
-            .navigationTitle("Product Tags")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Read-only Tag Chip View for product details
-struct ReadOnlyTagChipView: View {
-    let tag: Tag
-    
-    var body: some View {
-        Text(tag.displayName)
-            .font(.system(size: 14, weight: .medium))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color(hex: tag.displayColor))
-            .foregroundColor(.white)
-            .cornerRadius(16)
-    }
-}
-
 // MARK: - Store view
 struct StoreView: View {
     let selectedLocation: Location?
@@ -688,15 +598,15 @@ struct StoreView: View {
                 Image(systemName: "mappin.circle")
                     .foregroundColor(.blue)
                 Text(selectedLocation?.name ?? "Select Location")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.poppins(size: 16, weight: .bold))
                     .foregroundColor(.black)
                 Spacer()
                 Text(formatAddress(selectedLocation))
-                    .font(.system(size: 12, weight: .regular))
+                    .font(.poppins(size: 14, weight: .regular))
                     .foregroundColor(.gray)
                 // Add chevron to indicate it's tappable
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12))
+                    .font(.poppins(size: 14, weight: .regular))
                     .foregroundColor(.gray)
             }
             .frame(maxWidth: .infinity, maxHeight: 10, alignment: .center)
@@ -734,14 +644,14 @@ struct ProductNameView: View {
                 // Brand
                 if let brand = product.brand {
                     Text(brand)
-                        .font(.system(size: 16))
+                        .font(.poppins(size: 16, weight: .regular))
                         .foregroundColor(.secondary)
                 }
                 // Store info removed since we removed store from GroceryItem
             }
             // Product Name
             Text(product.productName ?? "Unknown Product")
-                .font(.system(size: 20, weight: .regular))
+                .font(.poppins(size: 20, weight: .regular))
                 .foregroundColor(.primary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 10)
@@ -749,7 +659,7 @@ struct ProductNameView: View {
             VStack(alignment: .leading, spacing: 8) {
                 if let category = product.category {
                     Text("Category: \(category)")
-                        .font(.system(size: 14))
+                        .font(.poppins(size: 14, weight: .regular))
                         .foregroundColor(.primary)
                         .lineLimit(nil)
                 }
@@ -773,20 +683,20 @@ struct ProductPriceView: View {
                 // Show price for selected location
                 VStack(spacing: 8) {
                     Text("$\(String(format: "%.2f", locationPrice.price))")
-                        .font(.system(size: 24, weight: .bold))
+                        .font(.poppins(size: 22, weight: .bold))
                         .foregroundColor(.primary)
                     Text("at \(currentSelectedLocation?.name ?? "Unknown Location")")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.poppins(size: 16, weight: .medium))
                         .foregroundColor(.secondary)
                     // Last updated info from GroceryItemPrice
                     if let lastUpdated = locationPrice.lastUpdated {
                         VStack(spacing: 2) {
                             Text("Last Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
-                                .font(.system(size: 12, weight: .regular))
+                                .font(.poppins(size: 14, weight: .regular))
                                 .foregroundColor(.gray)
                             if let updatedBy = locationPrice.updatedBy {
                                 Text("By: \(updatedBy)")
-                                    .font(.system(size: 12, weight: .regular))
+                                    .font(.poppins(size: 14, weight: .regular))
                                     .foregroundColor(.gray)
                             }
                         }
@@ -796,13 +706,13 @@ struct ProductPriceView: View {
                 // No price available for selected location
                 VStack(spacing: 8) {
                     Text("No price available")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.poppins(size: 14, weight: .medium))
                         .foregroundColor(.gray)
                     Text("at \(currentSelectedLocation?.name ?? "Unknown Location")")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.poppins(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
                     Text("Tap 'Update Price' to add a price for this location")
-                        .font(.system(size: 12))
+                        .font(.poppins(size: 14, weight: .regular))
                         .foregroundColor(.gray.opacity(0.7))
                         .multilineTextAlignment(.center)
                 }
@@ -871,6 +781,7 @@ struct ProductPriceView: View {
         }
     }
 }
+
 // Location Price Row
 struct LocationPriceRow: View {
     let price: GroceryItemPrice
@@ -920,6 +831,7 @@ struct LocationPriceRow: View {
         .padding(.vertical, 4)
     }
 }
+
 // Custom Button View
 struct CustomButtonView: View {
     let title: String
@@ -931,9 +843,9 @@ struct CustomButtonView: View {
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .center, spacing: 2) {
+            HStack(alignment: .center, spacing: 1) {
                 Image(systemName: imageName)
-                    .font(.system(size: 14))
+                    .font(.system(size: 16))
                     .foregroundColor(textColor)
                 Text(title)
                     .font(.system(size: CGFloat(fontSize), weight: weight ?? .regular))
@@ -941,12 +853,13 @@ struct CustomButtonView: View {
                     .frame(width: 100, height: 10)
             }
             .padding(.vertical, 8)
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 10)
             .background(buttonColor)
             .cornerRadius(8)
         }
     }
 }
+
 // Buttons Add to Shopping List and Add to Favorites View
 struct AddToShoppingListAndFavoritesView: View {
     @ObservedObject var product: GroceryItem
@@ -965,7 +878,7 @@ struct AddToShoppingListAndFavoritesView: View {
             CustomButtonView(
                 title: isInShoppingList ? "In My List" : "Add to My List",
                 imageName: isInShoppingList ? "checkmark.circle.fill" : "plus.circle.fill",
-                fontSize: 13,
+                fontSize: 14,
                 weight: .bold,
                 buttonColor: isInShoppingList ? Color.accentColorGreen : Color.accentColorBlue,
                 textColor: .white,
@@ -978,7 +891,7 @@ struct AddToShoppingListAndFavoritesView: View {
             CustomButtonView(
                 title: isInFavorites ? "In Favorites" : "Add to Favorite",
                 imageName: isInFavorites ? "heart.fill" : "plus.circle.fill",
-                fontSize: 13,
+                fontSize: 14,
                 weight: .bold,
                 buttonColor: isInFavorites ? Color.accentColorCoral : Color.accentColorPink,
                 textColor: .white,
@@ -1168,6 +1081,102 @@ struct UpdatePriceView: View {
         }
     }
 }
+
+// MARK: - Tags Button View
+struct TagsButtonView: View {
+    let product: GroceryItem
+    @State private var showingTagsPopup = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Tags")
+                    .font(.poppins(size: 16, weight: .semibold))
+                    .foregroundColor(.primary)
+                Spacer()
+                Button(action: {
+                    showingTagsPopup = true
+                }) {
+                    HStack {
+                        Text(product.tagArray.isEmpty ? "No tags" : "\(product.tagArray.count) tags")
+                            .font(.poppins(size: 14, weight: .regular))
+                            .foregroundColor(product.tagArray.isEmpty ? .secondary : .primary)
+                        Image(systemName: "chevron.right")
+                            .font(.poppins(size: 14, weight: .regular))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .sheet(isPresented: $showingTagsPopup) {
+            TagsPopupView(product: product)
+        }
+    }
+}
+
+// MARK: - Tags Popup View
+struct TagsPopupView: View {
+    let product: GroceryItem
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                if product.tagArray.isEmpty {
+                    // No tags
+                    VStack(spacing: 16) {
+                        Image(systemName: "tag")
+                            .font(.poppins(size: 40, weight: .regular))
+                            .foregroundColor(.gray)
+                        Text("No Tags")
+                            .font(.poppins(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Text("This product doesn't have any tags yet.")
+                            .font(.poppins(size: 16, weight: .regular))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 10) {
+                            ForEach(product.tagArray, id: \.id) { tag in
+                                ReadOnlyTagChipView(tag: tag)
+                            }
+                        }
+                        .padding()
+                    }
+                }
+            }
+            .navigationTitle("Product Tags")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Read-only Tag Chip View for product details
+struct ReadOnlyTagChipView: View {
+    let tag: Tag
+    
+    var body: some View {
+        Text(tag.displayName)
+            .font(.poppins(size: 15, weight: .medium))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 9)
+            .background(Color(hex: tag.displayColor))
+            .foregroundColor(.white)
+            .cornerRadius(12)
+    }
+}
+
 // Location Picker Modal
 struct LocationPickerModal: View {
     let locations: [Location]
@@ -1193,13 +1202,13 @@ struct LocationPickerModal: View {
                 if locations.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "mappin.slash")
-                            .font(.system(size: 40))
+                            .font(.poppins(size: 40, weight: .regular))
                             .foregroundColor(.gray.opacity(0.7))
                         Text("No locations found")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.poppins(size: 16, weight: .medium))
                             .foregroundColor(.gray)
                         Text("Add locations in your profile to see them here")
-                            .font(.system(size: 14))
+                            .font(.poppins(size: 14, weight: .regular))
                             .foregroundColor(.gray.opacity(0.7))
                             .multilineTextAlignment(.center)
                     }
@@ -1238,6 +1247,7 @@ struct LocationPickerModal: View {
         }
     }
 }
+
 // Location Row View for the picker
 struct LocationPickerRowView: View {
     let location: Location
@@ -1255,18 +1265,18 @@ struct LocationPickerRowView: View {
                         .fill(isSelected ? AppColors.accentGreen.opacity(0.2) : Color.gray.opacity(0.1))
                         .frame(width: 40, height: 40)
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "mappin.circle.fill")
-                        .font(.system(size: 20))
+                        .font(.poppins(size: 20, weight: .regular))
                         .foregroundColor(isSelected ? AppColors.accentGreen : .gray)
                 }
                 // Location Info
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(location.name ?? "Unknown Location")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.poppins(size: 16, weight: .semibold))
                             .foregroundColor(.primary)
                         if location.isDefault {
                             Text("Default")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.poppins(size: 10, weight: .bold))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -1275,7 +1285,7 @@ struct LocationPickerRowView: View {
                         }
                     }
                     Text(formatAddress(location))
-                        .font(.system(size: 14))
+                        .font(.poppins(size: 14, weight: .regular))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
@@ -1287,11 +1297,11 @@ struct LocationPickerRowView: View {
                             .scaleEffect(0.6)
                     } else if let locationPrice = locationPrice {
                         Text("$\(String(format: "%.2f", locationPrice.price))")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.poppins(size: 16, weight: .bold))
                             .foregroundColor(isSelected ? AppColors.accentGreen : .primary)
                     } else {
                         Text("No price")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.poppins(size: 14, weight: .medium))
                             .foregroundColor(.gray)
                     }
                     if isSelected {
