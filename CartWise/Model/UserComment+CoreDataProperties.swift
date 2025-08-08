@@ -18,7 +18,14 @@ extension UserComment {
     @NSManaged public var experience: ShoppingExperience?
 }
 extension UserComment {
-    convenience init(context: NSManagedObjectContext, id: String, comment: String, rating: Int16 = 0, user: UserEntity? = nil, experience: ShoppingExperience? = nil) {
+    convenience init(
+        context: NSManagedObjectContext,
+        id: String,
+        comment: String,
+        rating: Int16 = 0,
+        user: UserEntity? = nil,
+        experience: ShoppingExperience? = nil
+    ) {
         self.init(context: context)
         self.id = id
         self.comment = comment

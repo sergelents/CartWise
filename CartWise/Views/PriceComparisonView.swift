@@ -25,20 +25,26 @@ struct PriceComparisonView: View {
                         .scaleEffect(0.8)
                 } else {
                     HStack(spacing: 12) {
-                        Button(action: {
-                            showingShareExperience = true
-                        }) {
-                            Image(systemName: "bubble.left.and.bubble.right")
-                                .foregroundColor(.blue)
-                        }
-                        Button(action: {
-                            Task {
-                                await onLocalComparison()
+                        Button(
+                            action: {
+                                showingShareExperience = true
+                            },
+                            label: {
+                                Image(systemName: "bubble.left.and.bubble.right")
+                                    .foregroundColor(.blue)
                             }
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                                .foregroundColor(.blue)
-                        }
+                        )
+                        Button(
+                            action: {
+                                Task {
+                                    await onLocalComparison()
+                                }
+                            },
+                            label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .foregroundColor(.blue)
+                            }
+                        )
                     }
                 }
             }

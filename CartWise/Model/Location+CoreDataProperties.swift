@@ -26,7 +26,17 @@ extension Location {
     @NSManaged public var experiences: NSSet?
 }
 extension Location {
-    convenience init(context: NSManagedObjectContext, id: String, name: String, address: String, city: String, state: String, zipCode: String, favorited: Bool = false, isDefault: Bool = false) {
+    convenience init(
+        context: NSManagedObjectContext,
+        id: String,
+        name: String,
+        address: String,
+        city: String,
+        state: String,
+        zipCode: String,
+        favorited: Bool = false,
+        isDefault: Bool = false
+    ) {
         self.init(context: context)
         self.id = id
         self.name = name

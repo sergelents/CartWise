@@ -30,7 +30,15 @@ extension GroceryItem {
     @NSManaged public var experiences: NSSet?
 }
 extension GroceryItem {
-    convenience init(context: NSManagedObjectContext, id: String, productName: String, brand: String? = nil, category: String? = nil, barcode: String? = nil, isOnSale: Bool = false) {
+    convenience init(
+        context: NSManagedObjectContext,
+        id: String,
+        productName: String,
+        brand: String? = nil,
+        category: String? = nil,
+        barcode: String? = nil,
+        isOnSale: Bool = false
+    ) {
         self.init(context: context)
         self.id = id
         self.productName = productName

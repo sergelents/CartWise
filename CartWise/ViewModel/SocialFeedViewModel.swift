@@ -31,7 +31,14 @@ class SocialFeedViewModel: ObservableObject {
             isLoading = false
         }
     }
-    func createExperience(comment: String, rating: Int16 = 0, type: String = "general", groceryItem: GroceryItem? = nil, location: Location? = nil, user: UserEntity? = nil) {
+    func createExperience(
+        comment: String,
+        rating: Int16 = 0,
+        type: String = "general",
+        groceryItem: GroceryItem? = nil,
+        location: Location? = nil,
+        user: UserEntity? = nil
+    ) {
         let context = persistenceController.container.viewContext
         // Ensure all objects are in the same context
         let contextGroceryItem: GroceryItem?
@@ -39,19 +46,25 @@ class SocialFeedViewModel: ObservableObject {
         let contextUser: UserEntity?
         if let groceryItem = groceryItem {
             contextGroceryItem = context.object(with: groceryItem.objectID) as? GroceryItem
-            print("GroceryItem context conversion: \(groceryItem.managedObjectContext?.description ?? "nil") -> \(contextGroceryItem?.managedObjectContext?.description ?? "nil")")
+            print("GroceryItem context conversion: " +
+                  "\(groceryItem.managedObjectContext?.description ?? "nil") -> " +
+                  "\(contextGroceryItem?.managedObjectContext?.description ?? "nil")")
         } else {
             contextGroceryItem = nil
         }
         if let location = location {
             contextLocation = context.object(with: location.objectID) as? Location
-            print("Location context conversion: \(location.managedObjectContext?.description ?? "nil") -> \(contextLocation?.managedObjectContext?.description ?? "nil")")
+            print("Location context conversion: " +
+                  "\(location.managedObjectContext?.description ?? "nil") -> " +
+                  "\(contextLocation?.managedObjectContext?.description ?? "nil")")
         } else {
             contextLocation = nil
         }
         if let user = user {
             contextUser = context.object(with: user.objectID) as? UserEntity
-            print("User context conversion: \(user.managedObjectContext?.description ?? "nil") -> \(contextUser?.managedObjectContext?.description ?? "nil")")
+            print("User context conversion: " +
+                  "\(user.managedObjectContext?.description ?? "nil") -> " +
+                  "\(contextUser?.managedObjectContext?.description ?? "nil")")
         } else {
             contextUser = nil
         }
@@ -99,7 +112,12 @@ class SocialFeedViewModel: ObservableObject {
             errorMessage = "Failed to create comment: \(error.localizedDescription)"
         }
     }
-    func createPriceUpdateExperience(groceryItem: GroceryItem, location: Location, price: Double, user: UserEntity? = nil) {
+    func createPriceUpdateExperience(
+        groceryItem: GroceryItem,
+        location: Location,
+        price: Double,
+        user: UserEntity? = nil
+    ) {
         let comment = "Price updated to $\(String(format: "%.2f", price)) at \(location.name ?? "Unknown Store")"
         createExperience(
             comment: comment,
@@ -119,7 +137,12 @@ class SocialFeedViewModel: ObservableObject {
             user: user
         )
     }
-    func createProductReviewExperience(groceryItem: GroceryItem, comment: String, rating: Int16, user: UserEntity? = nil) {
+    func createProductReviewExperience(
+        groceryItem: GroceryItem,
+        comment: String,
+        rating: Int16,
+        user: UserEntity? = nil
+    ) {
         createExperience(
             comment: comment,
             rating: rating,
@@ -163,7 +186,8 @@ class SocialFeedViewModel: ObservableObject {
         do {
             let users = try context.fetch(request)
             let user = users.first
-            print("getCurrentUser: Found user \(user?.username ?? "nil") in context \(user?.managedObjectContext?.description ?? "nil")")
+            print("getCurrentUser: Found user \(user?.username ?? "nil") " +
+                  "in context \(user?.managedObjectContext?.description ?? "nil")")
             return user
         } catch {
             print("getCurrentUser error: \(error)")

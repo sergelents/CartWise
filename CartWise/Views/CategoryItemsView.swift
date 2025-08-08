@@ -539,7 +539,12 @@ struct ProductDetailView: View {
         }
         return "Unknown User"
     }
-    private func createSocialFeedEntry(product: GroceryItem, newPrice: Double, location: Location?, username: String) async {
+    private func createSocialFeedEntry(
+        product: GroceryItem,
+        newPrice: Double,
+        location: Location?,
+        username: String
+    ) async {
         do {
             let context = await CoreDataStack.shared.viewContext
             // Get the product in the current context
@@ -715,7 +720,7 @@ struct ProductPriceView: View {
                     if let lastUpdated = locationPrice.lastUpdated {
                         VStack(spacing: 2) {
                             Text("Last Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
-                                .font(.system(size: 12, weight: .regular))
+                            .font(.system(size: 12, weight: .regular))
                                 .foregroundColor(.gray)
                             if let updatedBy = locationPrice.updatedBy {
                                 Text("By: \(updatedBy)")
@@ -787,7 +792,11 @@ struct ProductPriceView: View {
         do {
             let context = await CoreDataStack.shared.viewContext
             let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", product, locationToSearch.id ?? "")
+            fetchRequest.predicate = NSPredicate(
+                format: "groceryItem == %@ AND location.id == %@",
+                product,
+                locationToSearch.id ?? ""
+            )
             // Debug: Let's also check what prices exist for this product
             let allPricesFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
             // Filter out prices with nil or deleted locations
@@ -856,7 +865,7 @@ struct LocationPriceRow: View {
                 if let lastUpdated = price.lastUpdated {
                     VStack(spacing: 2) {
                         Text("Last Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
-                            .font(.system(size: 12, weight: .regular))
+                        .font(.system(size: 12, weight: .regular))
                             .foregroundColor(.gray)
                         if let updatedBy = price.updatedBy {
                             Text("By: \(updatedBy)")
@@ -1342,7 +1351,11 @@ struct LocationPickerRowView: View {
         do {
             let context = await CoreDataStack.shared.viewContext
             let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", product, location.id ?? "")
+            fetchRequest.predicate = NSPredicate(
+                format: "groceryItem == %@ AND location.id == %@",
+                product,
+                location.id ?? ""
+            )
             fetchRequest.fetchLimit = 1
             let prices = try context.fetch(fetchRequest)
             let price = prices.first
@@ -1775,7 +1788,11 @@ struct ProductEditView: View {
 
             // Check if there's an existing price for this product and location
             let priceFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", productInContext, locationInContext.id ?? "")
+            priceFetchRequest.predicate = NSPredicate(
+                format: "groceryItem == %@ AND location.id == %@",
+                productInContext,
+                locationInContext.id ?? ""
+            )
             priceFetchRequest.fetchLimit = 1
             let existingPrices = try context.fetch(priceFetchRequest)
 

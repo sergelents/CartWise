@@ -87,9 +87,19 @@ final class ProductViewModel: ObservableObject {
     // Update product price using repository pipeline that also updates reputation
     func updateProductPrice(_ product: GroceryItem, price: Double, store: String, locationAddress: String?) async {
         do {
-            try await repository.updateProductWithPrice(product: product, price: price, store: store, location: locationAddress)
+            try await repository.updateProductWithPrice(
+                product: product,
+                price: price,
+                store: store,
+                location: locationAddress
+            )
             // Also create a social feed entry for this price update
-            await createSocialFeedEntryForPriceUpdate(product: product, price: price, store: store, locationAddress: locationAddress)
+            await createSocialFeedEntryForPriceUpdate(
+                product: product,
+                price: price,
+                store: store,
+                locationAddress: locationAddress
+            )
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -97,12 +107,19 @@ final class ProductViewModel: ObservableObject {
     }
 
     // MARK: - Social Feed
-    private func createSocialFeedEntryForPriceUpdate(product: GroceryItem, price: Double, store: String, locationAddress: String?) async {
+    private func createSocialFeedEntryForPriceUpdate(
+        product: GroceryItem,
+        price: Double,
+        store: String,
+        locationAddress: String?
+    ) async {
         do {
             let context = await CoreDataStack.shared.viewContext
             // Refresh objects in context
             let productObjectID = product.objectID
-            guard let productInContext = try? context.existingObject(with: productObjectID) as? GroceryItem else { return }
+            guard let productInContext = try? context.existingObject(
+                with: productObjectID
+            ) as? GroceryItem else { return }
             // Find or create the location by store name/address (best-effort lookup)
             let locationFetch: NSFetchRequest<Location> = Location.fetchRequest()
             if let locationAddress = locationAddress, !locationAddress.isEmpty {
@@ -118,7 +135,12 @@ final class ProductViewModel: ObservableObject {
             userFetch.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
             userFetch.fetchLimit = 1
             guard let currentUser = try context.fetch(userFetch).first else { return }
-            let comment = String(format: "Price updated: %@ is now $%.2f at %@", productInContext.productName ?? "Product", price, store)
+            let comment = String(
+                format: "Price updated: %@ is now $%.2f at %@",
+                productInContext.productName ?? "Product",
+                price,
+                store
+            )
             _ = ShoppingExperience(
                 context: context,
                 id: UUID().uuidString,
@@ -345,8 +367,11 @@ final class ProductViewModel: ObservableObject {
                         // Save image to Core Data using new ProductImage entity
                         Task {
                             do {
-                                try await repository.saveProductImage(for: product, imageURL: imageURL, imageData: imageData)
-
+                                try await repository.saveProductImage(
+                                    for: product,
+                                    imageURL: imageURL,
+                                    imageData: imageData
+                                )
                                 // Force a UI update by triggering objectWillChange
                                 self.objectWillChange.send()
                             } catch {
@@ -358,7 +383,8 @@ final class ProductViewModel: ObservableObject {
             }
 
         } catch {
-            print("ProductViewModel: Error fetching image for '\(product.productName ?? "")': \(error.localizedDescription)")
+            print("ProductViewModel: Error fetching image for '\(product.productName ?? "")': " +
+                  "\(error.localizedDescription)")
         }
     }
 
@@ -383,7 +409,12 @@ final class ProductViewModel: ObservableObject {
     func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem] {
         return try await repository.searchProductsByBarcode(barcode)
     }
-    func createProductForShoppingList(byName name: String, brand: String? = nil, category: String? = nil, isOnSale: Bool = false) async {
+    func createProductForShoppingList(
+        byName name: String,
+        brand: String? = nil,
+        category: String? = nil,
+        isOnSale: Bool = false
+    ) async {
         do {
             if await isDuplicateProduct(name: name) {
                 errorMessage = "Product '\(name)' already exists in your list"
@@ -495,7 +526,15 @@ final class ProductViewModel: ObservableObject {
             return nil
         }
     }
-    func updateProductByBarcode(barcode: String, productName: String?, brand: String?, category: String?, price: Double?, store: String?, isOnSale: Bool?) async -> GroceryItem? {
+    func updateProductByBarcode(
+        barcode: String,
+        productName: String?,
+        brand: String?,
+        category: String?,
+        price: Double?,
+        store: String?,
+        isOnSale: Bool?
+    ) async -> GroceryItem? {
         do {
             print("ProductViewModel: Updating product with barcode: \(barcode)")
             print("ProductViewModel: Update store value: '\(store ?? "nil")'")
@@ -522,7 +561,12 @@ final class ProductViewModel: ObservableObject {
             }
             // Handle price and store updates
             if let price = price, let store = store, price > 0 {
-                try await repository.updateProductWithPrice(product: existingProduct, price: price, store: store, location: nil)
+                try await repository.updateProductWithPrice(
+                    product: existingProduct,
+                    price: price,
+                    store: store,
+                    location: nil
+                )
             } else {
                 // Just update the product without price changes
                 try await repository.updateProduct(existingProduct)

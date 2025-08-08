@@ -301,7 +301,12 @@ struct AddItemsView: View {
                 await productViewModel.loadLocalPriceComparison()
                 // Create social feed entry for new product with price
                 if priceValue > 0 {
-                    await createSocialFeedEntryForProduct(product: newProduct, price: priceValue, location: location, isNewProduct: !wasExistingProduct)
+                    await createSocialFeedEntryForProduct(
+                        product: newProduct,
+                        price: priceValue,
+                        location: location,
+                        isNewProduct: !wasExistingProduct
+                    )
                 }
 
                 // Note: Reputation is updated in CoreDataContainer.createProduct() and updateProductWithPrice()
@@ -327,7 +332,15 @@ struct AddItemsView: View {
         }
     }
 
-    private func createOrUpdateProductByBarcode(barcode: String, productName: String, brand: String?, category: String?, price: Double, store: String, isOnSale: Bool) async -> GroceryItem? {
+    private func createOrUpdateProductByBarcode(
+        barcode: String,
+        productName: String,
+        brand: String?,
+        category: String?,
+        price: Double,
+        store: String,
+        isOnSale: Bool
+    ) async -> GroceryItem? {
         // First check if product already exists with this barcode
         if await productViewModel.isDuplicateBarcode(barcode) {
             // Product exists, update it
@@ -357,7 +370,12 @@ struct AddItemsView: View {
         return nil
     }
 
-    private func createSocialFeedEntryForProduct(product: GroceryItem, price: Double, location: Location?, isNewProduct: Bool) async {
+    private func createSocialFeedEntryForProduct(
+        product: GroceryItem,
+        price: Double,
+        location: Location?,
+        isNewProduct: Bool
+    ) async {
         do {
             let context = await CoreDataStack.shared.viewContext
             // Get the product in the current context
@@ -787,7 +805,17 @@ struct BarcodeConfirmationView: View {
                     VStack(spacing: 16) {
                         // Always show for testing
                         Button(action: {
-                            onConfirm(barcode, productName, company, price, selectedCategory, isOnSale, selectedLocation, selectedTags, addToShoppingList)
+                            onConfirm(
+                                barcode,
+                                productName,
+                                company,
+                                price,
+                                selectedCategory,
+                                isOnSale,
+                                selectedLocation,
+                                selectedTags,
+                                addToShoppingList
+                            )
                         }) {
                             HStack(spacing: 8) {
                                 Image(systemName: isExistingProduct ? "arrow.clockwise" : "plus")

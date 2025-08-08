@@ -21,7 +21,16 @@ extension GroceryItemPrice {
     @NSManaged public var location: Location?
 }
 extension GroceryItemPrice {
-    convenience init(context: NSManagedObjectContext, id: String, price: Double, currency: String = "USD", store: String? = nil, groceryItem: GroceryItem, location: Location, updatedBy: String? = nil) {
+    convenience init(
+        context: NSManagedObjectContext,
+        id: String,
+        price: Double,
+        currency: String = "USD",
+        store: String? = nil,
+        groceryItem: GroceryItem,
+        location: Location,
+        updatedBy: String? = nil
+    ) {
         self.init(context: context)
         self.id = id
         self.price = price

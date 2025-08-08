@@ -11,7 +11,20 @@ protocol CoreDataContainerProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
     func fetchListProducts() async throws -> [GroceryItem]
     // func fetchRecentProducts(limit: Int) async throws -> [GroceryItem]
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool, isOnSale: Bool) async throws -> GroceryItem
+    func createProduct(
+        id: String,
+        productName: String,
+        brand: String?,
+        category: String?,
+        price: Double,
+        currency: String,
+        store: String?,
+        location: String?,
+        imageURL: String?,
+        barcode: String?,
+        isInShoppingList: Bool,
+        isOnSale: Bool
+    ) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
     func updateProductWithPrice(product: GroceryItem, price: Double, store: String, location: String?) async throws
     func deleteProduct(_ product: GroceryItem) async throws
