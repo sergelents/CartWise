@@ -499,12 +499,12 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     }
     func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double? {
         let context = await coreDataStack.viewContext
-        return try await context.perform {
+        return try await context.perform { [self] in
             // Get all prices for this item
             let prices = item.priceArray
-            // Find the price for this specific store
+            // Find the price for this specific store that's not older than 2 weeks
             let storePrice = prices.first { price in
-                price.store == store
+                price.store == store && self.isPriceRecent(price.lastUpdated)
             }
             return storePrice?.price
         }
@@ -512,14 +512,29 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     
     func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double?, shopper: String?) {
         let context = await coreDataStack.viewContext
-        return try await context.perform {
+        return try await context.perform { [self] in
             // Get all prices for this item
             let prices = item.priceArray
-            // Find the price for this specific store
+            // Find the price for this specific store that's not older than 2 weeks
             let storePrice = prices.first { price in
-                price.store == store
+                price.store == store && self.isPriceRecent(price.lastUpdated)
             }
+            
+            // Log if we found an outdated price
+            if let outdatedPrice = prices.first(where: { price in
+                price.store == store && !self.isPriceRecent(price.lastUpdated)
+            }) {
+                print("Repository: Excluding outdated price for \(item.productName ?? "Unknown") at \(store) - last updated: \(outdatedPrice.lastUpdated?.description ?? "Unknown")")
+            }
+            
             return (storePrice?.price, storePrice?.updatedBy)
         }
+    }
+    
+    // Helper method to check if a price is recent (within 2 weeks)
+    private func isPriceRecent(_ lastUpdated: Date?) -> Bool {
+        guard let lastUpdated = lastUpdated else { return false }
+        let twoWeeksAgo = Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date()
+        return lastUpdated >= twoWeeksAgo
     }
 }
