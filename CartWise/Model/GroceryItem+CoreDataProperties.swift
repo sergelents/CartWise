@@ -75,9 +75,23 @@ extension GroceryItem : Identifiable {
     func getAllPrices() -> [GroceryItemPrice] {
         return priceArray
     }
-    // Helper method to get the lowest price
+    // Helper method to get the lowest valid price (ignores orphaned or invalid entries)
     func getLowestPrice() -> GroceryItemPrice? {
-        return priceArray.min { $0.price < $1.price }
+        // Only consider prices that have a valid, non-deleted location and a positive price
+        let validPrices = priceArray.filter { price in
+            guard price.price > 0 else { return false }
+            guard let location = price.location else { return false }
+            return !location.isDeleted
+        }
+        // Choose the minimum by price; tie-breaker by most recent update
+        return validPrices.min { lhs, rhs in
+            if lhs.price == rhs.price {
+                let lUpdated = lhs.lastUpdated ?? .distantPast
+                let rUpdated = rhs.lastUpdated ?? .distantPast
+                return lUpdated > rUpdated
+            }
+            return lhs.price < rhs.price
+        }
     }
     // Helper method to get the highest price
     func getHighestPrice() -> GroceryItemPrice? {
