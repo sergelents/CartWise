@@ -296,6 +296,8 @@ struct ProductDetailView: View {
     @State private var currentUsername: String = "Unknown User"
     // Trigger to force ProductPriceView to refresh
     @State private var priceReloadKey: Int = 0
+    // Trigger to force UI updates when product is refreshed
+    @State private var productRefreshKey: Int = 0
     var body: some View {
         NavigationView {
             ScrollView {
@@ -339,7 +341,7 @@ struct ProductDetailView: View {
                     .padding(.bottom, 14)
                     
                     // Product Tags View - Collapsible section
-                    ProductTagsView(product: product)
+                    ProductTagsView(product: product, refreshKey: productRefreshKey)
                 }
                 .padding(.horizontal, 24)
             }
@@ -373,6 +375,8 @@ struct ProductDetailView: View {
                 Task {
                     await loadLocationsForDetail()
                     currentUsername = await getCurrentUsername()
+                    // Refresh the product to ensure tags are properly loaded
+                    await reloadCurrentProduct()
                 }
             }
         }
@@ -421,8 +425,12 @@ struct ProductDetailView: View {
         await MainActor.run {
             // Refresh the managed object to merge latest changes without manual property assignment
             context.refresh(product, mergeChanges: true)
+            
+            // Force UI update by incrementing the refresh key
+            productRefreshKey += 1
         }
     }
+    
     private func deleteProduct() async {
         do {
             // Permanently delete product from Core Data
@@ -1357,6 +1365,7 @@ struct LocationPickerRowView: View {
 struct ProductTagsView: View {
     @ObservedObject var product: GroceryItem
     @State private var isExpanded = false
+    let refreshKey: Int
     
     var body: some View {
         VStack(spacing: 0) {
