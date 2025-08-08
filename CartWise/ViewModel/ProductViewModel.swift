@@ -72,6 +72,16 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    // Update a product without reloading the entire products list (prevents visible reloads)
+    func updateProductQuiet(_ product: GroceryItem) async {
+        do {
+            try await repository.updateProduct(product)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
     func deleteProduct(_ product: GroceryItem) async {
         do {
             try await repository.deleteProduct(product)

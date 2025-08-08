@@ -294,6 +294,8 @@ struct ProductDetailView: View {
     @State private var currentSelectedLocation: Location?
     @State private var showingLocationPicker = false
     @State private var currentUsername: String = "Unknown User"
+    // Trigger to force ProductPriceView to refresh
+    @State private var priceReloadKey: Int = 0
     var body: some View {
         NavigationView {
             ScrollView {
@@ -324,7 +326,8 @@ struct ProductDetailView: View {
                     // TODO: Need to update data model to include last updated info?
                     ProductPriceView(
                         product: product,
-                        currentSelectedLocation: currentSelectedLocation ?? selectedLocation
+                        currentSelectedLocation: currentSelectedLocation ?? selectedLocation,
+                        reloadKey: priceReloadKey
                     )
                     
                     // Add to Shopping List and Add to Favorites View
@@ -381,13 +384,23 @@ struct ProductDetailView: View {
                 onDismiss: { showingLocationPicker = false }
             )
         }
-        .sheet(isPresented: $showingEditSheet) {
+        .sheet(isPresented: $showingEditSheet, onDismiss: {
+            // After editing is dismissed, refresh this product instance from Core Data
+            Task {
+                await reloadCurrentProduct()
+                // Nudge price view to reload
+                await MainActor.run { priceReloadKey &+= 1 }
+            }
+        }) {
             ProductEditView(
                 product: product,
                 onSave: { updatedProduct in
                     Task {
-                        await productViewModel.updateProduct(updatedProduct)
-                        await productViewModel.loadProducts()
+                        // Quietly persist changes
+                        await productViewModel.updateProductQuiet(updatedProduct)
+                        // Reload the displayed product to reflect freshest values
+                        await reloadCurrentProduct()
+                        await MainActor.run { priceReloadKey &+= 1 }
                     }
                     showingEditSheet = false
                 },
@@ -399,6 +412,15 @@ struct ProductDetailView: View {
                     showDeleteConfirmation = true
                 }
             )
+        }
+    }
+
+    // Reload the current product from Core Data to ensure freshest values in this detail view
+    private func reloadCurrentProduct() async {
+        let context = await CoreDataStack.shared.viewContext
+        await MainActor.run {
+            // Refresh the managed object to merge latest changes without manual property assignment
+            context.refresh(product, mergeChanges: true)
         }
     }
     private func deleteProduct() async {
@@ -660,6 +682,8 @@ struct ProductNameView: View {
 struct ProductPriceView: View {
     @ObservedObject var product: GroceryItem
     let currentSelectedLocation: Location?
+    // Changing this value will trigger .onChange to reload price
+    var reloadKey: Int = 0
     @State private var locationPrice: GroceryItemPrice?
     @State private var isLoading = true
     
@@ -709,6 +733,9 @@ struct ProductPriceView: View {
         }
         .task {
             await loadPriceForSelectedLocation()
+        }
+        .onChange(of: reloadKey) { _ in
+            Task { await loadPriceForSelectedLocation() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { notification in
             // Only reload if the save involved GroceryItemPrice entities
@@ -1375,10 +1402,9 @@ struct ProductTagsView: View {
             
             // Collapsible content (only if there are tags and section is expanded)
             if !product.tagArray.isEmpty && isExpanded {
+                // Use adaptive grid so chips can expand to fit longer tag names without truncation
                 LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
+                    GridItem(.adaptive(minimum: 100), spacing: 8)
                 ], spacing: 8) {
                     ForEach(product.tagArray, id: \.id) { tag in
                         ProductTagChipView(tag: tag)
@@ -1409,7 +1435,8 @@ struct ProductTagChipView: View {
             Text(tag.displayName)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.primary)
-                .lineLimit(1)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
