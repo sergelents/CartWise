@@ -236,10 +236,9 @@ struct PhotoCameraView: View {
                     .background(Color.green)
                     .cornerRadius(12)
                 }
-                .padding(.bottom, 20)
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 60)
+            .padding(.bottom, 80)
         }
         .background(Color.white)
     }
@@ -278,6 +277,9 @@ class PhotoCameraController: ObservableObject {
     
     @Published var showPermissionAlert = false
     @Published var isCameraReady = false
+    
+    // Photo capture delegate
+    private var photoCaptureDelegate: PhotoCaptureDelegate?
     
     // Notification observers for app lifecycle
     private var foregroundObserver: NSObjectProtocol?
@@ -419,24 +421,6 @@ class PhotoCameraController: ObservableObject {
         }
     }
     
-    private var photoCaptureDelegate: PhotoCaptureDelegate?
-    
-    func capturePhoto(completion: @escaping (UIImage?) -> Void) {
-        guard let photoOutput = photoOutput else {
-            print("Photo output not available")
-            completion(nil)
-            return
-        }
-        
-        print("Capturing photo...")
-        let settings = AVCapturePhotoSettings()
-        settings.flashMode = .auto
-        settings.isAutoRedEyeReductionEnabled = true
-        
-        photoCaptureDelegate = PhotoCaptureDelegate(completion: completion)
-        photoOutput.capturePhoto(with: settings, delegate: photoCaptureDelegate!)
-    }
-    
     // App lifecycle handling
     private func setupLifecycleObservers() {
         foregroundObserver = NotificationCenter.default.addObserver(
@@ -468,14 +452,18 @@ class PhotoCameraController: ObservableObject {
     }
     
     private func handleAppWillEnterForeground() {
-        // Restart camera if it was running
-        if isCameraReady {
-            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                guard let self = self,
-                      let session = self.captureSession,
-                      !session.isRunning else { return }
-                
+        // Restart camera when app returns to foreground
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self,
+                  let session = self.captureSession else { return }
+            
+            if !session.isRunning {
+                print("Restarting camera session after returning to foreground")
                 session.startRunning()
+                
+                DispatchQueue.main.async {
+                    self.isCameraReady = true
+                }
             }
         }
     }
@@ -484,11 +472,36 @@ class PhotoCameraController: ObservableObject {
         // Stop camera session when app goes to background
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self,
-                  let session = self.captureSession,
-                  session.isRunning else { return }
+                  let session = self.captureSession else { return }
             
-            session.stopRunning()
+            if session.isRunning {
+                print("Stopping camera session as app goes to background")
+                session.stopRunning()
+                
+                DispatchQueue.main.async {
+                    self.isCameraReady = false
+                }
+            }
         }
+    }
+    
+    func capturePhoto(completion: @escaping (UIImage?) -> Void) {
+        guard let photoOutput = photoOutput else {
+            print("Photo output not available")
+            completion(nil)
+            return
+        }
+        
+        print("Starting photo capture...")
+        let settings = AVCapturePhotoSettings()
+        settings.flashMode = .auto
+        settings.isAutoRedEyeReductionEnabled = true
+        
+        // Create and retain the delegate
+        photoCaptureDelegate = PhotoCaptureDelegate(completion: completion)
+        
+        print("Taking photo with settings: \(settings)")
+        photoOutput.capturePhoto(with: settings, delegate: photoCaptureDelegate!)
     }
     
     func cleanup() {

@@ -311,17 +311,17 @@ struct ProductDetailView: View {
                     )
                     // Product Name View
                     ProductNameView(product: product)
-                                                // Product Image View
-                            ProductImageView(
-                                product: product,
-                                size: CGSize(width: 180, height: 180),
-                                cornerRadius: 12,
-                                showSaleBadge: true
-                            )
+                        // Product Image View
+                        ProductImageView(
+                            product: product,
+                            size: CGSize(width: 180, height: 180),
+                            cornerRadius: 12,
+                            showSaleBadge: true,
+                            showCameraButton: true
+                        )
                         .padding(.horizontal, 24)
                         .padding(.bottom, 8)
                     // Product Price View
-                    // TODO: Need to update data model to include last updated info?
                     ProductPriceView(
                         product: product,
                         currentSelectedLocation: currentSelectedLocation ?? selectedLocation

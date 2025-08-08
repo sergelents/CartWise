@@ -3,7 +3,7 @@
 //  CartWise
 //
 //  Created by Kelly Yong on 8/4/25.
-//  Enhanced with AI assistance from Cursor AI for UI improvements and functionality.
+//  Enhanced with AI assistance from Cursor AI for UI improvements and camera functionality.
 //
 //  Product image view with optional camera functionality
 
@@ -42,13 +42,16 @@ struct ProductImageView: View {
     
     var body: some View {
         Group {
-            if let productImage = product.productImage {
+            if let loadedImage = loadedImage {
+                // Priority 1: Display loaded image (for instant updates)
+                displayImage(loadedImage)
+            } else if let productImage = product.productImage {
                 // Product has an image entity
                 if let imageData = productImage.imageData, let uiImage = UIImage(data: imageData) {
-                    // Priority 1: Display cached image data from Core Data
+                    // Priority 2: Display cached image data from Core Data
                     displayImage(uiImage)
                 } else if let imageURL = productImage.imageURL, !imageURL.isEmpty {
-                    // Priority 2: Load from URL if no cached data
+                    // Priority 3: Load from URL if no cached data
                     handleURLImageLoading(imageURL)
                 } else {
                     // No image data or URL available
@@ -76,6 +79,7 @@ struct ProductImageView: View {
                 hasError = false
             } else {
                 print("ProductImageView: No valid image data found")
+                loadedImage = nil
             }
         }
         .onChange(of: imageUpdateTrigger) { _ in
@@ -100,6 +104,40 @@ struct ProductImageView: View {
             } else {
                 print("ProductImageView: No productImage found")
             }
+        }
+        .onAppear {
+            // Initialize loadedImage if data already exists
+            if let imageData = product.productImage?.imageData,
+               let image = UIImage(data: imageData) {
+                loadedImage = image
+                isLoading = false
+                hasError = false
+                print("ProductImageView: Initialized with existing image data")
+            }
+            
+            // Listen for product image updates
+            NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("ProductImageUpdated"),
+                object: nil,
+                queue: .main
+            ) { notification in
+                if let productId = notification.userInfo?["productId"] as? String,
+                   productId == product.id {
+                    print("ProductImageView: Received image update notification for product: \(productId)")
+                    // Refresh the image
+                    if let imageData = product.productImage?.imageData,
+                       let image = UIImage(data: imageData) {
+                        loadedImage = image
+                        isLoading = false
+                        hasError = false
+                        print("ProductImageView: Updated image from notification")
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            // Clean up notification observer
+            NotificationCenter.default.removeObserver(self, name: NSNotification.Name("ProductImageUpdated"), object: nil)
         }
         .sheet(isPresented: $showingCamera) {
             // Camera view
@@ -313,9 +351,24 @@ struct ProductImageView: View {
                         try product.managedObjectContext?.save()
                         print("User image saved successfully to Core Data")
                         
-                        // Force UI update
+                        // Immediately set the loaded image for instant UI update
+                        loadedImage = image
+                        isLoading = false
+                        hasError = false
+                        
+                        // Force objectWillChange to notify all observers
+                        product.objectWillChange.send()
+                        
+                        // Send notification for all ProductImageView instances
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("ProductImageUpdated"),
+                            object: nil,
+                            userInfo: ["productId": product.id ?? ""]
+                        )
+                        
+                        // Force UI update trigger as backup
                         imageUpdateTrigger.toggle()
-                        print("ProductImageView: Triggered UI update")
+                        print("ProductImageView: Triggered UI update, sent notifications for product: \(product.id ?? "unknown")")
                     } catch {
                         print("Error saving user image: \(error)")
                     }
