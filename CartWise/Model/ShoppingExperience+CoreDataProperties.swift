@@ -59,6 +59,8 @@ extension ShoppingExperience : Identifiable {
             return "Product Review"
         case "general":
             return "General Comment"
+        case "new_product":
+            return "New Product"
         default:
             return "Shopping Experience"
         }
