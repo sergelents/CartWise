@@ -458,6 +458,8 @@ struct TagPickerView: View {
     @Binding var selectedTags: [Tag]
     let onDone: () -> Void
     @State private var searchText = ""
+    @State private var localSelectedTags: [Tag] = []
+    
     var filteredTags: [Tag] {
         if searchText.isEmpty {
             return allTags
@@ -467,6 +469,7 @@ struct TagPickerView: View {
             }
         }
     }
+    
     var body: some View {
         NavigationView {
             VStack {
@@ -482,16 +485,16 @@ struct TagPickerView: View {
                 List {
                     ForEach(filteredTags, id: \.id) { tag in
                         Button(action: {
-                            if selectedTags.contains(where: { $0.id == tag.id }) {
-                                selectedTags.removeAll { $0.id == tag.id }
+                            if localSelectedTags.contains(where: { $0.id == tag.id }) {
+                                localSelectedTags.removeAll { $0.id == tag.id }
                             } else {
-                                selectedTags.append(tag)
+                                localSelectedTags.append(tag)
                             }
                         }) {
                             HStack {
                                 Text(tag.displayName)
                                 Spacer()
-                                if selectedTags.contains(where: { $0.id == tag.id }) {
+                                if localSelectedTags.contains(where: { $0.id == tag.id }) {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.accentColor)
                                 }
@@ -501,7 +504,14 @@ struct TagPickerView: View {
                 }
             }
             .navigationTitle("Select Tags")
-            .navigationBarItems(trailing: Button("Done") { onDone() })
+            .navigationBarItems(trailing: Button("Done") { 
+                selectedTags = localSelectedTags
+                onDone() 
+            })
+            .onAppear {
+                // Initialize local selection with current selected tags
+                localSelectedTags = selectedTags
+            }
         }
     }
 }
