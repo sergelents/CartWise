@@ -161,7 +161,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             // Calculate availability percentage
             let availabilityPercentage = Double(availableItems) / Double(shoppingList.count)
             let minimumAvailability = 0.85 // 85% minimum availability threshold
-            
+
             // Only include stores that have at least 85% of items available
             if availableItems > 0 && availabilityPercentage >= minimumAvailability {
                 let storePrice = LocalStorePrice(
@@ -205,7 +205,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     private func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double? {
         return try await coreDataContainer.getItemPriceAtStore(item: item, store: store)
     }
-    
+
     // Helper method to get the price and shopper of an item at a specific store
     private func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double?, shopper: String?) {
         return try await coreDataContainer.getItemPriceAndShopperAtStore(item: item, store: store)
@@ -223,7 +223,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws {
         try await coreDataContainer.addTagsToProduct(product, tags: tags)
     }
-    
+
     func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async throws {
         try await coreDataContainer.replaceTagsForProduct(product, tags: tags)
     }
@@ -233,16 +233,16 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     func initializeDefaultTags() async throws {
         try await coreDataContainer.initializeDefaultTags()
     }
-    
+
     // MARK: - ProductImage Methods
     func saveProductImage(for product: GroceryItem, imageURL: String, imageData: Data?) async throws {
         try await coreDataContainer.saveProductImage(for: product, imageURL: imageURL, imageData: imageData)
     }
-    
+
     func getProductImage(for product: GroceryItem) async throws -> ProductImage? {
         return try await coreDataContainer.getProductImage(for: product)
     }
-    
+
     func deleteProductImage(for product: GroceryItem) async throws {
         try await coreDataContainer.deleteProductImage(for: product)
     }

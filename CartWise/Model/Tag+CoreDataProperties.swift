@@ -27,7 +27,7 @@ extension Tag {
         self.updatedAt = Date()
     }
 }
-extension Tag : Identifiable {
+extension Tag: Identifiable {
     // Computed properties for easier access
     var displayName: String {
         return name ?? "Unnamed Tag"

@@ -30,17 +30,17 @@ struct FavoriteItemsView: View {
                         .foregroundColor(AppColors.accentGreen)
                         .font(.system(size: 18, weight: .medium))
                 }
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text("My Favorite Items")
                         .font(.poppins(size: 20, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
-                    
+
                     Text("Manage your favorite items")
                         .font(.poppins(size: 14, weight: .regular))
                         .foregroundColor(.gray)
                 }
-                
+
                 Spacer()
                 Text("\(productViewModel.favoriteProducts.count) items")
                     .font(.poppins(size: 15, weight: .medium))
@@ -54,13 +54,13 @@ struct FavoriteItemsView: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
-            
+
             // Divider line
             Divider()
                 .background(Color.gray.opacity(0.3))
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
-            
+
             // Enhanced Favorites List
             if productViewModel.favoriteProducts.isEmpty {
                 // Enhanced Empty State

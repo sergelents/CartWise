@@ -35,10 +35,10 @@ final class ProductViewModel: ObservableObject {
         do {
             products = try await repository.fetchListProducts()
             // Filter out any orphaned price relationships from deleted locations at render time via model helpers
-            
+
             // Fetch images for products that don't have them
             await fetchImagesForProducts()
-            
+
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -146,7 +146,7 @@ final class ProductViewModel: ObservableObject {
     func removeProductFromShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.removeProductFromShoppingList(product)
-            
+
             // Update the products array on the main thread
             await MainActor.run {
                 products.removeAll { $0.id == product.id }
@@ -200,7 +200,7 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
+
     func clearShoppingList() async {
         do {
             // Remove all products from shopping list without deleting the actual product data
@@ -226,7 +226,7 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
+
     // Quiet version that doesn't reload lists - for UI components
     func addExistingProductToShoppingListQuiet(_ product: GroceryItem) async {
         do {
@@ -240,10 +240,10 @@ final class ProductViewModel: ObservableObject {
     func loadFavoriteProducts() async {
         do {
             favoriteProducts = try await repository.fetchFavoriteProducts()
-            
+
             // Fetch images for favorite products that don't have them
             await fetchImagesForProductArray(favoriteProducts)
-            
+
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -258,7 +258,7 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
+
     // Quiet version that doesn't reload lists - for UI components
     func addProductToFavoritesQuiet(_ product: GroceryItem) async {
         do {
@@ -277,7 +277,7 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
-    
+
     // Quiet version that doesn't reload lists - for UI components
     func removeProductFromFavoritesQuiet(_ product: GroceryItem) async {
         do {
@@ -306,47 +306,47 @@ final class ProductViewModel: ObservableObject {
             return false
         }
     }
-    
+
     // Image Fetching
     // Fetches images for products that don't have image URLs
     func fetchImagesForProducts() async {
         await fetchImagesForProductArray(products)
     }
-    
+
     // Fetches images for any array of products that don't have image URLs
     private func fetchImagesForProductArray(_ productArray: [GroceryItem]) async {
         // Get products that don't have image URLs
         let productsWithoutImages = productArray.filter { $0.imageURL == nil || $0.imageURL?.isEmpty == true }
-        
+
         if productsWithoutImages.isEmpty {
             return
         }
-        
+
         // Fetch images for each product
         for product in productsWithoutImages {
             await fetchImageForProduct(product)
         }
     }
-    
+
     // Fetches image for a specific product
     private func fetchImageForProduct(_ product: GroceryItem) async {
         do {
             let productName = product.productName ?? ""
             let brand = product.brand
             let category = product.category
-            
+
             if let imageURL = try await imageService.fetchImageURL(for: productName, brand: brand, category: category) {
                 // Download image data
                 if let url = URL(string: imageURL) {
                     let (imageData, _) = try await URLSession.shared.data(from: url)
-                    
+
                     // Update product with image data on main thread
                     await MainActor.run {
                         // Save image to Core Data using new ProductImage entity
                         Task {
                             do {
                                 try await repository.saveProductImage(for: product, imageURL: imageURL, imageData: imageData)
-                                
+
                                 // Force a UI update by triggering objectWillChange
                                 self.objectWillChange.send()
                             } catch {
@@ -356,12 +356,12 @@ final class ProductViewModel: ObservableObject {
                     }
                 }
             }
-            
+
         } catch {
             print("ProductViewModel: Error fetching image for '\(product.productName ?? "")': \(error.localizedDescription)")
         }
     }
-    
+
     func searchProducts(by name: String) async {
         do {
             products = try await repository.searchProducts(by: name)
@@ -405,10 +405,10 @@ final class ProductViewModel: ObservableObject {
                 isInShoppingList: true,
                 isOnSale: isOnSale
             )
-            
+
             // Fetch image for the newly created product
             await fetchImageForProduct(savedProduct)
-            
+
             await loadShoppingListProducts()
             errorMessage = nil
         } catch {
@@ -483,10 +483,10 @@ final class ProductViewModel: ObservableObject {
             )
             print("ProductViewModel: Product created successfully")
             print("ProductViewModel: Saved product store: '\(savedProduct.store ?? "nil")'")
-            
+
             // Fetch image for the newly created product
             await fetchImageForProduct(savedProduct)
-            
+
             await loadShoppingListProducts()
             errorMessage = nil
             return savedProduct
@@ -625,7 +625,7 @@ extension ProductViewModel {
             // Optionally handle error
         }
     }
-    
+
     @MainActor
     func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async {
         do {

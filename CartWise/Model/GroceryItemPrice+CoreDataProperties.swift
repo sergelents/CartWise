@@ -34,5 +34,5 @@ extension GroceryItemPrice {
         self.lastUpdated = Date()
     }
 }
-extension GroceryItemPrice : Identifiable {
+extension GroceryItemPrice: Identifiable {
 }

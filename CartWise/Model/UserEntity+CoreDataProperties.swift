@@ -20,7 +20,7 @@ extension UserEntity {
     @NSManaged public var experiences: NSSet?
     @NSManaged public var comments: NSSet?
 }
-extension UserEntity : Identifiable {
+extension UserEntity: Identifiable {
     // Computed property for easier access to locations
     var locationArray: [Location] {
         let set = locations as? Set<Location> ?? []

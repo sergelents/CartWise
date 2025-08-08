@@ -159,7 +159,7 @@ struct ShoppingListCard: View {
     @Binding var showingRatingPrompt: Bool
     @Binding var showingAddProductModal: Bool
     @Binding var showingCheckAllConfirmation: Bool
-    
+
     // Function to handle SwiftUI's native onDelete
     private func deleteItems(offsets: IndexSet) {
         // Capture the products to delete before any async operations
@@ -167,7 +167,7 @@ struct ShoppingListCard: View {
             // Check bounds to prevent index out of range
             index < productViewModel.products.count ? productViewModel.products[index] : nil
         }
-        
+
         Task {
             // Process deletions sequentially to avoid race conditions
             for product in productsToDelete {
@@ -911,7 +911,7 @@ private func formatDate(_ date: Date) -> String {
     let formatter = DateFormatter()
     let now = Date()
     let calendar = Calendar.current
-    
+
     if calendar.isDateInToday(date) {
         formatter.timeStyle = .short
         return "Today \(formatter.string(from: date))"

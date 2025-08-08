@@ -40,7 +40,7 @@ extension Location {
         self.updatedAt = Date()
     }
 }
-extension Location : Identifiable {
+extension Location: Identifiable {
     // Computed property for easier access to grocery items
     var groceryItemArray: [GroceryItem] {
         let set = groceryItems as? Set<GroceryItem> ?? []

@@ -44,18 +44,18 @@ struct PriceComparisonView: View {
             }
             .padding(.horizontal)
             .padding(.top, 8)
-            
+
             // Availability threshold info
             HStack {
                 Text("Only showing stores with 85%+ of your items")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 Spacer()
             }
             .padding(.horizontal)
             .padding(.top, 4)
-            
+
             // Price comparison content
             if let comparison = priceComparison {
                 if comparison.storePrices.isEmpty {
@@ -63,7 +63,7 @@ struct PriceComparisonView: View {
                         Text("No stores meet the 85% availability threshold")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        
+
                         Text("Add more items with store information or try stores with better inventory")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -153,7 +153,6 @@ struct StorePriceRow: View {
                         .foregroundColor(.secondary)
                 }
             }
-            
 
         }
         .padding(.vertical, 4)

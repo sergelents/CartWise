@@ -13,20 +13,20 @@ struct MyProfileView: View {
     @State private var isLoadingUser: Bool = true
     @State private var showAddLocation: Bool = false
     @State private var selectedTab: ProfileTab = .favorites
-    
+
     enum ProfileTab: String, CaseIterable {
         case favorites = "Favorites"
         case locations = "Locations"
         case reputation = "Reputation"
     }
-    
+
     var body: some View {
         NavigationView {
             ZStack {
                 // Background
                 AppColors.backgroundSecondary
                     .ignoresSafeArea()
-                
+
                 ScrollView {
                     VStack(spacing: 24) {
                         // Profile Card
@@ -34,10 +34,10 @@ struct MyProfileView: View {
                             currentUsername: currentUsername,
                             isLoadingUser: isLoadingUser
                         )
-                        
+
                         // Tabbed Content
                         TabbedContentView(selectedTab: $selectedTab)
-                        
+
                         // Logout Button
                         LogoutButton(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -103,12 +103,12 @@ struct MyProfileView: View {
 // MARK: - Tabbed Content View
 struct TabbedContentView: View {
     @Binding var selectedTab: MyProfileView.ProfileTab
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Tab Selector
             TabSelector(selectedTab: $selectedTab)
-            
+
             // Tab Content
             VStack(spacing: 0) {
                 if selectedTab == .favorites {
@@ -136,7 +136,7 @@ struct TabbedContentView: View {
 // MARK: - Tab Selector
 struct TabSelector: View {
     @Binding var selectedTab: MyProfileView.ProfileTab
-    
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(MyProfileView.ProfileTab.allCases, id: \.self) { tab in
@@ -149,7 +149,7 @@ struct TabSelector: View {
                         Text(tab.rawValue)
                             .font(.poppins(size: 16, weight: selectedTab == tab ? .semibold : .medium))
                             .foregroundColor(selectedTab == tab ? AppColors.accentGreen : .gray)
-                        
+
                         // Underline indicator
                         Rectangle()
                             .fill(selectedTab == tab ? AppColors.accentGreen : Color.clear)
@@ -171,7 +171,7 @@ struct TabSelector: View {
 struct ProfileCard: View {
     let currentUsername: String
     let isLoadingUser: Bool
-    
+
     var body: some View {
         VStack(spacing: 20) {
             // Profile Avatar
@@ -188,14 +188,14 @@ struct ProfileCard: View {
                         )
                     )
                     .frame(width: 80, height: 80)
-                
+
                 Image(systemName: "person.crop.circle.fill")
                     .resizable()
                     .frame(width: 64, height: 64)
                     .foregroundColor(AppColors.accentGreen)
             }
             .padding(.top, 16)
-            
+
             // User Info
             VStack(spacing: 8) {
                 if isLoadingUser {
@@ -207,7 +207,7 @@ struct ProfileCard: View {
                         .font(.poppins(size: 24, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
                 }
-                
+
                 Text("Manage your account and preferences")
                     .font(.poppins(size: 14, weight: .regular))
                     .foregroundColor(.gray)
@@ -228,7 +228,7 @@ struct ProfileCard: View {
 // MARK: - Logout Button Component
 struct LogoutButton: View {
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
@@ -265,14 +265,14 @@ struct ReputationTabView: View {
     @State private var userUpdates: Int = 0
     @State private var userLevel: String = "New Shopper"
     @State private var isLoading: Bool = true
-    
+
     var body: some View {
         VStack(spacing: 20) {
             if isLoading {
                 VStack(spacing: 16) {
                     ProgressView()
                         .scaleEffect(1.2)
-                    
+
                     Text("Loading reputation data...")
                         .font(.poppins(size: 14, weight: .medium))
                         .foregroundColor(.gray)
@@ -293,7 +293,7 @@ struct ReputationTabView: View {
             }
         }
     }
-    
+
     private func loadUserReputation() async {
         if let reputation = await ReputationManager.shared.getCurrentUserReputation() {
             await MainActor.run {

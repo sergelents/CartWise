@@ -25,14 +25,13 @@ struct AddItemsView: View {
     @State private var pendingCategory: ProductCategory = .none
     @State private var pendingIsOnSale: Bool = false
     @State private var showCategoryPicker = false
-    @State private var pendingLocation: Location? = nil
+    @State private var pendingLocation: Location?
     @State private var showLocationPicker = false
     @State private var selectedTags: [Tag] = []
     @State private var showingTagPicker = false
     @State private var addToShoppingList = false
     @State private var isExistingProduct = false
     @State private var isScanInProgress = false
-    
 
     var body: some View {
         NavigationView {
@@ -208,12 +207,12 @@ struct AddItemsView: View {
     private func handleBarcodeScanned(_ barcode: String) {
         // Set scan in progress to disable button
         isScanInProgress = true
-        
+
         // Reset all pending data first to ensure clean state
         resetPendingData()
         pendingBarcode = barcode
         showingCamera = false
-        
+
         // Check if product already exists and fetch its data
         Task {
             do {
@@ -226,21 +225,21 @@ struct AddItemsView: View {
                         pendingCompany = existingProduct.brand ?? ""
                         pendingCategory = ProductCategory(rawValue: existingProduct.category ?? "") ?? .none
                         pendingIsOnSale = existingProduct.isOnSale
-                        
+
                         // Get the most recent price and location
                         if let prices = existingProduct.prices as? Set<GroceryItemPrice>,
                            let mostRecentPrice = prices.max(by: { ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) }) {
                             pendingPrice = String(format: "%.2f", mostRecentPrice.price)
                             pendingLocation = mostRecentPrice.location
                         }
-                        
+
                         // Load existing tags
                         if let existingTags = existingProduct.tags as? Set<Tag> {
                             selectedTags = Array(existingTags)
                         } else {
                             selectedTags = []
                         }
-                        
+
                     } else {
                         isExistingProduct = false
                         // Keep fields empty for new product
@@ -293,7 +292,7 @@ struct AddItemsView: View {
                 } else {
                     await productViewModel.addTagsToProduct(newProduct, tags: tags)
                 }
-                
+
                 // Add to shopping list if requested
                 if addToShoppingList {
                     await productViewModel.addExistingProductToShoppingList(newProduct)
@@ -304,7 +303,7 @@ struct AddItemsView: View {
                 if priceValue > 0 {
                     await createSocialFeedEntryForProduct(product: newProduct, price: priceValue, location: location, isNewProduct: !wasExistingProduct)
                 }
-                
+
                 // Note: Reputation is updated in CoreDataContainer.createProduct() and updateProductWithPrice()
                 // No need to update here to avoid double incrementing
             }
@@ -327,7 +326,7 @@ struct AddItemsView: View {
             }
         }
     }
-    
+
     private func createOrUpdateProductByBarcode(barcode: String, productName: String, brand: String?, category: String?, price: Double, store: String, isOnSale: Bool) async -> GroceryItem? {
         // First check if product already exists with this barcode
         if await productViewModel.isDuplicateBarcode(barcode) {
@@ -357,7 +356,6 @@ struct AddItemsView: View {
         }
         return nil
     }
-    
 
     private func createSocialFeedEntryForProduct(product: GroceryItem, price: Double, location: Location?, isNewProduct: Bool) async {
         do {
@@ -459,7 +457,7 @@ struct TagPickerView: View {
     let onDone: () -> Void
     @State private var searchText = ""
     @State private var localSelectedTags: [Tag] = []
-    
+
     var filteredTags: [Tag] {
         if searchText.isEmpty {
             return allTags
@@ -469,7 +467,7 @@ struct TagPickerView: View {
             }
         }
     }
-    
+
     var body: some View {
         NavigationView {
             VStack {
@@ -504,9 +502,9 @@ struct TagPickerView: View {
                 }
             }
             .navigationTitle("Select Tags")
-            .navigationBarItems(trailing: Button("Done") { 
+            .navigationBarItems(trailing: Button("Done") {
                 selectedTags = localSelectedTags
-                onDone() 
+                onDone()
             })
             .onAppear {
                 // Initialize local selection with current selected tags
@@ -555,20 +553,20 @@ struct BarcodeConfirmationView: View {
     let onConfirm: (String, String, String, String, ProductCategory, Bool, Location?, [Tag], Bool) -> Void
     let onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
-    
+
     // Form validation
     private var isFormValid: Bool {
-        !barcode.isEmpty && 
+        !barcode.isEmpty &&
         !productName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !company.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !price.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         selectedLocation != nil &&
         selectedCategory != .none
     }
-    
+
     private var validationMessages: [String] {
         var messages: [String] = []
-        
+
         if barcode.isEmpty {
             messages.append("Barcode is required")
         }
@@ -587,28 +585,28 @@ struct BarcodeConfirmationView: View {
         if selectedCategory == .none {
             messages.append("Category is required")
         }
-        
+
         return messages
     }
-    
+
     private func shouldShowActionButton() -> Bool {
         // Don't show button during scan processing
         if isScanInProgress {
             return false
         }
-        
+
         // Always show button when form is valid
         return true
     }
-    
+
     private func shouldShowUpdateButton() -> Bool {
         return isExistingProduct
     }
-    
+
     private var buttonText: String {
         return isExistingProduct ? "Update" : "Add"
     }
-    
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -784,7 +782,7 @@ struct BarcodeConfirmationView: View {
                                 .padding(.horizontal)
                         }
                     }
-                    
+
                     // Action Buttons - Center Bottom
                     VStack(spacing: 16) {
                         // Always show for testing
@@ -807,7 +805,6 @@ struct BarcodeConfirmationView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 20)
 
-
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -819,10 +816,6 @@ struct BarcodeConfirmationView: View {
                     }
                 }
             }
-
-
-
-
 
         }
     }

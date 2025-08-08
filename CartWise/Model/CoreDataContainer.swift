@@ -100,7 +100,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             print("CoreDataContainer: Product created, store set to: '\(product.store ?? "nil")'")
             // Set shopping list status based on parameter
             product.isInShoppingList = isInShoppingList
-            
+
             // Create ProductImage if imageURL is provided
             if let imageURL = imageURL {
                 let productImage = ProductImage(
@@ -110,7 +110,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 )
                 product.productImage = productImage
             }
-            
+
             // If we have price and store information, create a GroceryItemPrice
             if price > 0, let store = store {
                 // Find or create the location
@@ -129,24 +129,24 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             }
             try context.save()
             print("CoreDataContainer: Context saved, final store: '\(product.store ?? "nil")'")
-            
+
             // Update user reputation for product creation (barcode scanning)
             if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
                 // Increment updates count
                 currentUser.updates += 1
-                
+
                 // Update level based on new count
                 let newLevel = ReputationSystem.shared.getCurrentLevel(updates: Int(currentUser.updates))
                 currentUser.level = newLevel.name
-                
+
                 // Save the context to persist the reputation update
                 try context.save()
-                
+
                 print("✅ REPUTATION UPDATE: Product creation - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
             } else {
                 print("⚠️ WARNING: Could not find current user for product creation reputation update")
             }
-            
+
             return product.objectID
         }
         // Then fetch from main context to ensure proper access
@@ -181,7 +181,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             let productInContext = try context.existingObject(with: objectID) as! GroceryItem
-            
+
             // Create or update ProductImage
             let productImage: ProductImage
             if let existingImage = productInContext.productImage {
@@ -203,11 +203,11 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 )
                 productInContext.productImage = productImage
             }
-            
+
             try context.save()
         }
     }
-    
+
     func getProductImage(for product: GroceryItem) async throws -> ProductImage? {
         let context = await coreDataStack.viewContext
         return try await context.perform {
@@ -216,12 +216,12 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return productInContext.productImage
         }
     }
-    
+
     func deleteProductImage(for product: GroceryItem) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             let productInContext = try context.existingObject(with: objectID) as! GroceryItem
-            
+
             if let productImage = productInContext.productImage {
                 let imageObjectID = productImage.objectID
                 let imageInContext = try context.existingObject(with: imageObjectID) as! ProductImage
@@ -231,7 +231,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             }
         }
     }
-    
+
     // Helper method to get current username
     private func getCurrentUsername() async -> String {
         do {
@@ -290,19 +290,19 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             }
             productInContext.updatedAt = Date()
             try context.save()
-            
+
             // Update user reputation directly in the same context
             if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
                 // Increment updates count
                 currentUser.updates += 1
-                
+
                 // Update level based on new count
                 let newLevel = ReputationSystem.shared.getCurrentLevel(updates: Int(currentUser.updates))
                 currentUser.level = newLevel.name
-                
+
                 // Save the context to persist the reputation update
                 try context.save()
-                
+
                 print("✅ REPUTATION UPDATE: Price update - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
             } else {
                 print("⚠️ WARNING: Could not find current user for reputation update")
@@ -446,7 +446,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try context.save()
         }
     }
-    
+
     func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async throws {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
@@ -509,7 +509,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return storePrice?.price
         }
     }
-    
+
     func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double?, shopper: String?) {
         let context = await coreDataStack.viewContext
         return try await context.perform { [self] in
@@ -519,18 +519,18 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             let storePrice = prices.first { price in
                 price.store == store && self.isPriceRecent(price.lastUpdated)
             }
-            
+
             // Log if we found an outdated price
             if let outdatedPrice = prices.first(where: { price in
                 price.store == store && !self.isPriceRecent(price.lastUpdated)
             }) {
                 print("Repository: Excluding outdated price for \(item.productName ?? "Unknown") at \(store) - last updated: \(outdatedPrice.lastUpdated?.description ?? "Unknown")")
             }
-            
+
             return (storePrice?.price, storePrice?.updatedBy)
         }
     }
-    
+
     // Helper method to check if a price is recent (within 2 weeks)
     private func isPriceRecent(_ lastUpdated: Date?) -> Bool {
         guard let lastUpdated = lastUpdated else { return false }

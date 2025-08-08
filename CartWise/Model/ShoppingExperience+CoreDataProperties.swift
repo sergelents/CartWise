@@ -33,7 +33,7 @@ extension ShoppingExperience {
         self.createdAt = Date()
     }
 }
-extension ShoppingExperience : Identifiable {
+extension ShoppingExperience: Identifiable {
     // Computed property for easier access to comments
     var commentArray: [UserComment] {
         let set = comments as? Set<UserComment> ?? []

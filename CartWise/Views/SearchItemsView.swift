@@ -12,10 +12,10 @@ struct SearchItemsView: View {
     // State variable for search bar input
     @State private var searchText = ""
     @State private var isSearching = false
-    @State private var selectedCategory: ProductCategory? = nil
-    @State private var selectedTag: Tag? = nil
+    @State private var selectedCategory: ProductCategory?
+    @State private var selectedTag: Tag?
     @State private var showingTagPicker = false
-    @State private var selectedLocation: Location? = nil
+    @State private var selectedLocation: Location?
     @State private var userLocations: [Location] = []
     @State private var searchProducts: [GroceryItem] = [] // Separate array for search products
     @EnvironmentObject var viewModel: ProductViewModel
@@ -92,7 +92,7 @@ struct SearchItemsView: View {
             HStack {
                 TextField("Search products...", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onChange(of: searchText) { _, newValue in
+                    .onChange(of: searchText) { _, _ in
                         // Real-time filtering is handled by computed properties
                         // No need to call performSearch() as searchResults updates automatically
                     }
@@ -219,17 +219,17 @@ struct SearchItemsView: View {
     private func loadSearchProducts() async {
         // Save current shopping list products
         let currentShoppingListProducts = viewModel.products
-        
+
         // Load all products temporarily
         await viewModel.loadProducts()
-        
+
         // Store search products and restore shopping list
         await MainActor.run {
             searchProducts = viewModel.products
             viewModel.products = currentShoppingListProducts
         }
     }
-    
+
     private func performSearch() async {
         guard !searchText.isEmpty else {
             return
@@ -242,19 +242,19 @@ struct SearchItemsView: View {
                 isSearching = false
             }
         }
-        
+
         // Save current shopping list products
         let currentShoppingListProducts = viewModel.products
-        
+
         // Search Core Data for existing products only (offline-first)
         await viewModel.searchProducts(by: searchText)
-        
+
         // Update local search products and restore shopping list
         await MainActor.run {
             searchProducts = viewModel.products
             viewModel.products = currentShoppingListProducts
         }
-        
+
         print("Search completed: \(searchProducts.count) local results")
     }
     private func selectCategory(_ category: ProductCategory) {

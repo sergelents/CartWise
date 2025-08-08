@@ -28,5 +28,5 @@ extension UserComment {
         self.createdAt = Date()
     }
 }
-extension UserComment : Identifiable {
+extension UserComment: Identifiable {
 }
