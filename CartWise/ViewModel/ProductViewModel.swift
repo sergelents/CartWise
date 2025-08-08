@@ -34,6 +34,7 @@ final class ProductViewModel: ObservableObject {
     func loadShoppingListProducts() async {
         do {
             products = try await repository.fetchListProducts()
+            // Filter out any orphaned price relationships from deleted locations at render time via model helpers
             
             // Fetch images for products that don't have them
             await fetchImagesForProducts()

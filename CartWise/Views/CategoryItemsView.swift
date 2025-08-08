@@ -780,7 +780,11 @@ struct ProductPriceView: View {
             fetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", product, locationToSearch.id ?? "")
             // Debug: Let's also check what prices exist for this product
             let allPricesFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            allPricesFetchRequest.predicate = NSPredicate(format: "groceryItem == %@", product)
+            // Filter out prices with nil or deleted locations
+            allPricesFetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+                NSPredicate(format: "groceryItem == %@", product),
+                NSPredicate(format: "location != nil")
+            ])
             let allPrices = try context.fetch(allPricesFetchRequest)
             print("ProductPriceView: All prices for this product: ")
             for price in allPrices {
