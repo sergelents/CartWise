@@ -23,6 +23,12 @@ struct ShareExperienceView: View {
         ("store_review", "Store Review"),
         ("general", "General Comment")
     ]
+    init(priceComparison: PriceComparison?) {
+        self.priceComparison = priceComparison
+        // Initialize state values based on context
+        _viewModel = StateObject(wrappedValue: SocialFeedViewModel())
+        _selectedType = State(initialValue: priceComparison == nil ? "store_review" : "price_update")
+    }
     var body: some View {
         NavigationView {
             Form {
