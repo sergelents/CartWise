@@ -856,6 +856,7 @@ struct CustomButtonView: View {
             .padding(.horizontal, 10)
             .background(buttonColor)
             .cornerRadius(8)
+            .shadow(color: buttonColor.opacity(0.3), radius: 8, x: 0, y: 4)
         }
     }
 }
@@ -971,6 +972,7 @@ struct AddToShoppingListAndFavoritesView: View {
         }
     }
 }
+
 // Update Price View
 struct UpdatePriceView: View {
     let product: GroceryItem
@@ -1168,9 +1170,9 @@ struct ReadOnlyTagChipView: View {
     
     var body: some View {
         Text(tag.displayName)
-            .font(.poppins(size: 15, weight: .medium))
+            .font(.poppins(size: 16, weight: .medium))
             .padding(.horizontal, 16)
-            .padding(.vertical, 9)
+            .padding(.vertical, 8)
             .background(Color(hex: tag.displayColor))
             .foregroundColor(.white)
             .cornerRadius(12)
