@@ -6,6 +6,7 @@
 //  Enhanced with AI assistance from Cursor AI for sample data implementation and UI improvements.
 //  This saved me 2-3 hours of work implementing product display functionality.
 //
+
 import SwiftUI
 import CoreData
 import Foundation
@@ -268,7 +269,6 @@ struct ProductCard: View {
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                     }
-                    // Store info removed since we removed store from GroceryItem
                 }
                 Spacer()
             }
@@ -311,22 +311,24 @@ struct ProductDetailView: View {
                     )
                     // Product Name View
                     ProductNameView(product: product)
-                                                // Product Image View
-                            ProductImageView(
-                                product: product,
-                                size: CGSize(width: 180, height: 180),
-                                cornerRadius: 12,
-                                showSaleBadge: true
-                            )
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 8)
+                    
+                    // Product Image View
+                    ProductImageView(
+                        product: product,
+                        size: CGSize(width: 180, height: 180),
+                        cornerRadius: 12,
+                        showSaleBadge: true
+                    )
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 8)
+                    
                     // Product Price View
-                    // TODO: Need to update data model to include last updated info?
                     ProductPriceView(
                         product: product,
                         currentSelectedLocation: currentSelectedLocation ?? selectedLocation
                     )
-                    // Update Price View - Moved up for better accessibility
+                    
+                    // Update Price View
                     UpdatePriceView(
                         product: product,
                         // Get actual username from user
@@ -344,6 +346,7 @@ struct ProductDetailView: View {
                         lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
                         lastUpdatedBy: "-"
                     )
+                    
                     // Add to Shopping List and Add to Favorites View
                     AddToShoppingListAndFavoritesView(
                         product: product,
@@ -351,6 +354,9 @@ struct ProductDetailView: View {
                         onAddToFavorites: {}
                     )
                     .padding(.bottom, 14)
+                    
+                    // Tags Button
+                    TagsButtonView(product: product)
                 }
                 .padding(.horizontal, 24)
             }
@@ -396,6 +402,7 @@ struct ProductDetailView: View {
             )
         }
     }
+    // Delete Product from Core Data
     private func deleteProduct() async {
         do {
             // Permanently delete product from Core Data
@@ -408,6 +415,7 @@ struct ProductDetailView: View {
             print("Error deleting product: \(error)")
         }
     }
+    // Update Product Price in Core Data
     private func updateProductPrice(product: GroceryItem, newPrice: Double, location: Location?) async {
         do {
             let context = await CoreDataStack.shared.viewContext
@@ -482,11 +490,13 @@ struct ProductDetailView: View {
             print("Error updating product price: \(error)")
         }
     }
+    // Load Locations for Detail View
     private func loadLocationsForDetail() async {
         await productViewModel.loadLocations()
         userLocations = productViewModel.locations
         currentSelectedLocation = selectedLocation
     }
+    // Get Current Username
     private func getCurrentUsername() async -> String {
         do {
             let context = await CoreDataStack.shared.viewContext
@@ -502,6 +512,7 @@ struct ProductDetailView: View {
         }
         return "Unknown User"
     }
+    // Create Social Feed Entry
     private func createSocialFeedEntry(product: GroceryItem, newPrice: Double, location: Location?, username: String) async {
         do {
             let context = await CoreDataStack.shared.viewContext
@@ -572,7 +583,102 @@ struct ProductDetailView: View {
         }
     }
 }
-// Store view
+
+// MARK: - Tags Button View
+struct TagsButtonView: View {
+    let product: GroceryItem
+    @State private var showingTagsPopup = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Tags")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primary)
+                Spacer()
+                Button(action: {
+                    showingTagsPopup = true
+                }) {
+                    HStack {
+                        Text(product.tagArray.isEmpty ? "No tags" : "\(product.tagArray.count) tags")
+                            .font(.system(size: 14))
+                            .foregroundColor(product.tagArray.isEmpty ? .secondary : .primary)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .sheet(isPresented: $showingTagsPopup) {
+            TagsPopupView(product: product)
+        }
+    }
+}
+
+// MARK: - Tags Popup View
+struct TagsPopupView: View {
+    let product: GroceryItem
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                if product.tagArray.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "tag")
+                            .font(.system(size: 40))
+                            .foregroundColor(.gray)
+                        Text("No Tags")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Text("This product doesn't have any tags yet.")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
+                            ForEach(product.tagArray, id: \.id) { tag in
+                                ReadOnlyTagChipView(tag: tag)
+                            }
+                        }
+                        .padding()
+                    }
+                }
+            }
+            .navigationTitle("Product Tags")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Read-only Tag Chip View for product details
+struct ReadOnlyTagChipView: View {
+    let tag: Tag
+    
+    var body: some View {
+        Text(tag.displayName)
+            .font(.system(size: 14, weight: .medium))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color(hex: tag.displayColor))
+            .foregroundColor(.white)
+            .cornerRadius(16)
+    }
+}
+
+// MARK: - Store view
 struct StoreView: View {
     let selectedLocation: Location?
     let onTap: () -> Void
@@ -617,6 +723,7 @@ struct StoreView: View {
         return components.isEmpty ? "No address" : components.joined(separator: ", ")
     }
 }
+
 // Product Name View
 struct ProductNameView: View {
     @ObservedObject var product: GroceryItem
