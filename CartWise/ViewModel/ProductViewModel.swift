@@ -34,6 +34,7 @@ final class ProductViewModel: ObservableObject {
     func loadShoppingListProducts() async {
         do {
             products = try await repository.fetchListProducts()
+            // Filter out any orphaned price relationships from deleted locations at render time via model helpers
             
             // Fetch images for products that don't have them
             await fetchImagesForProducts()
@@ -51,6 +52,18 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    // Fetch all products without mutating the published `products` array
+    // Useful for views that need a read-only snapshot without triggering UI-wide reloads
+    func fetchAllProducts() async -> [GroceryItem] {
+        do {
+            return try await repository.fetchAllProducts()
+        } catch {
+            // Surface the error but do not mutate state; return an empty list on failure
+            errorMessage = error.localizedDescription
+            return []
+        }
+    }
     func updateProduct(_ product: GroceryItem) async {
         do {
             try await repository.updateProduct(product)
@@ -58,6 +71,67 @@ final class ProductViewModel: ObservableObject {
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    // Update a product without reloading the entire products list (prevents visible reloads)
+    func updateProductQuiet(_ product: GroceryItem) async {
+        do {
+            try await repository.updateProduct(product)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // Update product price using repository pipeline that also updates reputation
+    func updateProductPrice(_ product: GroceryItem, price: Double, store: String, locationAddress: String?) async {
+        do {
+            try await repository.updateProductWithPrice(product: product, price: price, store: store, location: locationAddress)
+            // Also create a social feed entry for this price update
+            await createSocialFeedEntryForPriceUpdate(product: product, price: price, store: store, locationAddress: locationAddress)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Social Feed
+    private func createSocialFeedEntryForPriceUpdate(product: GroceryItem, price: Double, store: String, locationAddress: String?) async {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            // Refresh objects in context
+            let productObjectID = product.objectID
+            guard let productInContext = try? context.existingObject(with: productObjectID) as? GroceryItem else { return }
+            // Find or create the location by store name/address (best-effort lookup)
+            let locationFetch: NSFetchRequest<Location> = Location.fetchRequest()
+            if let locationAddress = locationAddress, !locationAddress.isEmpty {
+                locationFetch.predicate = NSPredicate(format: "name == %@ AND address == %@", store, locationAddress)
+            } else {
+                locationFetch.predicate = NSPredicate(format: "name == %@", store)
+            }
+            locationFetch.fetchLimit = 1
+            let locations = try context.fetch(locationFetch)
+            let locationInContext = locations.first
+            // Current user
+            let userFetch: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            userFetch.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            userFetch.fetchLimit = 1
+            guard let currentUser = try context.fetch(userFetch).first else { return }
+            let comment = String(format: "Price updated: %@ is now $%.2f at %@", productInContext.productName ?? "Product", price, store)
+            _ = ShoppingExperience(
+                context: context,
+                id: UUID().uuidString,
+                comment: comment,
+                rating: 0,
+                type: "price_update",
+                user: currentUser,
+                groceryItem: productInContext,
+                location: locationInContext
+            )
+            try context.save()
+        } catch {
+            // Non-fatal; skip if feed creation fails
         }
     }
     func deleteProduct(_ product: GroceryItem) async {
@@ -72,7 +146,11 @@ final class ProductViewModel: ObservableObject {
     func removeProductFromShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.removeProductFromShoppingList(product)
-            products.removeAll { $0.id == product.id }
+            
+            // Update the products array on the main thread
+            await MainActor.run {
+                products.removeAll { $0.id == product.id }
+            }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -81,7 +159,9 @@ final class ProductViewModel: ObservableObject {
     func permanentlyDeleteProduct(_ product: GroceryItem) async {
         do {
             try await repository.deleteProduct(product)
-            products.removeAll { $0.id == product.id }
+            // Reload the entire list instead of manually removing items
+            // This prevents collection view inconsistency during animations
+            await loadShoppingListProducts()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -120,11 +200,37 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+    
+    func clearShoppingList() async {
+        do {
+            // Remove all products from shopping list without deleting the actual product data
+            for product in products {
+                try await repository.removeProductFromShoppingList(product)
+            }
+            // Clear the local products array
+            await MainActor.run {
+                products.removeAll()
+            }
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
     func addExistingProductToShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.addProductToShoppingList(product)
-            // Don't call loadShoppingListProducts() here as it would affect category views
-            // The shopping list view will refresh when it appears
+            // Refresh shopping list to show the newly added item
+            await loadShoppingListProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    // Quiet version that doesn't reload lists - for UI components
+    func addExistingProductToShoppingListQuiet(_ product: GroceryItem) async {
+        do {
+            try await repository.addProductToShoppingList(product)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -152,10 +258,30 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+    
+    // Quiet version that doesn't reload lists - for UI components
+    func addProductToFavoritesQuiet(_ product: GroceryItem) async {
+        do {
+            try await repository.addProductToFavorites(product)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
     func removeProductFromFavorites(_ product: GroceryItem) async {
         do {
             try await repository.removeProductFromFavorites(product)
             await loadFavoriteProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    // Quiet version that doesn't reload lists - for UI components
+    func removeProductFromFavoritesQuiet(_ product: GroceryItem) async {
+        do {
+            try await repository.removeProductFromFavorites(product)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -242,6 +368,16 @@ final class ProductViewModel: ObservableObject {
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    // Search without mutating the published `products` array
+    func searchProductsQuiet(by name: String) async -> [GroceryItem] {
+        do {
+            return try await repository.searchProducts(by: name)
+        } catch {
+            errorMessage = error.localizedDescription
+            return []
         }
     }
     func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem] {

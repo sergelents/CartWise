@@ -51,24 +51,21 @@ struct YourListView: View {
             } message: {
                 Text("A product named \"\(duplicateProductName)\" already exists in your list.")
             }
-            .alert("Complete All Items", isPresented: $showingCheckAllConfirmation) {
+            .alert("All done shopping?", isPresented: $showingCheckAllConfirmation) {
                 Button("Cancel", role: .cancel) {
                     // Do nothing, just dismiss the alert
                 }
-                Button("Complete All") {
+                Button("Clear List") {
                     Task {
-                        await productViewModel.toggleAllProductsCompletion()
-                        // Only show rating prompt if all items are actually completed
-                        // if productViewModel.allProductsCompleted {
-                        //     showingRatingPrompt = true
-                        // }
+                        await productViewModel.clearShoppingList()
                     }
                 }
             } message: {
-                Text("Are you sure you want to mark all items as completed?")
+                Text("Want to clear your shopping list?")
             }
             .onAppear {
                 Task {
+                    // Always refresh shopping list when view appears to prevent stale data
                     await productViewModel.loadShoppingListProducts()
                     print("YourListView: Loaded \(productViewModel.products.count) shopping list products")
                     await productViewModel.loadLocalPriceComparison()
@@ -162,6 +159,24 @@ struct ShoppingListCard: View {
     @Binding var showingRatingPrompt: Bool
     @Binding var showingAddProductModal: Bool
     @Binding var showingCheckAllConfirmation: Bool
+    
+    // Function to handle SwiftUI's native onDelete
+    private func deleteItems(offsets: IndexSet) {
+        // Capture the products to delete before any async operations
+        let productsToDelete = offsets.compactMap { index in
+            // Check bounds to prevent index out of range
+            index < productViewModel.products.count ? productViewModel.products[index] : nil
+        }
+        
+        Task {
+            // Process deletions sequentially to avoid race conditions
+            for product in productsToDelete {
+                await productViewModel.removeProductFromShoppingList(product)
+                // Small delay to allow UI to update between deletions
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            }
+        }
+    }
     var body: some View {
         VStack(spacing: 12) {
             // Header
@@ -275,16 +290,13 @@ struct ShoppingListCard: View {
                                     }
                                 }
                             },
-                            onDelete: {
-                                Task {
-                                    await productViewModel.removeProductFromShoppingList(product)
-                                }
-                            }
+                            onDelete: nil // Remove the onDelete callback to prevent conflicts
                         )
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                     }
+                    .onDelete(perform: deleteItems)
                 }
                 .listStyle(PlainListStyle())
                 .background(Color.clear)
@@ -313,8 +325,11 @@ struct ShoppingListCard: View {
                             await productViewModel.toggleAllProductsCompletion()
                         }
                     } else {
-                        // If not all are completed, show confirmation before completing all
+                        // If not all are completed, show alert immediately and check items in background
                         showingCheckAllConfirmation = true
+                        Task {
+                            await productViewModel.toggleAllProductsCompletion()
+                        }
                     }
                 }) {
                     Image(systemName: "checkmark.circle")
@@ -809,7 +824,7 @@ struct ShoppingListItemRow: View {
     let isEditing: Bool
     let isSelected: Bool
     let onToggle: () -> Void
-    let onDelete: () -> Void
+    let onDelete: (() -> Void)?
     var body: some View {
         HStack(alignment: .center) {
             Button(action: onToggle) {
@@ -888,11 +903,6 @@ struct ShoppingListItemRow: View {
                 .shadow(color: Color.black.opacity(0.07), radius: 3, x: 0, y: 2)
         )
         .contentShape(Rectangle()) // Ensure the entire row is tappable
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive, action: onDelete) {
-                Label("Delete", systemImage: "trash")
-            }
-        }
         .padding(.horizontal, 2)
     }
 }
