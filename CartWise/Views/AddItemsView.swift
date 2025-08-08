@@ -293,6 +293,7 @@ struct AddItemsView: View {
                 } else {
                     await productViewModel.addTagsToProduct(newProduct, tags: tags)
                 }
+                
                 // Add to shopping list if requested
                 if addToShoppingList {
                     await productViewModel.addExistingProductToShoppingList(newProduct)
@@ -326,6 +327,7 @@ struct AddItemsView: View {
             }
         }
     }
+    
     private func createOrUpdateProductByBarcode(barcode: String, productName: String, brand: String?, category: String?, price: Double, store: String, isOnSale: Bool) async -> GroceryItem? {
         // First check if product already exists with this barcode
         if await productViewModel.isDuplicateBarcode(barcode) {
@@ -456,6 +458,8 @@ struct TagPickerView: View {
     @Binding var selectedTags: [Tag]
     let onDone: () -> Void
     @State private var searchText = ""
+    @State private var localSelectedTags: [Tag] = []
+    
     var filteredTags: [Tag] {
         if searchText.isEmpty {
             return allTags
@@ -465,6 +469,7 @@ struct TagPickerView: View {
             }
         }
     }
+    
     var body: some View {
         NavigationView {
             VStack {
@@ -474,31 +479,22 @@ struct TagPickerView: View {
                         .foregroundColor(.gray)
                     TextField("Search tags...", text: $searchText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    if !searchText.isEmpty {
-                        Button(action: {
-                            searchText = ""
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.gray)
-                        }
-                    }
                 }
                 .padding(.horizontal)
                 .padding(.top)
                 List {
                     ForEach(filteredTags, id: \.id) { tag in
                         Button(action: {
-                            if selectedTags.contains(where: { $0.id == tag.id }) {
-                                selectedTags.removeAll { $0.id == tag.id }
+                            if localSelectedTags.contains(where: { $0.id == tag.id }) {
+                                localSelectedTags.removeAll { $0.id == tag.id }
                             } else {
-                                selectedTags.append(tag)
+                                localSelectedTags.append(tag)
                             }
                         }) {
                             HStack {
                                 Text(tag.displayName)
                                 Spacer()
-                                if selectedTags.contains(where: { $0.id == tag.id }) {
+                                if localSelectedTags.contains(where: { $0.id == tag.id }) {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.accentColor)
                                 }
@@ -508,7 +504,14 @@ struct TagPickerView: View {
                 }
             }
             .navigationTitle("Select Tags")
-            .navigationBarItems(trailing: Button("Done") { onDone() })
+            .navigationBarItems(trailing: Button("Done") { 
+                selectedTags = localSelectedTags
+                onDone() 
+            })
+            .onAppear {
+                // Initialize local selection with current selected tags
+                localSelectedTags = selectedTags
+            }
         }
     }
 }
