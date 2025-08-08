@@ -85,7 +85,6 @@ struct LocationsSectionView: View {
                     }
                     if locations.count > 3 {
                         Button(action: {
-                            // TODO: Navigate to full locations list
                         }) {
                             HStack(spacing: 8) {
                                 Text("View All \(locations.count) Locations")

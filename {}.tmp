@@ -5184,7 +5184,6 @@ struct ShoppingListCard: View {
 //                 // Select Button
 //                 if let selectedStore = selectedStore {
 //                     Button("Select \(selectedStore.name)") {
-//                         // TODO: Update store location in app state
 //                         dismiss()
 //                     }
 //                     .font(.poppins(size: 16, weight: .semibold))
@@ -5756,7 +5755,6 @@ struct ShoppingExperienceRatingView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Grocery Store")
                     .font(.poppins(size: 20, weight: .bold))
-                // TODO: Connect to Google Maps API for live store info
                 HStack {
                     Image(systemName: "mappin.and.ellipse")
                         .foregroundColor(AppColors.accentGreen)
@@ -5788,7 +5786,6 @@ struct ShoppingExperienceRatingView: View {
             // Action Buttons
             VStack(spacing: 12) {
                 Button(action: {
-                    // TODO: Handle submit logic
                     dismissAll()
                 }) {
                     Text("Submit")
@@ -7790,7 +7787,6 @@ struct LocationsSectionView: View {
                     }
                     if locations.count > 3 {
                         Button(action: {
-                            // TODO: Navigate to full locations list
                         }) {
                             HStack(spacing: 8) {
                                 Text("View All \(locations.count) Locations")
@@ -8681,7 +8677,6 @@ struct ProductDetailView: View {
                         .padding(.horizontal, 24)
                         .padding(.bottom, 8)
                     // Product Price View
-                    // TODO: Need to update data model to include last updated info?
                     ProductPriceView(
                         product: product,
                         currentSelectedLocation: currentSelectedLocation ?? selectedLocation,

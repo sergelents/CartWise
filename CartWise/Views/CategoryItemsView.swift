@@ -325,7 +325,6 @@ struct ProductDetailView: View {
                         .padding(.horizontal, 24)
                         .padding(.bottom, 8)
                     // Product Price View
-                    // TODO: Need to update data model to include last updated info?
                     ProductPriceView(
                         product: product,
                         currentSelectedLocation: currentSelectedLocation ?? selectedLocation,
