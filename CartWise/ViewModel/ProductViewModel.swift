@@ -83,6 +83,57 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    // Update product price using repository pipeline that also updates reputation
+    func updateProductPrice(_ product: GroceryItem, price: Double, store: String, locationAddress: String?) async {
+        do {
+            try await repository.updateProductWithPrice(product: product, price: price, store: store, location: locationAddress)
+            // Also create a social feed entry for this price update
+            await createSocialFeedEntryForPriceUpdate(product: product, price: price, store: store, locationAddress: locationAddress)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Social Feed
+    private func createSocialFeedEntryForPriceUpdate(product: GroceryItem, price: Double, store: String, locationAddress: String?) async {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            // Refresh objects in context
+            let productObjectID = product.objectID
+            guard let productInContext = try? context.existingObject(with: productObjectID) as? GroceryItem else { return }
+            // Find or create the location by store name/address (best-effort lookup)
+            let locationFetch: NSFetchRequest<Location> = Location.fetchRequest()
+            if let locationAddress = locationAddress, !locationAddress.isEmpty {
+                locationFetch.predicate = NSPredicate(format: "name == %@ AND address == %@", store, locationAddress)
+            } else {
+                locationFetch.predicate = NSPredicate(format: "name == %@", store)
+            }
+            locationFetch.fetchLimit = 1
+            let locations = try context.fetch(locationFetch)
+            let locationInContext = locations.first
+            // Current user
+            let userFetch: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            userFetch.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            userFetch.fetchLimit = 1
+            guard let currentUser = try context.fetch(userFetch).first else { return }
+            let comment = String(format: "Price updated: %@ is now $%.2f at %@", productInContext.productName ?? "Product", price, store)
+            _ = ShoppingExperience(
+                context: context,
+                id: UUID().uuidString,
+                comment: comment,
+                rating: 0,
+                type: "price_update",
+                user: currentUser,
+                groceryItem: productInContext,
+                location: locationInContext
+            )
+            try context.save()
+        } catch {
+            // Non-fatal; skip if feed creation fails
+        }
+    }
     func deleteProduct(_ product: GroceryItem) async {
         do {
             try await repository.deleteProduct(product)

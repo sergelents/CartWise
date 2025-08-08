@@ -1746,10 +1746,15 @@ struct ProductEditView: View {
         product.category = category.rawValue
         product.isOnSale = isOnSale
         
-        // Update price if location is selected
+        // Update price if location is selected (use repository so reputation updates)
         if let location = selectedLocation, let priceValue = Double(price) {
             Task {
-                await updateProductPrice(product: product, newPrice: priceValue, location: location)
+                await productViewModel.updateProductPrice(
+                    product,
+                    price: priceValue,
+                    store: location.name ?? "Unknown Store",
+                    locationAddress: location.address
+                )
             }
         }
         
