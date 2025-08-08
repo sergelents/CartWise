@@ -463,7 +463,10 @@ struct ProductDetailView: View {
             }
             // Check if there's an existing price for this product and location
             let priceFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", productInContext, locationInContext.id ?? "")
+            priceFetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+                NSPredicate(format: "groceryItem == %@", productInContext),
+                NSPredicate(format: "location == %@", locationInContext)
+            ])
             priceFetchRequest.fetchLimit = 1
             let existingPrices = try context.fetch(priceFetchRequest)
             if let existingPrice = existingPrices.first {
@@ -1693,11 +1696,20 @@ struct ProductEditView: View {
         category = ProductCategory(rawValue: product.category ?? "") ?? .none
         isOnSale = product.isOnSale
         
-        // Get the most recent price and location
-        if let prices = product.prices as? Set<GroceryItemPrice>,
-           let mostRecentPrice = prices.max(by: { ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) }) {
-            price = String(format: "%.2f", mostRecentPrice.price)
-            selectedLocation = mostRecentPrice.location
+        // Get the most recent VALID price and location (ignore orphaned prices with missing/deleted locations)
+        if let prices = product.prices as? Set<GroceryItemPrice> {
+            let validPrices = prices.filter { price in
+                guard let loc = price.location else { return false }
+                return !loc.isDeleted
+            }
+            if let mostRecentPrice = validPrices.max(by: { ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) }) {
+                price = String(format: "%.2f", mostRecentPrice.price)
+                selectedLocation = mostRecentPrice.location
+            } else {
+                // No valid price — clear fields
+                price = ""
+                selectedLocation = nil
+            }
         }
         
         // Load existing tags
