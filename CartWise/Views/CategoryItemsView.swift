@@ -15,16 +15,16 @@ struct CategoryItemsView: View {
     @State private var selectedItemsToAdd: Set<String> = []
     @State private var isLoading = false
     @State private var hasSearched = false
+    @State private var categoryProducts: [GroceryItem] = []
     // Location management
     @State private var userLocations: [Location] = []
     @State private var selectedLocation: Location?
     @State private var isLoadingLocations = false
     @State private var showingLocationPicker = false
     @State private var currentUsername: String = "Unknown User"
-    private var categoryProducts: [GroceryItem] {
-        // First, load all existing products from Core Data
-        let allProducts = viewModel.products
-        // Filter products by category field first, then by name keywords
+    private func loadCategoryProducts() async {
+        // Load all products and filter by category
+        let allProducts = await viewModel.fetchAllProducts()
         let filtered = allProducts.filter { groceryItem in
             // First check if the category field matches
             if let productCategory = groceryItem.category {
@@ -44,19 +44,10 @@ struct CategoryItemsView: View {
             return false
         }
         print("CategoryItemsView: Total products: \(allProducts.count), Filtered products: \(filtered.count)")
-        // Don't know if Serg wants to keep show all products as fallback logic:
-        // If no products found after filtering, but we have products from the search,
-        // return all products as they were found for this category
-        // if filtered.isEmpty && !allProducts.isEmpty {
-        //     print("CategoryItemsView: No products found for category \(category.rawValue), showing all products as fallback")
-        //     return allProducts
-        // }
-        // If no products match the category, return empty array
-        if filtered.isEmpty {
-            print("CategoryItemsView: No products found for category \(category.rawValue), showing empty list")
-            return []
+        
+        await MainActor.run {
+            categoryProducts = filtered
         }
-        return filtered
     }
     private func getCategoryKeywords(for category: ProductCategory) -> [String] {
         switch category {
@@ -148,16 +139,14 @@ struct CategoryItemsView: View {
             }
         }
         .navigationTitle(category.rawValue)
-        .onAppear {
-            // Load existing products and search for new ones in this category when view appears
-            Task {
-                isLoading = true
-                hasSearched = false // Reset search flag
-                await loadUserLocations() // Add location loading
-                await loadCategoryProducts()
-                await searchProductsForCategory()
-                isLoading = false
-            }
+        .task {
+            // Use .task so it runs once per appearance and cooperates with SwiftUI lifecycle
+            isLoading = true
+            hasSearched = false
+            await loadUserLocations()
+            await loadCategoryProducts()
+            await searchProductsForCategory()
+            isLoading = false
         }
     }
     private func searchProductsForCategory() async {
@@ -165,12 +154,14 @@ struct CategoryItemsView: View {
         let categoryQuery = createCategoryQuery(for: category)
         print("CategoryItemsView: Searching for category: \(category.rawValue) with query: \(categoryQuery)")
         // Check initial state
-        print("CategoryItemsView: Initial products count: \(viewModel.products.count)")
-        // Search Amazon for products in this category
-        await viewModel.searchProducts(by: categoryQuery)
-        print("CategoryItemsView: After search - Found \(viewModel.products.count) products for category: \(category.rawValue)")
+        print("CategoryItemsView: Initial products count: \(categoryProducts.count)")
+        
+        // Search for products without mutating global `products`
+        let found = await viewModel.searchProductsQuiet(by: categoryQuery)
+        print("CategoryItemsView: After search - Found \(found.count) products for category: \(category.rawValue)")
+        
         // Update the category field for the found products to match the current category
-        for product in viewModel.products {
+        for product in found {
             if product.category == nil || product.category?.isEmpty == true {
                 // Update the product's category to match the current category
                 let updatedProduct = product
@@ -178,12 +169,19 @@ struct CategoryItemsView: View {
                 await viewModel.updateProduct(updatedProduct)
             }
         }
-        // Reload products to get the updated data
-        await viewModel.loadProducts()
+        
+        // Merge found results into categoryProducts without flashing
+        let merged = (categoryProducts + found).reduce(into: [String: GroceryItem]()) { dict, item in
+            if let id = item.id { dict[id] = item }
+        }.map { $0.value }
+        await MainActor.run {
+            categoryProducts = merged
+        }
         // Mark that we've searched for this category
         hasSearched = true
+        
         // Print details of each product found
-        for (index, product) in viewModel.products.enumerated() {
+        for (index, product) in found.enumerated() {
             print("  Product \(index + 1): \(product.productName ?? "Unknown") - Category: \(product.category ?? "None")")
         }
         // Check filtered results
@@ -216,10 +214,6 @@ struct CategoryItemsView: View {
         }
     }
     // MARK: - Helper Functions
-    private func loadCategoryProducts() async {
-        // Load all products from Core Data, then filter by category
-        await viewModel.loadProducts()
-    }
     private func loadUserLocations() async {
         await viewModel.loadLocations()
         userLocations = viewModel.locations
@@ -293,6 +287,8 @@ struct ProductDetailView: View {
     @Environment(\.dismiss) private var dismiss
     // State for delete confirmation
     @State private var showDeleteConfirmation = false
+    // State for edit sheet
+    @State private var showingEditSheet = false
     // Location picker state
     @State private var userLocations: [Location] = []
     @State private var currentSelectedLocation: Location?
@@ -309,6 +305,10 @@ struct ProductDetailView: View {
                             showingLocationPicker = true
                         }
                     )
+                    
+                    Spacer()
+                        .frame(height: 20)
+                    
                     // Product Name View
                     ProductNameView(product: product)
                                                 // Product Image View
@@ -326,24 +326,7 @@ struct ProductDetailView: View {
                         product: product,
                         currentSelectedLocation: currentSelectedLocation ?? selectedLocation
                     )
-                    // Update Price View - Moved up for better accessibility
-                    UpdatePriceView(
-                        product: product,
-                        // Get actual username from user
-                        userName: currentUsername,
-                        onUpdatePrice: { newPrice, updatedBy, updatedAt in
-                            // Update the product's lastUpdated
-                            product.lastUpdated = updatedAt
-                            // Create or update a GroceryItemPrice for this product at the current location
-                            await updateProductPrice(product: product, newPrice: newPrice, location: currentSelectedLocation ?? selectedLocation)
-                            // Create social feed entry for price update
-                            await createSocialFeedEntry(product: product, newPrice: newPrice, location: currentSelectedLocation ?? selectedLocation, username: currentUsername)
-                            await productViewModel.updateProduct(product)
-                            await productViewModel.loadProducts()
-                        },
-                        lastUpdated: product.lastUpdated != nil ? DateFormatter.localizedString(from: product.lastUpdated!, dateStyle: .short, timeStyle: .short) : "-",
-                        lastUpdatedBy: "-"
-                    )
+                    
                     // Add to Shopping List and Add to Favorites View
                     AddToShoppingListAndFavoritesView(
                         product: product,
@@ -351,6 +334,9 @@ struct ProductDetailView: View {
                         onAddToFavorites: {}
                     )
                     .padding(.bottom, 14)
+                    
+                    // Product Tags View - Collapsible section
+                    ProductTagsView(product: product)
                 }
                 .padding(.horizontal, 24)
             }
@@ -358,16 +344,16 @@ struct ProductDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Delete") {
-                        // Show confirmation dialog
-                        showDeleteConfirmation = true
+                    Button("Edit") {
+                        showingEditSheet = true
                     }
-                    .foregroundColor(.red)
+                    .foregroundColor(.blue)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
+                    .foregroundColor(.blue)
                 }
             }
             .alert("Delete Product", isPresented: $showDeleteConfirmation) {
@@ -393,6 +379,25 @@ struct ProductDetailView: View {
                 product: product,
                 selectedLocation: $currentSelectedLocation,
                 onDismiss: { showingLocationPicker = false }
+            )
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            ProductEditView(
+                product: product,
+                onSave: { updatedProduct in
+                    Task {
+                        await productViewModel.updateProduct(updatedProduct)
+                        await productViewModel.loadProducts()
+                    }
+                    showingEditSheet = false
+                },
+                onCancel: {
+                    showingEditSheet = false
+                },
+                onDelete: {
+                    showingEditSheet = false
+                    showDeleteConfirmation = true
+                }
             )
         }
     }
@@ -657,6 +662,7 @@ struct ProductPriceView: View {
     let currentSelectedLocation: Location?
     @State private var locationPrice: GroceryItemPrice?
     @State private var isLoading = true
+    
     var body: some View {
         VStack(alignment: .center, spacing: 16) {
             if isLoading {
@@ -704,9 +710,23 @@ struct ProductPriceView: View {
         .task {
             await loadPriceForSelectedLocation()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
-            Task {
-                await loadPriceForSelectedLocation()
+        .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { notification in
+            // Only reload if the save involved GroceryItemPrice entities
+            if let userInfo = notification.userInfo,
+               let insertedObjects = userInfo[NSInsertedObjectsKey] as? Set<NSManagedObject>,
+               let updatedObjects = userInfo[NSUpdatedObjectsKey] as? Set<NSManagedObject>,
+               let deletedObjects = userInfo[NSDeletedObjectsKey] as? Set<NSManagedObject> {
+                
+                let allChangedObjects = insertedObjects.union(updatedObjects).union(deletedObjects)
+                let hasPriceChanges = allChangedObjects.contains { object in
+                    return object is GroceryItemPrice
+                }
+                
+                if hasPriceChanges {
+                    Task {
+                        await loadPriceForSelectedLocation()
+                    }
+                }
             }
         }
         .onChange(of: currentSelectedLocation) { newLocation in
@@ -716,6 +736,7 @@ struct ProductPriceView: View {
             }
         }
     }
+    
     private func loadPriceForSelectedLocation(newLocation: Location? = nil) async {
         isLoading = true
         let locationToSearch = newLocation ?? currentSelectedLocation
@@ -848,105 +869,157 @@ struct AddToShoppingListAndFavoritesView: View {
     let onAddToFavorites: () -> Void
     @State private var isInShoppingList = false
     @State private var isInFavorites = false
-    @State private var showingFavoriteSuccessMessage = false
-    @State private var showingFavoriteDuplicateMessage = false
-    @State private var showingSuccessMessage = false
-    @State private var showingDuplicateMessage = false
+    @State private var isProcessing = false
+    @State private var showingFavoriteAlert = false
+    @State private var favoriteAlertMessage = ""
+    
     var body: some View {
         HStack(spacing: 14) {
-            // Add to List Button
-            CustomButtonView(
-                title: isInShoppingList ? "In My List" : "Add to My List",
-                imageName: isInShoppingList ? "checkmark.circle.fill" : "plus.circle.fill",
-                fontSize: 13,
-                weight: .bold,
-                buttonColor: isInShoppingList ? Color.accentColorGreen : Color.accentColorBlue,
-                textColor: .white,
-                action: {
-                    addToShoppingList()
+            // Add to List Button - Fixed size to prevent movement
+            Button(action: {
+                toggleShoppingList()
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: isInShoppingList ? "checkmark.circle.fill" : "plus.circle.fill")
+                        .font(.system(size: 16))
+                    Text(isInShoppingList ? "Added" : "Add to List")
+                        .font(.system(size: 15, weight: .bold))
                 }
-            )
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .padding(.horizontal, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 22)
+                        .fill(isInShoppingList ? Color.accentColorGreen : Color.accentColorBlue)
+                )
+            }
+            .disabled(isProcessing || isInShoppingList)
+            
             Spacer()
-            // Add to Favorite Button
-            CustomButtonView(
-                title: isInFavorites ? "In Favorites" : "Add to Favorite",
-                imageName: isInFavorites ? "heart.fill" : "plus.circle.fill",
-                fontSize: 13,
-                weight: .bold,
-                buttonColor: isInFavorites ? Color.accentColorCoral : Color.accentColorPink,
-                textColor: .white,
-                action: {
-                    addToFavorites()
+            
+            // Add to Favorite Button - Fixed size to prevent movement
+            Button(action: {
+                toggleFavorites()
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: isInFavorites ? "checkmark.circle.fill" : "plus.circle.fill")
+                        .font(.system(size: 16))
+                    Text("Favorite")
+                        .font(.system(size: 15, weight: .bold))
                 }
-            )
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .padding(.horizontal, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 22)
+                        .fill(isInFavorites ? Color.accentColorCoral : Color.accentColorPink)
+                )
+            }
+            .disabled(isProcessing)
         }
         .padding(.horizontal, 20)
         .padding(.top, 4)
         .task {
-            // Check if product is in shopping list
-            isInShoppingList = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
-            // Check if product is in favorites
-            isInFavorites = await productViewModel.isProductInFavorites(product)
+            await checkCurrentStatus()
         }
-        .alert("Added to Favorites!", isPresented: $showingFavoriteSuccessMessage) {
-            Button("OK") { }
-        } message: {
-            Text("\(product.productName ?? "Product") has been added to your favorites.")
-        }
-        .alert("Already in Favorites", isPresented: $showingFavoriteDuplicateMessage) {
-            Button("OK") { }
-        } message: {
-            Text("\(product.productName ?? "Product") is already in your favorites.")
-        }
-        .alert("Added to Shopping List!", isPresented: $showingSuccessMessage) {
-            Button("OK") { }
-        } message: {
-            Text("\(product.productName ?? "Product") has been added to your shopping list.")
-        }
-        .alert("Already in Shopping List", isPresented: $showingDuplicateMessage) {
-            Button("OK") { }
-        } message: {
-            Text("\(product.productName ?? "Product") is already in your shopping list.")
-        }
-    }
-    private func addToShoppingList() {
-        Task {
-            // Check if product already exists in shopping list
-            let isDuplicate = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
-            if isDuplicate {
-                // Product already exists, show error message
+        .onReceive(productViewModel.$products) { _ in
+            // Update shopping list status when products change
+            Task {
+                let newShoppingListStatus = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
                 await MainActor.run {
-                    showingDuplicateMessage = true
-                }
-            } else {
-                // Add the existing product to shopping list
-                await productViewModel.addExistingProductToShoppingList(product)
-                // Note: loadShoppingListProducts() is not called here to avoid affecting category views
-                // Update the local state
-                await MainActor.run {
-                    isInShoppingList = true
-                    showingSuccessMessage = true
+                    isInShoppingList = newShoppingListStatus
                 }
             }
         }
+        .onReceive(productViewModel.$favoriteProducts) { _ in
+            // Update favorites status when favorite products change
+            Task {
+                let newFavoritesStatus = await productViewModel.isProductInFavorites(product)
+                await MainActor.run {
+                    isInFavorites = newFavoritesStatus
+                }
+            }
+        }
+        .alert("Favorites", isPresented: $showingFavoriteAlert) {
+            Button("OK") { }
+        } message: {
+            Text(favoriteAlertMessage)
+        }
     }
-    private func addToFavorites() {
+    
+    private func checkCurrentStatus() async {
+        let shoppingListStatus = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
+        let favoritesStatus = await productViewModel.isProductInFavorites(product)
+        
+        await MainActor.run {
+            isInShoppingList = shoppingListStatus
+            isInFavorites = favoritesStatus
+        }
+    }
+    
+    private func toggleShoppingList() {
+        guard !isProcessing else { return }
+        
         Task {
-            // Check if product already exists in favorites
-            let isDuplicate = await productViewModel.isProductInFavorites(product)
-            if isDuplicate {
-                // Product already exists in favorites, show error message
-                await MainActor.run {
-                    showingFavoriteDuplicateMessage = true
+            await MainActor.run {
+                isProcessing = true
+            }
+            
+            do {
+                // Only allow adding to shopping list, not removing
+                if !isInShoppingList {
+                    // Add to shopping list
+                    await productViewModel.addExistingProductToShoppingListQuiet(product)
+                    await MainActor.run {
+                        isInShoppingList = true
+                        // No alert - just update the button state
+                    }
                 }
-            } else {
-                // Add the existing product to favorites
-                await productViewModel.addProductToFavorites(product)
-                // Update the local state
-                await MainActor.run {
-                    isInFavorites = true
-                    showingFavoriteSuccessMessage = true
+                // If already in shopping list, do nothing (button will be disabled)
+            } catch {
+                print("Error adding to shopping list: \(error)")
+            }
+            
+            await MainActor.run {
+                isProcessing = false
+            }
+        }
+    }
+    
+    private func toggleFavorites() {
+        guard !isProcessing else { return }
+        
+        Task {
+            await MainActor.run {
+                isProcessing = true
+            }
+            
+            do {
+                if isInFavorites {
+                    // Remove from favorites
+                    await productViewModel.removeProductFromFavoritesQuiet(product)
+                    await MainActor.run {
+                        isInFavorites = false
+                        favoriteAlertMessage = "\(product.productName ?? "Product") has been removed from your favorites."
+                        showingFavoriteAlert = true
+                    }
+                } else {
+                    // Add to favorites
+                    await productViewModel.addProductToFavoritesQuiet(product)
+                    await MainActor.run {
+                        isInFavorites = true
+                        favoriteAlertMessage = "\(product.productName ?? "Product") has been added to your favorites."
+                        showingFavoriteAlert = true
+                    }
                 }
+            } catch {
+                print("Error toggling favorites: \(error)")
+            }
+            
+            await MainActor.run {
+                isProcessing = false
             }
         }
     }
@@ -1241,6 +1314,614 @@ struct LocationPickerRowView: View {
             await MainActor.run {
                 self.locationPrice = nil
                 self.isLoading = false
+            }
+        }
+    }
+}
+
+// Product Tags View - Collapsible section
+struct ProductTagsView: View {
+    @ObservedObject var product: GroceryItem
+    @State private var isExpanded = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header button to toggle expansion (only if there are tags)
+            Button(action: {
+                if !product.tagArray.isEmpty {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isExpanded.toggle()
+                    }
+                }
+            }) {
+                HStack {
+                    Image(systemName: "tag")
+                        .font(.system(size: 16))
+                        .foregroundColor(.blue)
+                    
+                    Text("Tags")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Text("\(product.tagArray.count)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.gray.opacity(0.2))
+                        .cornerRadius(8)
+                    
+                    // Only show chevron if there are tags to expand
+                    if !product.tagArray.isEmpty {
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.gray)
+                            .rotationEffect(.degrees(isExpanded ? 0 : 0))
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(.systemBackground))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+            .disabled(product.tagArray.isEmpty) // Disable button when no tags
+            
+            // Collapsible content (only if there are tags and section is expanded)
+            if !product.tagArray.isEmpty && isExpanded {
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: 8) {
+                    ForEach(product.tagArray, id: \.id) { tag in
+                        ProductTagChipView(tag: tag)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(.systemGray6).opacity(0.5))
+                .cornerRadius(8)
+                .padding(.top, 4)
+            }
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 4)
+    }
+}
+
+// Tag Chip View for individual tags
+struct ProductTagChipView: View {
+    let tag: Tag
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(Color(hex: tag.displayColor))
+                .frame(width: 8, height: 8)
+            
+            Text(tag.displayName)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(hex: tag.displayColor).opacity(0.3), lineWidth: 1)
+        )
+    }
+}
+
+// Product Edit View
+struct ProductEditView: View {
+    @ObservedObject var product: GroceryItem
+    @EnvironmentObject var productViewModel: ProductViewModel
+    let onSave: (GroceryItem) -> Void
+    let onCancel: () -> Void
+    let onDelete: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    // Form state
+    @State private var productName: String = ""
+    @State private var brand: String = ""
+    @State private var category: ProductCategory = .none
+    @State private var price: String = ""
+    @State private var selectedLocation: Location?
+    @State private var isOnSale: Bool = false
+    @State private var selectedTags: [Tag] = []
+    
+    // UI state
+    @State private var showCategoryPicker = false
+    @State private var showLocationPicker = false
+    @State private var showingTagPicker = false
+    @State private var availableTags: [Tag] = []
+    @State private var userLocations: [Location] = []
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Form Fields
+                    VStack(spacing: 16) {
+                        // Product Name Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Product Name")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            TextField("Enter product name...", text: $productName)
+                                .font(.body)
+                                .padding()
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(8)
+                        }
+                        
+                        // Brand Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Company/Brand")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            TextField("Enter company or brand...", text: $brand)
+                                .font(.body)
+                                .padding()
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(8)
+                        }
+                        
+                        // Category Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Category")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            Button(action: {
+                                showCategoryPicker = true
+                            }) {
+                                HStack {
+                                    Text(category.rawValue)
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .foregroundColor(.gray)
+                                }
+                                .padding()
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(8)
+                            }
+                        }
+                        
+                        // Price Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Price")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            TextField("Enter price...", text: $price)
+                                .font(.body)
+                                .padding()
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(8)
+                                .keyboardType(.decimalPad)
+                        }
+                        
+                        // Location Field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Location")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            Button(action: {
+                                showLocationPicker = true
+                            }) {
+                                HStack {
+                                    Text(selectedLocation?.name ?? "Select location...")
+                                        .font(.body)
+                                        .foregroundColor(selectedLocation == nil ? .gray : .primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .foregroundColor(.gray)
+                                }
+                                .padding()
+                                .background(Color(UIColor.systemGray6))
+                                .cornerRadius(8)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    // Selected Tags Display
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Tags")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Button("Edit") {
+                                showingTagPicker = true
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                        }
+                        .padding(.bottom, 4)
+                        if selectedTags.isEmpty {
+                            Text("No tags selected")
+                                .font(.body)
+                                .foregroundColor(.gray)
+                                .padding(.vertical, 8)
+                        } else {
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                                ForEach(selectedTags, id: \.id) { tag in
+                                    ProductTagChipView(tag: tag)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    // On Sale Toggle
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("On Sale")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Toggle("", isOn: $isOnSale)
+                                .toggleStyle(SwitchToggleStyle(tint: .orange))
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    Spacer()
+                        .frame(height: 20)
+                    
+                    // Action Buttons
+                    VStack(spacing: 16) {
+                        // Save Button
+                        Button(action: {
+                            saveChanges()
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 18, weight: .semibold))
+                                Text("Save Changes")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.accentColorGreen)
+                            .cornerRadius(12)
+                        }
+                        
+                        // Delete Button
+                        Button(action: {
+                            onDelete()
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 18, weight: .semibold))
+                                Text("Delete Product")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.red)
+                            .cornerRadius(12)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                }
+            }
+            .navigationTitle("Edit Product")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        onCancel()
+                    }
+                }
+            }
+        }
+        .onAppear {
+            loadProductData()
+            loadAvailableData()
+        }
+        .sheet(isPresented: $showCategoryPicker) {
+            ProductDetailCategoryPickerView(selectedCategory: $category)
+        }
+        .sheet(isPresented: $showLocationPicker) {
+            LocationPickerModal(
+                locations: userLocations,
+                product: product,
+                selectedLocation: $selectedLocation,
+                onDismiss: { showLocationPicker = false }
+            )
+        }
+        .sheet(isPresented: $showingTagPicker) {
+            ProductEditTagPickerView(
+                availableTags: availableTags,
+                selectedTags: $selectedTags,
+                onDone: { showingTagPicker = false }
+            )
+        }
+    }
+    
+    private func loadProductData() {
+        productName = product.productName ?? ""
+        brand = product.brand ?? ""
+        category = ProductCategory(rawValue: product.category ?? "") ?? .none
+        isOnSale = product.isOnSale
+        
+        // Get the most recent price and location
+        if let prices = product.prices as? Set<GroceryItemPrice>,
+           let mostRecentPrice = prices.max(by: { ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) }) {
+            price = String(format: "%.2f", mostRecentPrice.price)
+            selectedLocation = mostRecentPrice.location
+        }
+        
+        // Load existing tags
+        if let existingTags = product.tags as? Set<Tag> {
+            selectedTags = Array(existingTags)
+        }
+    }
+    
+    private func loadAvailableData() {
+        Task {
+            await loadLocations()
+            await loadTags()
+        }
+    }
+    
+    private func loadLocations() async {
+        await productViewModel.loadLocations()
+        await MainActor.run {
+            userLocations = productViewModel.locations
+        }
+    }
+    
+    private func loadTags() async {
+        await productViewModel.loadTags()
+        await MainActor.run {
+            availableTags = productViewModel.tags
+        }
+    }
+    
+    private func saveChanges() {
+        // Update the product with new values
+        product.productName = productName
+        product.brand = brand
+        product.category = category.rawValue
+        product.isOnSale = isOnSale
+        
+        // Update price if location is selected
+        if let location = selectedLocation, let priceValue = Double(price) {
+            Task {
+                await updateProductPrice(product: product, newPrice: priceValue, location: location)
+            }
+        }
+        
+        // Update tags
+        product.tags = NSSet(array: selectedTags)
+        
+        onSave(product)
+    }
+    
+    private func updateProductPrice(product: GroceryItem, newPrice: Double, location: Location) async {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            // Get the product in the current context
+            let productFetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+            productFetchRequest.predicate = NSPredicate(format: "id == %@", product.id ?? "")
+            productFetchRequest.fetchLimit = 1
+            let products = try context.fetch(productFetchRequest)
+            guard let productInContext = products.first else {
+                print("Error: Could not find product in context")
+                return
+            }
+            
+            // Get the location in the current context
+            let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
+            locationFetchRequest.predicate = NSPredicate(format: "id == %@", location.id ?? "")
+            locationFetchRequest.fetchLimit = 1
+            let locations = try context.fetch(locationFetchRequest)
+            guard let locationInContext = locations.first else {
+                print("Error: Could not find location in context")
+                return
+            }
+            
+            // Check if there's an existing price for this product and location
+            let priceFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
+            priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", productInContext, locationInContext.id ?? "")
+            priceFetchRequest.fetchLimit = 1
+            let existingPrices = try context.fetch(priceFetchRequest)
+            
+            if let existingPrice = existingPrices.first {
+                // Update existing price for this location
+                existingPrice.price = newPrice
+                existingPrice.lastUpdated = Date()
+                print("Updated existing price for location: \(locationInContext.name ?? "Unknown")")
+            } else {
+                // Create new price for this specific location
+                let newPrice = GroceryItemPrice(
+                    context: context,
+                    id: UUID().uuidString,
+                    price: newPrice,
+                    currency: "USD",
+                    store: locationInContext.name,
+                    groceryItem: productInContext,
+                    location: locationInContext,
+                    updatedBy: await getCurrentUsername()
+                )
+                print("Created new price for location: \(locationInContext.name ?? "Unknown")")
+            }
+            
+            try context.save()
+            print("Successfully updated product price to $\(newPrice) for location: \(locationInContext.name ?? "Unknown")")
+        } catch {
+            print("Error updating product price: \(error)")
+        }
+    }
+    
+    private func getCurrentUsername() async -> String {
+        do {
+            let context = await CoreDataStack.shared.viewContext
+            let fetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            fetchRequest.fetchLimit = 1
+            let users = try context.fetch(fetchRequest)
+            if let currentUser = users.first, let username = currentUser.username {
+                return username
+            }
+        } catch {
+            print("Error getting current username: \(error)")
+        }
+        return "Unknown User"
+    }
+}
+
+// Product Edit Category Picker View
+struct ProductDetailCategoryPickerView: View {
+    @Binding var selectedCategory: ProductCategory
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(ProductCategory.allCases, id: \.self) { category in
+                    Button(action: {
+                        selectedCategory = category
+                        dismiss()
+                    }) {
+                        HStack {
+                            Text(category.rawValue)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if selectedCategory == category {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Select Category")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Product Edit Tag Picker View
+struct ProductEditTagPickerView: View {
+    let availableTags: [Tag]
+    @Binding var selectedTags: [Tag]
+    let onDone: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var searchText = ""
+    
+    var filteredTags: [Tag] {
+        if searchText.isEmpty {
+            return availableTags
+        } else {
+            return availableTags.filter { tag in
+                tag.displayName.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                // Search bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gray)
+                    TextField("Search tags...", text: $searchText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    
+                    if !searchText.isEmpty {
+                        Button(action: {
+                            searchText = ""
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top)
+                
+                if availableTags.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "tag.slash")
+                            .font(.system(size: 40))
+                            .foregroundColor(.gray.opacity(0.7))
+                        Text("No tags available")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.gray)
+                        Text("Create tags in your profile to see them here")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(filteredTags, id: \.id) { tag in
+                            Button(action: {
+                                if selectedTags.contains(where: { $0.id == tag.id }) {
+                                    selectedTags.removeAll { $0.id == tag.id }
+                                } else {
+                                    selectedTags.append(tag)
+                                }
+                            }) {
+                                HStack {
+                                    Circle()
+                                        .fill(Color(hex: tag.displayColor))
+                                        .frame(width: 12, height: 12)
+                                    Text(tag.displayName)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    if selectedTags.contains(where: { $0.id == tag.id }) {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Select Tags")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        onDone()
+                    }
+                }
             }
         }
     }

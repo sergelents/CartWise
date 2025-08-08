@@ -51,6 +51,18 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    // Fetch all products without mutating the published `products` array
+    // Useful for views that need a read-only snapshot without triggering UI-wide reloads
+    func fetchAllProducts() async -> [GroceryItem] {
+        do {
+            return try await repository.fetchAllProducts()
+        } catch {
+            // Surface the error but do not mutate state; return an empty list on failure
+            errorMessage = error.localizedDescription
+            return []
+        }
+    }
     func updateProduct(_ product: GroceryItem) async {
         do {
             try await repository.updateProduct(product)
@@ -152,6 +164,16 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+    
+    // Quiet version that doesn't reload lists - for UI components
+    func addExistingProductToShoppingListQuiet(_ product: GroceryItem) async {
+        do {
+            try await repository.addProductToShoppingList(product)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
     // MARK: - Favorites Methods
     func loadFavoriteProducts() async {
         do {
@@ -174,10 +196,30 @@ final class ProductViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+    
+    // Quiet version that doesn't reload lists - for UI components
+    func addProductToFavoritesQuiet(_ product: GroceryItem) async {
+        do {
+            try await repository.addProductToFavorites(product)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
     func removeProductFromFavorites(_ product: GroceryItem) async {
         do {
             try await repository.removeProductFromFavorites(product)
             await loadFavoriteProducts()
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    // Quiet version that doesn't reload lists - for UI components
+    func removeProductFromFavoritesQuiet(_ product: GroceryItem) async {
+        do {
+            try await repository.removeProductFromFavorites(product)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -264,6 +306,16 @@ final class ProductViewModel: ObservableObject {
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    // Search without mutating the published `products` array
+    func searchProductsQuiet(by name: String) async -> [GroceryItem] {
+        do {
+            return try await repository.searchProducts(by: name)
+        } catch {
+            errorMessage = error.localizedDescription
+            return []
         }
     }
     func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem] {
