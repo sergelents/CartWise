@@ -15,9 +15,15 @@ import UIKit
 struct PhotoCameraView: View {
     @Environment(\.dismiss) private var dismiss
     let onImageCaptured: (UIImage?) -> Void
+    let showCameraSwitch: Bool
     @StateObject private var cameraController = PhotoCameraController()
     @State private var capturedImage: UIImage?
     @State private var showingConfirmation = false
+    
+    init(showCameraSwitch: Bool = false, onImageCaptured: @escaping (UIImage?) -> Void) {
+        self.showCameraSwitch = showCameraSwitch
+        self.onImageCaptured = onImageCaptured
+    }
     
     var body: some View {
         if showingConfirmation, let image = capturedImage {
@@ -33,11 +39,18 @@ struct PhotoCameraView: View {
         VStack(spacing: 0) {
             // Top controls
             HStack {
-                Button("Cancel") {
-                    dismiss()
+                // Camera switch button
+                if showCameraSwitch {
+                    Button("Switch") {
+                        cameraController.switchCamera()
+                    }
+                    .foregroundColor(.primary)
+                    .padding()
+                } else {
+                    // Placeholder for symmetry when switch is hidden
+                    Color.clear
+                        .frame(width: 60, height: 44)
                 }
-                .foregroundColor(.primary)
-                .padding()
                 
                 Spacer()
                 
@@ -47,8 +60,8 @@ struct PhotoCameraView: View {
                 
                 Spacer()
                 
-                Button("Switch") {
-                    cameraController.switchCamera()
+                Button("Cancel") {
+                    dismiss()
                 }
                 .foregroundColor(.primary)
                 .padding()
@@ -155,11 +168,9 @@ struct PhotoCameraView: View {
         VStack(spacing: 0) {
             // Top controls
             HStack {
-                Button("Cancel") {
-                    dismiss()
-                }
-                .foregroundColor(.primary)
-                .padding()
+                // Placeholder for symmetry (left side)
+                Color.clear
+                    .frame(width: 60, height: 44)
                 
                 Spacer()
                 
@@ -169,9 +180,11 @@ struct PhotoCameraView: View {
                 
                 Spacer()
                 
-                // Placeholder for symmetry
-                Color.clear
-                    .frame(width: 60, height: 44)
+                Button("Cancel") {
+                    dismiss()
+                }
+                .foregroundColor(.primary)
+                .padding()
             }
             .background(Color.white)
             
@@ -192,7 +205,7 @@ struct PhotoCameraView: View {
                     .foregroundColor(.primary)
                     .padding(.top, 16)
                 
-                Text("Use this photo for product image or retake")
+                Text("Use the photo for the product image or retake")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -492,15 +505,12 @@ class PhotoCameraController: ObservableObject {
             return
         }
         
-        print("Starting photo capture...")
         let settings = AVCapturePhotoSettings()
         settings.flashMode = .auto
         settings.isAutoRedEyeReductionEnabled = true
         
         // Create and retain the delegate
         photoCaptureDelegate = PhotoCaptureDelegate(completion: completion)
-        
-        print("Taking photo with settings: \(settings)")
         photoOutput.capturePhoto(with: settings, delegate: photoCaptureDelegate!)
     }
     
@@ -534,14 +544,12 @@ class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     }
     
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        print("Photo capture delegate called")
         if let error = error {
             print("Error capturing photo: \(error)")
             completion(nil)
             return
         }
         
-        print("Photo captured successfully, processing...")
         guard let imageData = photo.fileDataRepresentation(),
               let image = UIImage(data: imageData) else {
             print("Failed to create image from photo data")
@@ -549,7 +557,6 @@ class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
             return
         }
         
-        print("Image created successfully, size: \(image.size)")
         completion(image)
     }
 }
