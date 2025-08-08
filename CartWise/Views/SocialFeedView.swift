@@ -158,6 +158,8 @@ struct ExperienceCardView: View {
             return .blue
         case "general":
             return .purple
+        case "new_product":
+            return .teal
         default:
             return .gray
         }
