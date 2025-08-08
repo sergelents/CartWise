@@ -72,7 +72,11 @@ final class ProductViewModel: ObservableObject {
     func removeProductFromShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.removeProductFromShoppingList(product)
-            products.removeAll { $0.id == product.id }
+            
+            // Update the products array on the main thread
+            await MainActor.run {
+                products.removeAll { $0.id == product.id }
+            }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -81,7 +85,9 @@ final class ProductViewModel: ObservableObject {
     func permanentlyDeleteProduct(_ product: GroceryItem) async {
         do {
             try await repository.deleteProduct(product)
-            products.removeAll { $0.id == product.id }
+            // Reload the entire list instead of manually removing items
+            // This prevents collection view inconsistency during animations
+            await loadShoppingListProducts()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -123,8 +129,8 @@ final class ProductViewModel: ObservableObject {
     func addExistingProductToShoppingList(_ product: GroceryItem) async {
         do {
             try await repository.addProductToShoppingList(product)
-            // Don't call loadShoppingListProducts() here as it would affect category views
-            // The shopping list view will refresh when it appears
+            // Refresh shopping list to show the newly added item
+            await loadShoppingListProducts()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

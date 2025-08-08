@@ -162,6 +162,24 @@ struct ShoppingListCard: View {
     @Binding var showingRatingPrompt: Bool
     @Binding var showingAddProductModal: Bool
     @Binding var showingCheckAllConfirmation: Bool
+    
+    // Function to handle SwiftUI's native onDelete
+    private func deleteItems(offsets: IndexSet) {
+        // Capture the products to delete before any async operations
+        let productsToDelete = offsets.compactMap { index in
+            // Check bounds to prevent index out of range
+            index < productViewModel.products.count ? productViewModel.products[index] : nil
+        }
+        
+        Task {
+            // Process deletions sequentially to avoid race conditions
+            for product in productsToDelete {
+                await productViewModel.removeProductFromShoppingList(product)
+                // Small delay to allow UI to update between deletions
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            }
+        }
+    }
     var body: some View {
         VStack(spacing: 12) {
             // Header
@@ -275,16 +293,13 @@ struct ShoppingListCard: View {
                                     }
                                 }
                             },
-                            onDelete: {
-                                Task {
-                                    await productViewModel.removeProductFromShoppingList(product)
-                                }
-                            }
+                            onDelete: nil // Remove the onDelete callback to prevent conflicts
                         )
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                     }
+                    .onDelete(perform: deleteItems)
                 }
                 .listStyle(PlainListStyle())
                 .background(Color.clear)
@@ -809,7 +824,7 @@ struct ShoppingListItemRow: View {
     let isEditing: Bool
     let isSelected: Bool
     let onToggle: () -> Void
-    let onDelete: () -> Void
+    let onDelete: (() -> Void)?
     var body: some View {
         HStack(alignment: .center) {
             Button(action: onToggle) {
@@ -888,11 +903,6 @@ struct ShoppingListItemRow: View {
                 .shadow(color: Color.black.opacity(0.07), radius: 3, x: 0, y: 2)
         )
         .contentShape(Rectangle()) // Ensure the entire row is tappable
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive, action: onDelete) {
-                Label("Delete", systemImage: "trash")
-            }
-        }
         .padding(.horizontal, 2)
     }
 }
