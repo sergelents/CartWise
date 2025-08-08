@@ -1101,7 +1101,7 @@ struct TagsButtonView: View {
                 }) {
                     HStack {
                         Text(product.tagArray.isEmpty ? "No tags" : "\(product.tagArray.count) tags")
-                            .font(.poppins(size: 14, weight: .regular))
+                            .font(.poppins(size: 16, weight: .regular))
                             .foregroundColor(product.tagArray.isEmpty ? .secondary : .primary)
                         Image(systemName: "chevron.right")
                             .font(.poppins(size: 14, weight: .regular))
@@ -1148,6 +1148,7 @@ struct TagsPopupView: View {
                             }
                         }
                         .padding()
+                        .padding(.top, 30)
                     }
                 }
             }
