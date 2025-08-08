@@ -223,7 +223,7 @@ struct ProductImageView: View {
                     ProgressView()
                         .scaleEffect(1.2)
                     Text("Loading image...")
-                        .font(.system(size: 14))
+                        .font(.poppins(size: 16))
                         .foregroundColor(.gray)
                         .padding(.top, 8)
                 }
@@ -243,9 +243,9 @@ struct ProductImageView: View {
                 VStack(spacing: 4) {
                     Image(systemName: "photo")
                         .foregroundColor(.gray)
-                        .font(.system(size: min(size.width, size.height) * 0.3))
+                        .font(.poppins(size: min(size.width, size.height) * 0.3))
                     Text("Image unavailable")
-                        .font(.system(size: min(size.width, size.height) * 0.08))
+                        .font(.poppins(size: min(size.width, size.height) * 0.08))
                         .foregroundColor(.gray)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
@@ -265,9 +265,9 @@ struct ProductImageView: View {
                 VStack(spacing: 4) {
                     Image(systemName: "photo")
                         .foregroundColor(.gray)
-                        .font(.system(size: min(size.width, size.height) * 0.3))
+                        .font(.poppins(size: min(size.width, size.height) * 0.3))
                     Text("No image available")
-                        .font(.system(size: min(size.width, size.height) * 0.08))
+                        .font(.poppins(size: min(size.width, size.height) * 0.08))
                         .foregroundColor(.gray)
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
@@ -282,16 +282,20 @@ struct ProductImageView: View {
     private var saleBadgeOverlay: some View {
         VStack {
             if product.isOnSale && showSaleBadge {
-                Text("Sale")
-                    .font(.system(size: 14, weight: .bold))
-                    .frame(width: 100, height: 24)
-                    .foregroundColor(.white)
-                    .background(Color.accentColorOrange.opacity(0.9))
-                    .cornerRadius(8)
+                HStack {
+                    Spacer()
+                    Text("Sale")
+                        .font(.poppins(size: 16, weight: .bold))
+                        .frame(width: 60, height: 20)
+                        .foregroundColor(.white)
+                        .background(Color.accentColorOrange.opacity(0.9))
+                        .cornerRadius(6)
+                    Spacer()
+                }
             }
             Spacer()
         }
-        .padding(.top, 12)
+        .padding(.top, 10)
     }
     
     /// Camera button overlay for taking product photos (only shown in detail view)
@@ -305,7 +309,7 @@ struct ProductImageView: View {
                             showingCamera = true
                         }) {
                             Image(systemName: "camera")
-                                .font(.system(size: 20, weight: .medium))
+                                .font(.poppins(size: 20, weight: .medium))
                                 .foregroundColor(.white)
                                 .frame(width: 32, height: 32)
                                 .background(Color.black.opacity(0.6))

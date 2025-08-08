@@ -316,7 +316,7 @@ struct ProductDetailView: View {
                         // Product Image View
                         ProductImageView(
                             product: product,
-                            size: CGSize(width: 180, height: 180),
+                            size: CGSize(width: 240, height: 240),
                             cornerRadius: 12,
                             showSaleBadge: true,
                             showCameraButton: true

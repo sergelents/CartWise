@@ -36,37 +36,8 @@ struct PhotoCameraView: View {
     }
     
     private var cameraView: some View {
-        VStack(spacing: 0) {
-            // Top controls
-            HStack {
-                // Camera switch button
-                if showCameraSwitch {
-                    Button("Switch") {
-                        cameraController.switchCamera()
-                    }
-                    .foregroundColor(.primary)
-                    .padding()
-                } else {
-                    // Placeholder for symmetry when switch is hidden
-                    Color.clear
-                        .frame(width: 60, height: 44)
-                }
-                
-                Spacer()
-                
-                Text("Take Photo")
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Button("Cancel") {
-                    dismiss()
-                }
-                .foregroundColor(.primary)
-                .padding()
-            }
-            .background(Color.white)
+        NavigationView {
+            VStack(spacing: 0) {
             
             // Add some spacing above camera
             Spacer()
@@ -102,12 +73,12 @@ struct PhotoCameraView: View {
             // Instructions
             VStack(spacing: 8) {
                 Text("Position your product within the frame")
-                    .font(.subheadline)
+                    .font(.poppins(size: 16, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(.top, 16)
                 
                 Text("Make sure the product is well-lit and clearly visible")
-                    .font(.caption)
+                    .font(.poppins(size: 14))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -142,8 +113,25 @@ struct PhotoCameraView: View {
                 Spacer()
             }
             .padding(.bottom, 50)
+            }
+            .background(Color.white)
+            .navigationTitle("Take Photo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if showCameraSwitch {
+                        Button("Switch") {
+                            cameraController.switchCamera()
+                        }
+                    }
+                }
+            }
         }
-        .background(Color.white)
         .onAppear {
             cameraController.checkPermissions()
         }
@@ -165,28 +153,8 @@ struct PhotoCameraView: View {
     }
     
     private func confirmationView(image: UIImage) -> some View {
-        VStack(spacing: 0) {
-            // Top controls
-            HStack {
-                // Placeholder for symmetry (left side)
-                Color.clear
-                    .frame(width: 60, height: 44)
-                
-                Spacer()
-                
-                Text("Confirm Photo")
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Button("Cancel") {
-                    dismiss()
-                }
-                .foregroundColor(.primary)
-                .padding()
-            }
-            .background(Color.white)
+        NavigationView {
+            VStack(spacing: 0) {
             
             Spacer(minLength: 20)
             
@@ -201,12 +169,12 @@ struct PhotoCameraView: View {
             // Instructions
             VStack(spacing: 8) {
                 Text("How does your photo look?")
-                    .font(.subheadline)
+                    .font(.poppins(size: 16, weight: .medium))
                     .foregroundColor(.primary)
                     .padding(.top, 16)
                 
                 Text("Use the photo for the product image or retake")
-                    .font(.caption)
+                    .font(.poppins(size: 14))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -225,7 +193,7 @@ struct PhotoCameraView: View {
                         Image(systemName: "arrow.clockwise")
                         Text("Retake")
                     }
-                    .font(.headline)
+                    .font(.poppins(size: 18, weight: .semibold))
                     .foregroundColor(.primary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -242,7 +210,7 @@ struct PhotoCameraView: View {
                         Image(systemName: "checkmark")
                         Text("Use Photo")
                     }
-                    .font(.headline)
+                    .font(.poppins(size: 18, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -252,8 +220,18 @@ struct PhotoCameraView: View {
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 80)
+            }
+            .background(Color.white)
+            .navigationTitle("Confirm Photo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
         }
-        .background(Color.white)
     }
 }
 
