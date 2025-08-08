@@ -293,6 +293,7 @@ struct AddItemsView: View {
                 } else {
                     await productViewModel.addTagsToProduct(newProduct, tags: tags)
                 }
+                
                 // Add to shopping list if requested
                 if addToShoppingList {
                     await productViewModel.addExistingProductToShoppingList(newProduct)
@@ -326,6 +327,7 @@ struct AddItemsView: View {
             }
         }
     }
+    
     private func createOrUpdateProductByBarcode(barcode: String, productName: String, brand: String?, category: String?, price: Double, store: String, isOnSale: Bool) async -> GroceryItem? {
         // First check if product already exists with this barcode
         if await productViewModel.isDuplicateBarcode(barcode) {
@@ -474,15 +476,6 @@ struct TagPickerView: View {
                         .foregroundColor(.gray)
                     TextField("Search tags...", text: $searchText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    if !searchText.isEmpty {
-                        Button(action: {
-                            searchText = ""
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.gray)
-                        }
-                    }
                 }
                 .padding(.horizontal)
                 .padding(.top)
