@@ -97,7 +97,7 @@ struct PhotoCameraView: View {
                             showingConfirmation = true
                         }
                     }
-                }) {
+                }, label: {
                     Circle()
                         .fill(Color.green)
                         .frame(width: 70, height: 70)
@@ -106,7 +106,7 @@ struct PhotoCameraView: View {
                                 .stroke(Color.white, lineWidth: 3)
                                 .frame(width: 60, height: 60)
                         )
-                }
+                })
                 .disabled(!cameraController.isCameraReady)
 
                 Spacer()
@@ -187,7 +187,7 @@ struct PhotoCameraView: View {
                 Button(action: {
                     showingConfirmation = false
                     capturedImage = nil
-                }) {
+                }, label: {
                     HStack {
                         Image(systemName: "arrow.clockwise")
                         Text("Retake")
@@ -198,13 +198,13 @@ struct PhotoCameraView: View {
                     .padding(.vertical, 12)
                     .background(Color(.systemGray5))
                     .cornerRadius(12)
-                }
+                })
 
                 // Use Photo button
                 Button(action: {
                     onImageCaptured(image)
                     dismiss()
-                }) {
+                }, label: {
                     HStack {
                         Image(systemName: "checkmark")
                         Text("Use Photo")
@@ -215,7 +215,7 @@ struct PhotoCameraView: View {
                     .padding(.vertical, 12)
                     .background(Color.green)
                     .cornerRadius(12)
-                }
+                })
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 80)

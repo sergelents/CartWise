@@ -47,13 +47,13 @@ struct ShareExperienceView: View {
                                 Button(action: {
                                     // If tapping the same star, clear the rating, otherwise set to the tapped star
                                     rating = rating == Int16(star) ? 0 : Int16(star)
-                                }) {
+                                }, label: {
                                     Image(systemName: star <= rating ? "star.fill" : "star")
                                         .foregroundColor(star <= rating ? .orange : .gray)
                                         .font(.title2)
                                         .frame(width: 32, height: 32)
                                         .contentShape(Rectangle())
-                                }
+                                })
                                 .buttonStyle(PlainButtonStyle())
                             }
                         }
@@ -82,7 +82,7 @@ struct ShareExperienceView: View {
                     Section("Product Information (Optional)") {
                         Button(action: {
                             showingProductPicker = true
-                        }) {
+                        }, label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Product")
@@ -95,7 +95,7 @@ struct ShareExperienceView: View {
                                 Image(systemName: "chevron.right")
                                     .foregroundColor(.gray)
                             }
-                        }
+                        })
                         .buttonStyle(PlainButtonStyle())
                         if selectedProduct != nil {
                             Button("Clear Product") {
@@ -110,7 +110,7 @@ struct ShareExperienceView: View {
                     Section("Store Information (Optional)") {
                         Button(action: {
                             showingLocationPicker = true
-                        }) {
+                        }, label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Store")
@@ -123,7 +123,7 @@ struct ShareExperienceView: View {
                                 Image(systemName: "chevron.right")
                                     .foregroundColor(.gray)
                             }
-                        }
+                        })
                         .buttonStyle(PlainButtonStyle())
                         if selectedLocation != nil {
                             Button("Clear Store") {

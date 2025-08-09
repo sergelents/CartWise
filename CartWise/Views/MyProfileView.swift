@@ -271,7 +271,10 @@ struct ProfileIconPickerView: View {
                                     .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .stroke(icon == selectedIcon ? AppColors.accentGreen : Color.clear, lineWidth: 2)
+                                            .stroke(
+                                                icon == selectedIcon ? AppColors.accentGreen : Color.clear,
+                                                lineWidth: 2
+                                            )
                                     )
                                 Image(systemName: icon)
                                     .resizable()

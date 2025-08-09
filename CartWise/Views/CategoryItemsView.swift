@@ -30,7 +30,7 @@ struct CategoryItemsView: View {
             if let productCategory = groceryItem.category, !productCategory.isEmpty {
                 return productCategory.lowercased() == category.rawValue.lowercased()
             }
-            
+
             // Fallback: Use keyword matching only for products without category (legacy data)
             if let productName = groceryItem.productName {
                 let categoryKeywords = getCategoryKeywords(for: category)
@@ -38,7 +38,7 @@ struct CategoryItemsView: View {
                     productName.lowercased().contains(keyword.lowercased())
                 }
             }
-            
+
             return false
         }
         print("CategoryItemsView: Total products: \(allProducts.count), Filtered products: \(filtered.count)")
@@ -185,7 +185,8 @@ struct CategoryItemsView: View {
         // Check filtered results
         print("CategoryItemsView: Filtered products count: \(categoryProducts.count)")
         for (index, product) in categoryProducts.enumerated() {
-            print("  Filtered Product \(index + 1): \(product.productName ?? "Unknown") - Category: \(product.category ?? "None")")
+            print("  Filtered Product \(index + 1): \(product.productName ?? "Unknown") - " +
+                  "Category: \(product.category ?? "None")")
         }
     }
     private func createCategoryQuery(for category: ProductCategory) -> String {
@@ -216,7 +217,9 @@ struct CategoryItemsView: View {
         await viewModel.loadLocations()
         userLocations = viewModel.locations
         // Set selected location to default or first favorited location
-        selectedLocation = userLocations.first { $0.isDefault } ?? userLocations.first { $0.favorited } ?? userLocations.first
+        selectedLocation = userLocations.first { $0.isDefault } ??
+                           userLocations.first { $0.favorited } ??
+                           userLocations.first
     }
     // private func clearDatabase() async {
     //     // Delete all products from the database
@@ -393,7 +396,7 @@ struct ProductDetailView: View {
                 // Nudge price view to reload
                 await MainActor.run { priceReloadKey &+= 1 }
             }
-        }) {
+        }, content: {
             ProductEditView(
                 product: product,
                 onSave: { updatedProduct in
@@ -414,7 +417,7 @@ struct ProductDetailView: View {
                     showDeleteConfirmation = true
                 }
             )
-        }
+        })
     }
 
     // Reload the current product from Core Data to ensure freshest values in this detail view
@@ -495,11 +498,13 @@ struct ProductDetailView: View {
                 print("Created new price for location: \(locationInContext.name ?? "Unknown")")
             }
             try context.save()
-            print("Successfully updated product price to $\(newPrice) for location: \(locationInContext.name ?? "Unknown")")
+            print("Successfully updated product price to $\(newPrice) for location: " +
+                  "\(locationInContext.name ?? "Unknown")")
 
             // Update user reputation directly in the same context
             let currentUsername = await getCurrentUsername()
-            if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
+            let fetchRequest = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+            if let currentUser = try context.fetch(fetchRequest).first(where: { $0.username == currentUsername }) {
                 // Increment updates count
                 currentUser.updates += 1
 
@@ -510,7 +515,8 @@ struct ProductDetailView: View {
                 // Save the context to persist the reputation update
                 try context.save()
 
-                print("✅ REPUTATION UPDATE: Price update (CategoryItemsView) - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+                print("✅ REPUTATION UPDATE: Price update (CategoryItemsView) - user \(currentUsername): " +
+                      "\(currentUser.updates) updates, level: \(newLevel.name)")
             } else {
                 print("⚠️ WARNING: Could not find current user for reputation update")
             }
@@ -806,7 +812,8 @@ struct ProductPriceView: View {
             let allPrices = try context.fetch(allPricesFetchRequest)
             print("ProductPriceView: All prices for this product: ")
             for price in allPrices {
-                print("  - Location: \(price.location?.name ?? "nil"), ID: \(price.location?.id ?? "nil"), Price: $\(price.price)")
+                print("  - Location: \(price.location?.name ?? "nil"), " +
+                      "ID: \(price.location?.id ?? "nil"), Price: $\(price.price)")
             }
             fetchRequest.fetchLimit = 1
             print("ProductPriceView: Searching for location ID: \(locationToSearch.id ?? "nil")")
@@ -976,7 +983,9 @@ struct AddToShoppingListAndFavoritesView: View {
         .onReceive(productViewModel.$products) { _ in
             // Update shopping list status when products change
             Task {
-                let newShoppingListStatus = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
+                let newShoppingListStatus = await productViewModel.isProductInShoppingList(
+                    name: product.productName ?? ""
+                )
                 await MainActor.run {
                     isInShoppingList = newShoppingListStatus
                 }
@@ -1051,7 +1060,8 @@ struct AddToShoppingListAndFavoritesView: View {
                     await productViewModel.removeProductFromFavoritesQuiet(product)
                     await MainActor.run {
                         isInFavorites = false
-                        favoriteAlertMessage = "\(product.productName ?? "Product") has been removed from your favorites."
+                        favoriteAlertMessage = "\(product.productName ?? "Product") has been removed from " +
+                                               "your favorites."
                         showingFavoriteAlert = true
                     }
                 } else {
@@ -1700,7 +1710,9 @@ struct ProductEditView: View {
                 guard let loc = price.location else { return false }
                 return !loc.isDeleted
             }
-            if let mostRecentPrice = validPrices.max(by: { ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) }) {
+            if let mostRecentPrice = validPrices.max(by: { 
+                ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) 
+            }) {
                 price = String(format: "%.2f", mostRecentPrice.price)
                 selectedLocation = mostRecentPrice.location
             } else {
@@ -1816,7 +1828,8 @@ struct ProductEditView: View {
             }
 
             try context.save()
-            print("Successfully updated product price to $\(newPrice) for location: \(locationInContext.name ?? "Unknown")")
+            print("Successfully updated product price to $\(newPrice) for location: " +
+                  "\(locationInContext.name ?? "Unknown")")
         } catch {
             print("Error updating product price: \(error)")
         }

@@ -64,7 +64,8 @@ struct ShoppingListCard: View {
                                 selectedItemsForDeletion = Set(productViewModel.products.compactMap { $0.id })
                             }
                         } label: {
-                            Text(selectedItemsForDeletion.count == productViewModel.products.count ? "Deselect All" : "Select All")
+                            Text(selectedItemsForDeletion.count == productViewModel.products.count ?
+                                 "Deselect All" : "Select All")
                                 .font(.poppins(size: 15, weight: .regular))
                                 .underline()
                                 .foregroundColor(.blue)

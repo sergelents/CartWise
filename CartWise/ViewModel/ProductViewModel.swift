@@ -596,7 +596,8 @@ final class ProductViewModel: ObservableObject {
         }
         // Print details of each shopping list item
         for (index, item) in shoppingList.enumerated() {
-            print("ProductViewModel: Item \(index + 1): \(item.productName ?? "Unknown") - Store: \(item.store ?? "None") - Price: $\(item.price)")
+            print("ProductViewModel: Item \(index + 1): \(item.productName ?? "Unknown") - " +
+                  "Store: \(item.store ?? "None") - Price: $\(item.price)")
         }
         await MainActor.run {
             isLoadingPriceComparison = true

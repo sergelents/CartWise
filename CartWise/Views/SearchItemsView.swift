@@ -108,28 +108,28 @@ struct SearchItemsView: View {
                 if !searchText.isEmpty {
                     Button(action: {
                         searchText = ""
-                    }) {
+                    }, label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.gray)
                             .font(.system(size: 18))
-                    }
+                    })
                 }
                 // Tag filter button
                 Button(action: {
                     showingTagPicker = true
-                }) {
+                }, label: {
                     Image(systemName: "line.3.horizontal.decrease.circle")
                         .foregroundColor(selectedTag != nil ? .blue : .gray)
                         .font(.system(size: 20))
-                }
+                })
                 if selectedTag != nil {
                     Button(action: {
                         selectedTag = nil
-                    }) {
+                    }, label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.red)
                             .font(.system(size: 16))
-                    }
+                    })
                 }
             }
             .padding(.horizontal)
@@ -185,7 +185,9 @@ struct SearchItemsView: View {
                 .padding(.horizontal, 40)
             } else {
                 List(tagFilteredResults, id: \.id) { product in
-                    NavigationLink(destination: ProductDetailView(product: product, selectedLocation: selectedLocation)) {
+                    NavigationLink(
+                        destination: ProductDetailView(product: product, selectedLocation: selectedLocation)
+                    ) {
                         SearchResultRowView(product: product)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -386,7 +388,7 @@ struct SingleTagPickerView: View {
                         Button(action: {
                             selectedTag = tag
                             dismiss()
-                        }) {
+                        }, label: {
                             HStack {
                                 Text(tag.displayName)
                                     .foregroundColor(.primary)
@@ -396,7 +398,7 @@ struct SingleTagPickerView: View {
                                         .foregroundColor(.blue)
                                 }
                             }
-                        }
+                        })
                         .buttonStyle(PlainButtonStyle())
                     }
                 }

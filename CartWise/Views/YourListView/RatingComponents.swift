@@ -81,7 +81,6 @@ struct ShoppingExperienceRatingView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Grocery Store")
                     .font(.poppins(size: 20, weight: .bold))
-                // TODO: Connect to Google Maps API for live store info
                 HStack {
                     Image(systemName: "mappin.and.ellipse")
                         .foregroundColor(AppColors.accentGreen)
@@ -113,7 +112,6 @@ struct ShoppingExperienceRatingView: View {
             // Action Buttons
             VStack(spacing: 12) {
                 Button {
-                    // TODO: Handle submit logic
                     dismissAll()
                 } label: {
                     Text("Submit")
