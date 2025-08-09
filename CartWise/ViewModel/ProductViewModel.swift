@@ -539,7 +539,8 @@ final class ProductViewModel: ObservableObject {
             print("ProductViewModel: Updating product with barcode: \(barcode)")
             print("ProductViewModel: Update store value: '\(store ?? "nil")'")
             let existingProducts = try await repository.searchProductsByBarcode(barcode)
-            guard let existingProduct = existingProducts.first(where: { $0.barcode?.lowercased() == barcode.lowercased() }) else {
+            guard let existingProduct = existingProducts.first(
+                where: { $0.barcode?.lowercased() == barcode.lowercased() }) else {
                 // This should not happen if we checked isDuplicateBarcode first
                 // But handle gracefully just in case
                 errorMessage = "Unable to update product with barcode '\(barcode)' - product not found in database"

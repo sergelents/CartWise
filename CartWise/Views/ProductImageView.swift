@@ -17,7 +17,7 @@ struct ProductImageView: View {
     let cornerRadius: CGFloat
     let showSaleBadge: Bool
     let showCameraButton: Bool
-    
+
     // State
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
@@ -25,7 +25,7 @@ struct ProductImageView: View {
     @State private var showingCamera = false
     @State private var userCapturedImage: UIImage?
     @State private var imageUpdateTrigger = false
-    
+
     init(
         product: GroceryItem,
         size: CGSize = CGSize(width: 180, height: 180),
@@ -39,7 +39,7 @@ struct ProductImageView: View {
         self.showSaleBadge = showSaleBadge
         self.showCameraButton = showCameraButton
     }
-    
+
     var body: some View {
         Group {
             if let loadedImage = loadedImage {
@@ -114,7 +114,7 @@ struct ProductImageView: View {
                 hasError = false
                 print("ProductImageView: Initialized with existing image data")
             }
-            
+
             // Listen for product image updates
             NotificationCenter.default.addObserver(
                 forName: NSNotification.Name("ProductImageUpdated"),

@@ -226,7 +226,7 @@ struct AddLocationView: View {
 }
 // MARK: - Custom Styles
 struct CustomTextFieldStyle: TextFieldStyle {
-    func _body(configuration: TextField<Self._Label>) -> some View {
+    func makeBody(configuration: Configuration) -> some View {
         configuration
             .padding(.horizontal, 16)
             .padding(.vertical, 14)

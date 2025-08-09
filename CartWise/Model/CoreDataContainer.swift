@@ -41,7 +41,8 @@ protocol CoreDataContainerProtocol: Sendable {
     // Price comparison methods
     func getAllStores() async throws -> [String]
     func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double?
-    func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double?, shopper: String?)
+    func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws
+        -> (price: Double?, shopper: String?)
     // Tag-related methods
     func fetchAllTags() async throws -> [Tag]
     func createTag(id: String, name: String, color: String) async throws -> Tag
@@ -79,7 +80,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             let products = try context.fetch(request)
             print("CoreDataContainer: Fetched \(products.count) shopping list products")
             for (index, product) in products.enumerated() {
-                print("CoreDataContainer: Product \(index + 1): '\(product.productName ?? "Unknown")' - Store: '\(product.store ?? "nil")' - Price: $\(product.price)")
+                print("CoreDataContainer: Product \(index + 1): '\(product.productName ?? "Unknown")' " +
+                      "- Store: '\(product.store ?? "nil")' - Price: $\(product.price)")
             }
             return products
         }
@@ -95,8 +97,23 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     //         return try context.fetch(request)
     //     }
     // }
-    // createProduct was creating GroceryItem objects in background Core Data context, but ViewModel expecting objects from main context.
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false, isOnSale: Bool = false) async throws -> GroceryItem {
+    // createProduct was creating GroceryItem objects in background Core Data context,
+    // but ViewModel expecting objects from main context.
+    func createProduct(
+        id: String,
+        productName: String,
+        brand: String?,
+        category: String?,
+        price: Double,
+        currency: String,
+        store: String?,
+        location: String?,
+        imageURL: String?,
+        barcode: String?,
+        isInShoppingList: Bool = false,
+        isOnSale: Bool = false
+        )
+        async throws -> GroceryItem {
         print("CoreDataContainer: Creating product with store: '\(store ?? "nil")'")
         let currentUsername = await getCurrentUsername()
         // Create in background context first
@@ -144,7 +161,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             print("CoreDataContainer: Context saved, final store: '\(product.store ?? "nil")'")
 
             // Update user reputation for product creation (barcode scanning)
-            if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
+            let userRequest = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+            if let currentUser = try context.fetch(userRequest).first(where: { $0.username == currentUsername }) {
                 // Increment updates count
                 currentUser.updates += 1
 
@@ -155,7 +173,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 // Save the context to persist the reputation update
                 try context.save()
 
-                print("✅ REPUTATION UPDATE: Product creation - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+                print("✅ REPUTATION UPDATE: Product creation - user \(currentUsername): " +
+                      "\(currentUser.updates) updates, level: \(newLevel.name)")
             } else {
                 print("⚠️ WARNING: Could not find current user for product creation reputation update")
             }
@@ -166,14 +185,16 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         let viewContext = await coreDataStack.viewContext
         return try await viewContext.perform {
             guard let fetchedProduct = try viewContext.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             print("CoreDataContainer: Fetched product from main context, store: '\(fetchedProduct.store ?? "nil")'")
             return fetchedProduct
         }
     }
     // Helper method to find or create a location
-    private func findOrCreateLocation(context: NSManagedObjectContext, name: String, address: String?) throws -> Location {
+    private func findOrCreateLocation(context: NSManagedObjectContext, name: String, address: String?)
+        throws -> Location {
         let request: NSFetchRequest<Location> = Location.fetchRequest()
         request.predicate = NSPredicate(format: "name == %@", name)
         request.fetchLimit = 1
@@ -196,7 +217,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
 
             // Create or update ProductImage
@@ -205,7 +227,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 // Update existing image
                 let imageObjectID = existingImage.objectID
                 guard let existingProductImage = try context.existingObject(with: imageObjectID) as? ProductImage else {
-                    throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to ProductImage"])
+                    throw NSError(domain: "CoreDataContainer", code: 1,
+                                  userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to ProductImage"])
                 }
                 productImage = existingProductImage
                 productImage.imageURL = imageURL
@@ -233,7 +256,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         return try await context.perform {
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             return productInContext.productImage
         }
@@ -243,13 +267,15 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
 
             if let productImage = productInContext.productImage {
                 let imageObjectID = productImage.objectID
                 guard let imageInContext = try context.existingObject(with: imageObjectID) as? ProductImage else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to ProductImage"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                                  userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to ProductImage"])
             }
                 context.delete(imageInContext)
                 productInContext.productImage = nil
@@ -280,7 +306,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             productInContext.updatedAt = Date()
             try context.save()
@@ -291,7 +318,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             // Find or create the location
             let locationEntity = try self.findOrCreateLocation(context: context, name: store, address: location)
@@ -322,7 +350,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             try context.save()
 
             // Update user reputation directly in the same context
-            if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
+            let userFetchRequest = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+            if let currentUser = try context.fetch(userFetchRequest).first(where: { $0.username == currentUsername }) {
                 // Increment updates count
                 currentUser.updates += 1
 
@@ -333,7 +362,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
                 // Save the context to persist the reputation update
                 try context.save()
 
-                print("✅ REPUTATION UPDATE: Price update - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+                print("✅ REPUTATION UPDATE: Price update - user \(currentUsername): " +
+                      "\(currentUser.updates) updates, level: \(newLevel.name)")
             } else {
                 print("⚠️ WARNING: Could not find current user for reputation update")
             }
@@ -343,7 +373,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             // Remove all relationships before deletion to prevent cascade issues
             // Remove tag relationships
@@ -359,7 +390,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             productInContext.isInShoppingList = false
             try context.save()
@@ -369,7 +401,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             productInContext.isCompleted.toggle()
             try context.save()
@@ -379,7 +412,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             productInContext.isInShoppingList = true
             productInContext.isCompleted = false // Reset completion status when adding to list
@@ -400,7 +434,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             productInContext.isFavorite = true
             try context.save()
@@ -410,7 +445,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             productInContext.isFavorite = false
             try context.save()
@@ -420,7 +456,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             productInContext.isFavorite.toggle()
             try context.save()
@@ -466,7 +503,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         let viewContext = await coreDataStack.viewContext
         return try await viewContext.perform {
             guard let tag = try viewContext.existingObject(with: objectID) as? Tag else {
-            throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to Tag"])
+            throw NSError(domain: "CoreDataContainer", code: 1,
+                                  userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to Tag"])
         }
         return tag
         }
@@ -475,7 +513,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = tag.objectID
             guard let tagInContext = try context.existingObject(with: objectID) as? Tag else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to Tag"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                                  userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to Tag"])
             }
             tagInContext.updatedAt = Date()
             try context.save()
@@ -485,13 +524,15 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             // Get the tags in the current context
             let tagObjectIDs = tags.map { $0.objectID }
             let tagsInContext = try tagObjectIDs.map { objectID in
                 guard let tag = try context.existingObject(with: objectID) as? Tag else {
-                    throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to Tag"])
+                    throw NSError(domain: "CoreDataContainer", code: 1,
+                                  userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to Tag"])
                 }
                 return tag
             }
@@ -507,13 +548,15 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             // Get the tags in the current context
             let tagObjectIDs = tags.map { $0.objectID }
             let tagsInContext = try tagObjectIDs.map { objectID in
                 guard let tag = try context.existingObject(with: objectID) as? Tag else {
-                    throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to Tag"])
+                    throw NSError(domain: "CoreDataContainer", code: 1,
+                                  userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to Tag"])
                 }
                 return tag
             }
@@ -526,13 +569,15 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         try await coreDataStack.performBackgroundTask { context in
             let objectID = product.objectID
             guard let productInContext = try context.existingObject(with: objectID) as? GroceryItem else {
-                throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
+                throw NSError(domain: "CoreDataContainer", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to GroceryItem"])
             }
             // Get the tags in the current context
             let tagObjectIDs = tags.map { $0.objectID }
             let tagsInContext = try tagObjectIDs.map { objectID in
                 guard let tag = try context.existingObject(with: objectID) as? Tag else {
-                    throw NSError(domain: "CoreDataContainer", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to Tag"])
+                    throw NSError(domain: "CoreDataContainer", code: 1,
+                                  userInfo: [NSLocalizedDescriptionKey: "Failed to cast object to Tag"])
                 }
                 return tag
             }
@@ -580,7 +625,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         }
     }
 
-    func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double?, shopper: String?) {
+    func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws
+        -> (price: Double?, shopper: String?) {
         let context = await coreDataStack.viewContext
         return try await context.perform { [self] in
             // Get all prices for this item
@@ -594,7 +640,8 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             if let outdatedPrice = prices.first(where: { price in
                 price.store == store && !self.isPriceRecent(price.lastUpdated)
             }) {
-                print("Repository: Excluding outdated price for \(item.productName ?? "Unknown") at \(store) - last updated: \(outdatedPrice.lastUpdated?.description ?? "Unknown")")
+                print("Repository: Excluding outdated price for \(item.productName ?? "Unknown") at \(store) " +
+                      "- last updated: \(outdatedPrice.lastUpdated?.description ?? "Unknown")")
             }
 
             return (storePrice?.price, storePrice?.updatedBy)
