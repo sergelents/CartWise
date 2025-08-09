@@ -23,7 +23,7 @@ struct YourListView: View {
     @State private var showingDuplicateAlert = false
     @State private var duplicateProductName = ""
     @State private var showingCheckAllConfirmation = false
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -102,7 +102,7 @@ struct YourListView: View {
             }
         }
     }
-    
+
     private func addProductToSystem(name: String, brand: String?, category: String?, price: Double? = nil) {
         Task {
             // Check for duplicate first

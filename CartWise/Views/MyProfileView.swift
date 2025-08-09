@@ -15,7 +15,6 @@ struct MyProfileView: View {
     @State private var selectedTab: ProfileTab = .favorites
     @AppStorage("profileIconName") private var profileIconName: String = "person.crop.circle.fill"
     @State private var isAvatarPickerPresented: Bool = false
-    
     enum ProfileTab: String, CaseIterable {
         case favorites = "Favorites"
         case locations = "Locations"
@@ -180,7 +179,7 @@ struct ProfileCard: View {
     let isLoadingUser: Bool
     let profileIconName: String
     let onAvatarTapped: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 20) {
             // Profile Avatar

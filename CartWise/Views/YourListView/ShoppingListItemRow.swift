@@ -101,7 +101,6 @@ private func formatDate(_ date: Date) -> String {
     let formatter = DateFormatter()
     let now = Date()
     let calendar = Calendar.current
-    
     if calendar.isDateInToday(date) {
         formatter.timeStyle = .short
         return "Today \(formatter.string(from: date))"
