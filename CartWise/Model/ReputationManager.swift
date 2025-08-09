@@ -91,7 +91,8 @@ class ReputationManager: ObservableObject {
             let users = try context.fetch(fetchRequest)
 
             if let user = users.first {
-                print("ReputationManager: Found user \(user.username ?? "Unknown") with \(user.updates) updates, level: \(user.level ?? "None")")
+                print("ReputationManager: Found user \(user.username ?? "Unknown") with " +
+                      "\(user.updates) updates, level: \(user.level ?? "None")")
                 return (Int(user.updates), user.level ?? "New Shopper")
             } else {
                 print("ReputationManager: No users found")

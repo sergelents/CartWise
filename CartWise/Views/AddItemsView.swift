@@ -166,8 +166,7 @@ struct AddItemsView: View {
                     addToShoppingList: $addToShoppingList,
                     isExistingProduct: $isExistingProduct,
                     isScanInProgress: isScanInProgress,
-                    onConfirm: { barcode, productName, company, price, category, isOnSale, location, tags,
-                                 addToShoppingList in
+                    onConfirm: { barcode, productName, company, price, category, isOnSale, location, tags, addToShoppingList in
                         showingBarcodeConfirmation = false
                         isScanInProgress = false
                         Task {
@@ -239,8 +238,8 @@ struct AddItemsView: View {
 
                         // Get the most recent price and location
                         if let prices = existingProduct.prices as? Set<GroceryItemPrice>,
-                           let mostRecentPrice = prices.max(by: { 
-                               ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) 
+                           let mostRecentPrice = prices.max(by: {
+                               ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast)
                            }) {
                             pendingPrice = String(format: "%.2f", mostRecentPrice.price)
                             pendingLocation = mostRecentPrice.location
@@ -337,8 +336,8 @@ struct AddItemsView: View {
                 } else {
                     // Success - show success message and clear the scanned barcode
                     let shoppingListText = addToShoppingList ? " and added to shopping list" : ""
-                    successMessage = wasExistingProduct ? 
-                        "Product updated successfully!\(shoppingListText)" : 
+                    successMessage = wasExistingProduct ?
+                        "Product updated successfully!\(shoppingListText)" :
                         "Product added successfully!\(shoppingListText)"
                     showingSuccess = true
                     scannedBarcode = ""

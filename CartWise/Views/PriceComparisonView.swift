@@ -154,7 +154,8 @@ struct StorePriceRow: View {
                         .font(.subheadline)
                         .fontWeight(isBest ? .bold : .medium)
                         .foregroundColor(isBest ? .green : .primary)
-                    Text("\(storePrice.availableItems)/\(storePrice.availableItems + storePrice.unavailableItems) items")
+                    Text("\(storePrice.availableItems)/" +
+                         "\(storePrice.availableItems + storePrice.unavailableItems) items")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }

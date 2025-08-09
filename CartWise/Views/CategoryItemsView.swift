@@ -30,7 +30,7 @@ struct CategoryItemsView: View {
             if let productCategory = groceryItem.category, !productCategory.isEmpty {
                 return productCategory.lowercased() == category.rawValue.lowercased()
             }
-            
+
             // Fallback: Use keyword matching only for products without category (legacy data)
             if let productName = groceryItem.productName {
                 let categoryKeywords = getCategoryKeywords(for: category)
@@ -38,7 +38,7 @@ struct CategoryItemsView: View {
                     productName.lowercased().contains(keyword.lowercased())
                 }
             }
-            
+
             return false
         }
         print("CategoryItemsView: Total products: \(allProducts.count), Filtered products: \(filtered.count)")
@@ -56,9 +56,12 @@ struct CategoryItemsView: View {
         case .dairy:
             return ["dairy", "eggs", "milk", "cheese", "yogurt", "butter", "cream"]
         case .bakery:
-            return ["bakery", "bread", "pastry", "cake", "cookie", "muffin", "donut", "croissant", "bagel", "pretzel", "scone", "waffle", "pancake"]
+            return ["bakery", "bread", "pastry", "cake", "cookie", "muffin", "donut",
+                    "croissant", "bagel", "pretzel", "scone", "waffle", "pancake"]
         case .produce:
-            return ["produce", "vegetable", "fruit", "apple", "banana", "tomato", "lettuce", "carrot", "onion", "potato", "broccoli", "spinach", "cucumber", "bell pepper", "orange", "grape", "strawberry", "avocado"]
+            return ["produce", "vegetable", "fruit", "apple", "banana", "tomato", "lettuce", "carrot",
+                    "onion", "potato", "broccoli", "spinach", "cucumber", "bell pepper", "orange",
+                    "grape", "strawberry", "avocado"]
         case .pantry:
             return ["pantry", "canned", "staple", "rice", "pasta", "sauce", "condiment"]
         case .beverages:
