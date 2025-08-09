@@ -12,10 +12,10 @@ struct SearchItemsView: View {
     // State variable for search bar input
     @State private var searchText = ""
     @State private var isSearching = false
-    @State private var selectedCategory: ProductCategory? = nil
-    @State private var selectedTag: Tag? = nil
+    @State private var selectedCategory: ProductCategory?
+    @State private var selectedTag: Tag?
     @State private var showingTagPicker = false
-    @State private var selectedLocation: Location? = nil
+    @State private var selectedLocation: Location?
     @State private var userLocations: [Location] = []
     @State private var searchProducts: [GroceryItem] = [] // Separate array for search products
     @EnvironmentObject var viewModel: ProductViewModel
@@ -92,7 +92,7 @@ struct SearchItemsView: View {
             HStack {
                 TextField("Search products...", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onChange(of: searchText) { _, newValue in
+                    .onChange(of: searchText) { _, _ in
                         // Real-time filtering is handled by computed properties
                         // No need to call performSearch() as searchResults updates automatically
                     }
@@ -108,28 +108,28 @@ struct SearchItemsView: View {
                 if !searchText.isEmpty {
                     Button(action: {
                         searchText = ""
-                    }) {
+                    }, label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.gray)
                             .font(.system(size: 18))
-                    }
+                    })
                 }
                 // Tag filter button
                 Button(action: {
                     showingTagPicker = true
-                }) {
+                }, label: {
                     Image(systemName: "line.3.horizontal.decrease.circle")
                         .foregroundColor(selectedTag != nil ? .blue : .gray)
                         .font(.system(size: 20))
-                }
+                })
                 if selectedTag != nil {
                     Button(action: {
                         selectedTag = nil
-                    }) {
+                    }, label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.red)
                             .font(.system(size: 16))
-                    }
+                    })
                 }
             }
             .padding(.horizontal)
@@ -185,7 +185,9 @@ struct SearchItemsView: View {
                 .padding(.horizontal, 40)
             } else {
                 List(tagFilteredResults, id: \.id) { product in
-                    NavigationLink(destination: ProductDetailView(product: product, selectedLocation: selectedLocation)) {
+                    NavigationLink(
+                        destination: ProductDetailView(product: product, selectedLocation: selectedLocation)
+                    ) {
                         SearchResultRowView(product: product)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -219,17 +221,17 @@ struct SearchItemsView: View {
     private func loadSearchProducts() async {
         // Save current shopping list products
         let currentShoppingListProducts = viewModel.products
-        
+
         // Load all products temporarily
         await viewModel.loadProducts()
-        
+
         // Store search products and restore shopping list
         await MainActor.run {
             searchProducts = viewModel.products
             viewModel.products = currentShoppingListProducts
         }
     }
-    
+
     private func performSearch() async {
         guard !searchText.isEmpty else {
             return
@@ -242,19 +244,19 @@ struct SearchItemsView: View {
                 isSearching = false
             }
         }
-        
+
         // Save current shopping list products
         let currentShoppingListProducts = viewModel.products
-        
+
         // Search Core Data for existing products only (offline-first)
         await viewModel.searchProducts(by: searchText)
-        
+
         // Update local search products and restore shopping list
         await MainActor.run {
             searchProducts = viewModel.products
             viewModel.products = currentShoppingListProducts
         }
-        
+
         print("Search completed: \(searchProducts.count) local results")
     }
     private func selectCategory(_ category: ProductCategory) {
@@ -269,7 +271,9 @@ struct SearchItemsView: View {
         await viewModel.loadLocations()
         userLocations = viewModel.locations
         // Set selected location to default or first favorited location
-        selectedLocation = userLocations.first { $0.isDefault } ?? userLocations.first { $0.favorited } ?? userLocations.first
+        selectedLocation = userLocations.first { $0.isDefault } ??
+                           userLocations.first { $0.favorited } ??
+                           userLocations.first
     }
 }
 // MARK: - Search Result Row
@@ -386,7 +390,7 @@ struct SingleTagPickerView: View {
                         Button(action: {
                             selectedTag = tag
                             dismiss()
-                        }) {
+                        }, label: {
                             HStack {
                                 Text(tag.displayName)
                                     .foregroundColor(.primary)
@@ -396,7 +400,7 @@ struct SingleTagPickerView: View {
                                         .foregroundColor(.blue)
                                 }
                             }
-                        }
+                        })
                         .buttonStyle(PlainButtonStyle())
                     }
                 }

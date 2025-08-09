@@ -30,7 +30,15 @@ extension GroceryItem {
     @NSManaged public var experiences: NSSet?
 }
 extension GroceryItem {
-    convenience init(context: NSManagedObjectContext, id: String, productName: String, brand: String? = nil, category: String? = nil, barcode: String? = nil, isOnSale: Bool = false) {
+    convenience init(
+        context: NSManagedObjectContext,
+        id: String,
+        productName: String,
+        brand: String? = nil,
+        category: String? = nil,
+        barcode: String? = nil,
+        isOnSale: Bool = false
+    ) {
         self.init(context: context)
         self.id = id
         self.productName = productName
@@ -46,7 +54,7 @@ extension GroceryItem {
         self.lastUpdated = Date()
     }
 }
-extension GroceryItem : Identifiable {
+extension GroceryItem: Identifiable {
     // Computed property for easier access to tags
     var tagArray: [Tag] {
         let set = tags as? Set<Tag> ?? []
@@ -110,16 +118,16 @@ extension GroceryItem : Identifiable {
     var currency: String? {
         return getLowestPrice()?.currency
     }
-    
+
     // Image compatibility properties
     var imageURL: String? {
         return productImage?.imageURL
     }
-    
+
     var imageData: Data? {
         return productImage?.imageData
     }
-    
+
     var uiImage: UIImage? {
         return productImage?.uiImage
     }

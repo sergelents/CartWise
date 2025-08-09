@@ -30,7 +30,7 @@ struct CategoryItemsView: View {
             if let productCategory = groceryItem.category, !productCategory.isEmpty {
                 return productCategory.lowercased() == category.rawValue.lowercased()
             }
-            
+
             // Fallback: Use keyword matching only for products without category (legacy data)
             if let productName = groceryItem.productName {
                 let categoryKeywords = getCategoryKeywords(for: category)
@@ -38,11 +38,11 @@ struct CategoryItemsView: View {
                     productName.lowercased().contains(keyword.lowercased())
                 }
             }
-            
+
             return false
         }
         print("CategoryItemsView: Total products: \(allProducts.count), Filtered products: \(filtered.count)")
-        
+
         await MainActor.run {
             categoryProducts = filtered
         }
@@ -153,11 +153,11 @@ struct CategoryItemsView: View {
         print("CategoryItemsView: Searching for category: \(category.rawValue) with query: \(categoryQuery)")
         // Check initial state
         print("CategoryItemsView: Initial products count: \(categoryProducts.count)")
-        
+
         // Search for products without mutating global `products`
         let found = await viewModel.searchProductsQuiet(by: categoryQuery)
         print("CategoryItemsView: After search - Found \(found.count) products for category: \(category.rawValue)")
-        
+
         // Update the category field for the found products to match the current category
         for product in found {
             if product.category == nil || product.category?.isEmpty == true {
@@ -167,7 +167,7 @@ struct CategoryItemsView: View {
                 await viewModel.updateProduct(updatedProduct)
             }
         }
-        
+
         // Merge found results into categoryProducts without flashing
         let merged = (categoryProducts + found).reduce(into: [String: GroceryItem]()) { dict, item in
             if let id = item.id { dict[id] = item }
@@ -177,7 +177,7 @@ struct CategoryItemsView: View {
         }
         // Mark that we've searched for this category
         hasSearched = true
-        
+
         // Print details of each product found
         for (index, product) in found.enumerated() {
             print("  Product \(index + 1): \(product.productName ?? "Unknown") - Category: \(product.category ?? "None")")
@@ -185,7 +185,8 @@ struct CategoryItemsView: View {
         // Check filtered results
         print("CategoryItemsView: Filtered products count: \(categoryProducts.count)")
         for (index, product) in categoryProducts.enumerated() {
-            print("  Filtered Product \(index + 1): \(product.productName ?? "Unknown") - Category: \(product.category ?? "None")")
+            print("  Filtered Product \(index + 1): \(product.productName ?? "Unknown") - " +
+                  "Category: \(product.category ?? "None")")
         }
     }
     private func createCategoryQuery(for category: ProductCategory) -> String {
@@ -216,7 +217,9 @@ struct CategoryItemsView: View {
         await viewModel.loadLocations()
         userLocations = viewModel.locations
         // Set selected location to default or first favorited location
-        selectedLocation = userLocations.first { $0.isDefault } ?? userLocations.first { $0.favorited } ?? userLocations.first
+        selectedLocation = userLocations.first { $0.isDefault } ??
+                           userLocations.first { $0.favorited } ??
+                           userLocations.first
     }
     // private func clearDatabase() async {
     //     // Delete all products from the database
@@ -236,9 +239,9 @@ struct ProductCard: View {
     // Display product details when tapped
     @State private var showingDetail = false
     var body: some View {
-        Button(action: {
+        Button {
             showingDetail = true
-        }) {
+        } label: {
             HStack(spacing: 12) {
                 // Product image
                 ProductImageView(
@@ -247,7 +250,7 @@ struct ProductCard: View {
                     cornerRadius: 8,
                     showSaleBadge: false
                 )
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(product.productName ?? "Unknown Product")
                         .font(.system(size: 16, weight: .medium))
@@ -307,10 +310,10 @@ struct ProductDetailView: View {
                             showingLocationPicker = true
                         }
                     )
-                    
+
                     Spacer()
-                        .frame(height: 8)
-                    
+                        .frame(height: 20)
+
                     // Product Name View
                     ProductNameView(product: product)
                         // Product Image View
@@ -329,7 +332,7 @@ struct ProductDetailView: View {
                         currentSelectedLocation: currentSelectedLocation ?? selectedLocation,
                         reloadKey: priceReloadKey
                     )
-                    
+
                     // Add to Shopping List and Add to Favorites View
                     AddToShoppingListAndFavoritesView(
                         product: product,
@@ -337,7 +340,7 @@ struct ProductDetailView: View {
                         onAddToFavorites: {}
                     )
                     .padding(.bottom, 14)
-                    
+
                     // Product Tags View - Collapsible section
                     ProductTagsView(product: product, refreshKey: productRefreshKey)
                 }
@@ -393,7 +396,7 @@ struct ProductDetailView: View {
                 // Nudge price view to reload
                 await MainActor.run { priceReloadKey &+= 1 }
             }
-        }) {
+        }, content: {
             ProductEditView(
                 product: product,
                 onSave: { updatedProduct in
@@ -414,7 +417,7 @@ struct ProductDetailView: View {
                     showDeleteConfirmation = true
                 }
             )
-        }
+        })
     }
 
     // Reload the current product from Core Data to ensure freshest values in this detail view
@@ -423,12 +426,12 @@ struct ProductDetailView: View {
         await MainActor.run {
             // Refresh the managed object to merge latest changes without manual property assignment
             context.refresh(product, mergeChanges: true)
-            
+
             // Force UI update by incrementing the refresh key
             productRefreshKey += 1
         }
     }
-    
+
     private func deleteProduct() async {
         do {
             // Permanently delete product from Core Data
@@ -495,22 +498,25 @@ struct ProductDetailView: View {
                 print("Created new price for location: \(locationInContext.name ?? "Unknown")")
             }
             try context.save()
-            print("Successfully updated product price to $\(newPrice) for location: \(locationInContext.name ?? "Unknown")")
-            
+            print("Successfully updated product price to $\(newPrice) for location: " +
+                  "\(locationInContext.name ?? "Unknown")")
+
             // Update user reputation directly in the same context
             let currentUsername = await getCurrentUsername()
-            if let currentUser = try context.fetch(NSFetchRequest<UserEntity>(entityName: "UserEntity")).first(where: { $0.username == currentUsername }) {
+            let fetchRequest = NSFetchRequest<UserEntity>(entityName: "UserEntity")
+            if let currentUser = try context.fetch(fetchRequest).first(where: { $0.username == currentUsername }) {
                 // Increment updates count
                 currentUser.updates += 1
-                
+
                 // Update level based on new count
                 let newLevel = ReputationSystem.shared.getCurrentLevel(updates: Int(currentUser.updates))
                 currentUser.level = newLevel.name
-                
+
                 // Save the context to persist the reputation update
                 try context.save()
-                
-                print("✅ REPUTATION UPDATE: Price update (CategoryItemsView) - user \(currentUsername): \(currentUser.updates) updates, level: \(newLevel.name)")
+
+                print("✅ REPUTATION UPDATE: Price update (CategoryItemsView) - user \(currentUsername): " +
+                      "\(currentUser.updates) updates, level: \(newLevel.name)")
             } else {
                 print("⚠️ WARNING: Could not find current user for reputation update")
             }
@@ -538,7 +544,12 @@ struct ProductDetailView: View {
         }
         return "Unknown User"
     }
-    private func createSocialFeedEntry(product: GroceryItem, newPrice: Double, location: Location?, username: String) async {
+    private func createSocialFeedEntry(
+        product: GroceryItem,
+        newPrice: Double,
+        location: Location?,
+        username: String
+    ) async {
         do {
             let context = await CoreDataStack.shared.viewContext
             // Get the product in the current context
@@ -695,7 +706,7 @@ struct ProductPriceView: View {
     var reloadKey: Int = 0
     @State private var locationPrice: GroceryItemPrice?
     @State private var isLoading = true
-    
+
     var body: some View {
         VStack(alignment: .center, spacing: 16) {
             if isLoading {
@@ -713,8 +724,9 @@ struct ProductPriceView: View {
                     // Last updated info from GroceryItemPrice
                     if let lastUpdated = locationPrice.lastUpdated {
                         VStack(spacing: 2) {
-                            Text("Last Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
-                                .font(.system(size: 12, weight: .regular))
+                            Text("Last Updated: " +
+                                 DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))
+                            .font(.system(size: 12, weight: .regular))
                                 .foregroundColor(.gray)
                             if let updatedBy = locationPrice.updatedBy {
                                 Text("By: \(updatedBy)")
@@ -752,12 +764,12 @@ struct ProductPriceView: View {
                let insertedObjects = userInfo[NSInsertedObjectsKey] as? Set<NSManagedObject>,
                let updatedObjects = userInfo[NSUpdatedObjectsKey] as? Set<NSManagedObject>,
                let deletedObjects = userInfo[NSDeletedObjectsKey] as? Set<NSManagedObject> {
-                
+
                 let allChangedObjects = insertedObjects.union(updatedObjects).union(deletedObjects)
                 let hasPriceChanges = allChangedObjects.contains { object in
                     return object is GroceryItemPrice
                 }
-                
+
                 if hasPriceChanges {
                     Task {
                         await loadPriceForSelectedLocation()
@@ -772,7 +784,7 @@ struct ProductPriceView: View {
             }
         }
     }
-    
+
     private func loadPriceForSelectedLocation(newLocation: Location? = nil) async {
         isLoading = true
         let locationToSearch = newLocation ?? currentSelectedLocation
@@ -786,7 +798,11 @@ struct ProductPriceView: View {
         do {
             let context = await CoreDataStack.shared.viewContext
             let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", product, locationToSearch.id ?? "")
+            fetchRequest.predicate = NSPredicate(
+                format: "groceryItem == %@ AND location.id == %@",
+                product,
+                locationToSearch.id ?? ""
+            )
             // Debug: Let's also check what prices exist for this product
             let allPricesFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
             // Filter out prices with nil or deleted locations
@@ -797,7 +813,8 @@ struct ProductPriceView: View {
             let allPrices = try context.fetch(allPricesFetchRequest)
             print("ProductPriceView: All prices for this product: ")
             for price in allPrices {
-                print("  - Location: \(price.location?.name ?? "nil"), ID: \(price.location?.id ?? "nil"), Price: $\(price.price)")
+                print("  - Location: \(price.location?.name ?? "nil"), " +
+                      "ID: \(price.location?.id ?? "nil"), Price: $\(price.price)")
             }
             fetchRequest.fetchLimit = 1
             print("ProductPriceView: Searching for location ID: \(locationToSearch.id ?? "nil")")
@@ -854,8 +871,9 @@ struct LocationPriceRow: View {
                 // Last updated info from GroceryItemPrice
                 if let lastUpdated = price.lastUpdated {
                     VStack(spacing: 2) {
-                        Text("Last Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
-                            .font(.system(size: 12, weight: .regular))
+                        Text("Last Updated: " +
+                             DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))
+                        .font(.system(size: 12, weight: .regular))
                             .foregroundColor(.gray)
                         if let updatedBy = price.updatedBy {
                             Text("By: \(updatedBy)")
@@ -912,13 +930,13 @@ struct AddToShoppingListAndFavoritesView: View {
     @State private var isProcessing = false
     @State private var showingFavoriteAlert = false
     @State private var favoriteAlertMessage = ""
-    
+
     var body: some View {
         HStack(spacing: 14) {
             // Add to List Button - Fixed size to prevent movement
-            Button(action: {
+            Button {
                 toggleShoppingList()
-            }) {
+            } label: {
                 HStack(spacing: 8) {
                     Image(systemName: isInShoppingList ? "checkmark.circle.fill" : "plus.circle.fill")
                         .font(.system(size: 16))
@@ -935,13 +953,13 @@ struct AddToShoppingListAndFavoritesView: View {
                 )
             }
             .disabled(isProcessing || isInShoppingList)
-            
+
             Spacer()
-            
+
             // Add to Favorite Button - Fixed size to prevent movement
-            Button(action: {
+            Button {
                 toggleFavorites()
-            }) {
+            } label: {
                 HStack(spacing: 8) {
                     Image(systemName: isInFavorites ? "checkmark.circle.fill" : "plus.circle.fill")
                         .font(.system(size: 16))
@@ -967,7 +985,9 @@ struct AddToShoppingListAndFavoritesView: View {
         .onReceive(productViewModel.$products) { _ in
             // Update shopping list status when products change
             Task {
-                let newShoppingListStatus = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
+                let newShoppingListStatus = await productViewModel.isProductInShoppingList(
+                    name: product.productName ?? ""
+                )
                 await MainActor.run {
                     isInShoppingList = newShoppingListStatus
                 }
@@ -988,25 +1008,25 @@ struct AddToShoppingListAndFavoritesView: View {
             Text(favoriteAlertMessage)
         }
     }
-    
+
     private func checkCurrentStatus() async {
         let shoppingListStatus = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
         let favoritesStatus = await productViewModel.isProductInFavorites(product)
-        
+
         await MainActor.run {
             isInShoppingList = shoppingListStatus
             isInFavorites = favoritesStatus
         }
     }
-    
+
     private func toggleShoppingList() {
         guard !isProcessing else { return }
-        
+
         Task {
             await MainActor.run {
                 isProcessing = true
             }
-            
+
             do {
                 // Only allow adding to shopping list, not removing
                 if !isInShoppingList {
@@ -1021,28 +1041,29 @@ struct AddToShoppingListAndFavoritesView: View {
             } catch {
                 print("Error adding to shopping list: \(error)")
             }
-            
+
             await MainActor.run {
                 isProcessing = false
             }
         }
     }
-    
+
     private func toggleFavorites() {
         guard !isProcessing else { return }
-        
+
         Task {
             await MainActor.run {
                 isProcessing = true
             }
-            
+
             do {
                 if isInFavorites {
                     // Remove from favorites
                     await productViewModel.removeProductFromFavoritesQuiet(product)
                     await MainActor.run {
                         isInFavorites = false
-                        favoriteAlertMessage = "\(product.productName ?? "Product") has been removed from your favorites."
+                        favoriteAlertMessage = "\(product.productName ?? "Product") has been removed from " +
+                                               "your favorites."
                         showingFavoriteAlert = true
                     }
                 } else {
@@ -1057,7 +1078,7 @@ struct AddToShoppingListAndFavoritesView: View {
             } catch {
                 print("Error toggling favorites: \(error)")
             }
-            
+
             await MainActor.run {
                 isProcessing = false
             }
@@ -1080,9 +1101,9 @@ struct UpdatePriceView: View {
                 .font(.system(size: 17, weight: .bold))
                 .foregroundColor(.primary)
                 .padding(.top, 2)
-            Button(action: {
+            Button {
                 showSheet = true
-            }) {
+            } label: {
                 Text("Update Price")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(AppColors.accentGreen)
@@ -1341,7 +1362,11 @@ struct LocationPickerRowView: View {
         do {
             let context = await CoreDataStack.shared.viewContext
             let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            fetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", product, location.id ?? "")
+            fetchRequest.predicate = NSPredicate(
+                format: "groceryItem == %@ AND location.id == %@",
+                product,
+                location.id ?? ""
+            )
             fetchRequest.fetchLimit = 1
             let prices = try context.fetch(fetchRequest)
             let price = prices.first
@@ -1364,28 +1389,28 @@ struct ProductTagsView: View {
     @ObservedObject var product: GroceryItem
     @State private var isExpanded = false
     let refreshKey: Int
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Header button to toggle expansion (only if there are tags)
-            Button(action: {
+            Button {
                 if !product.tagArray.isEmpty {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         isExpanded.toggle()
                     }
                 }
-            }) {
+            } label: {
                 HStack {
                     Image(systemName: "tag")
                         .font(.system(size: 16))
                         .foregroundColor(.blue)
-                    
+
                     Text("Tags")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
-                    
+
                     Spacer()
-                    
+
                     Text("\(product.tagArray.count)")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
@@ -1393,7 +1418,7 @@ struct ProductTagsView: View {
                         .padding(.vertical, 2)
                         .background(Color.gray.opacity(0.2))
                         .cornerRadius(8)
-                    
+
                     // Only show chevron if there are tags to expand
                     if !product.tagArray.isEmpty {
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
@@ -1413,7 +1438,7 @@ struct ProductTagsView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .disabled(product.tagArray.isEmpty) // Disable button when no tags
-            
+
             // Collapsible content (only if there are tags and section is expanded)
             if !product.tagArray.isEmpty && isExpanded {
                 // Use adaptive grid so chips can expand to fit longer tag names without truncation
@@ -1439,13 +1464,13 @@ struct ProductTagsView: View {
 // Tag Chip View for individual tags
 struct ProductTagChipView: View {
     let tag: Tag
-    
+
     var body: some View {
         HStack(spacing: 4) {
             Circle()
                 .fill(Color(hex: tag.displayColor))
                 .frame(width: 8, height: 8)
-            
+
             Text(tag.displayName)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.primary)
@@ -1471,7 +1496,7 @@ struct ProductEditView: View {
     let onCancel: () -> Void
     let onDelete: () -> Void
     @Environment(\.dismiss) private var dismiss
-    
+
     // Form state
     @State private var productName: String = ""
     @State private var brand: String = ""
@@ -1480,13 +1505,13 @@ struct ProductEditView: View {
     @State private var selectedLocation: Location?
     @State private var isOnSale: Bool = false
     @State private var selectedTags: [Tag] = []
-    
+
     // UI state
     @State private var showLocationPicker = false
     @State private var showingTagPicker = false
     @State private var availableTags: [Tag] = []
     @State private var userLocations: [Location] = []
-    
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -1494,7 +1519,7 @@ struct ProductEditView: View {
                     // Add spacing after header
                     Spacer()
                         .frame(height: 20)
-                    
+
                     // Form Fields
                     VStack(spacing: 16) {
                         // Product Name Field
@@ -1508,7 +1533,7 @@ struct ProductEditView: View {
                                 .background(Color(UIColor.systemGray6))
                                 .cornerRadius(8)
                         }
-                        
+
                         // Brand Field
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Company/Brand")
@@ -1520,9 +1545,7 @@ struct ProductEditView: View {
                                 .background(Color(UIColor.systemGray6))
                                 .cornerRadius(8)
                         }
-                        
 
-                        
                         // Price Field
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Price")
@@ -1535,15 +1558,15 @@ struct ProductEditView: View {
                                 .cornerRadius(8)
                                 .keyboardType(.decimalPad)
                         }
-                        
+
                         // Location Field
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Location")
                                 .font(.headline)
                                 .foregroundColor(.primary)
-                            Button(action: {
+                            Button {
                                 showLocationPicker = true
-                            }) {
+                            } label: {
                                 HStack {
                                     Text(selectedLocation?.name ?? "Select location...")
                                         .font(.body)
@@ -1559,7 +1582,7 @@ struct ProductEditView: View {
                         }
                     }
                     .padding(.horizontal)
-                    
+
                     // Selected Tags Display
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -1588,7 +1611,7 @@ struct ProductEditView: View {
                         }
                     }
                     .padding(.horizontal)
-                    
+
                     // On Sale Toggle
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -1601,16 +1624,16 @@ struct ProductEditView: View {
                         }
                         .padding(.horizontal)
                     }
-                    
+
                     Spacer()
                         .frame(height: 20)
-                    
+
                     // Action Buttons
                     VStack(spacing: 16) {
                         // Save Button
-                        Button(action: {
+                        Button {
                             saveChanges()
-                        }) {
+                        } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 18, weight: .semibold))
@@ -1623,11 +1646,11 @@ struct ProductEditView: View {
                             .background(Color.accentColorGreen)
                             .cornerRadius(12)
                         }
-                        
+
                         // Delete Button
-                        Button(action: {
+                        Button {
                             onDelete()
-                        }) {
+                        } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "trash")
                                     .font(.system(size: 18, weight: .semibold))
@@ -1676,20 +1699,22 @@ struct ProductEditView: View {
             )
         }
     }
-    
+
     private func loadProductData() {
         productName = product.productName ?? ""
         brand = product.brand ?? ""
         category = ProductCategory(rawValue: product.category ?? "") ?? .none
         isOnSale = product.isOnSale
-        
+
         // Get the most recent VALID price and location (ignore orphaned prices with missing/deleted locations)
         if let prices = product.prices as? Set<GroceryItemPrice> {
             let validPrices = prices.filter { price in
                 guard let loc = price.location else { return false }
                 return !loc.isDeleted
             }
-            if let mostRecentPrice = validPrices.max(by: { ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) }) {
+            if let mostRecentPrice = validPrices.max(by: {
+                ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast)
+            }) {
                 price = String(format: "%.2f", mostRecentPrice.price)
                 selectedLocation = mostRecentPrice.location
             } else {
@@ -1698,41 +1723,41 @@ struct ProductEditView: View {
                 selectedLocation = nil
             }
         }
-        
+
         // Load existing tags
         if let existingTags = product.tags as? Set<Tag> {
             selectedTags = Array(existingTags)
         }
     }
-    
+
     private func loadAvailableData() {
         Task {
             await loadLocations()
             await loadTags()
         }
     }
-    
+
     private func loadLocations() async {
         await productViewModel.loadLocations()
         await MainActor.run {
             userLocations = productViewModel.locations
         }
     }
-    
+
     private func loadTags() async {
         await productViewModel.loadTags()
         await MainActor.run {
             availableTags = productViewModel.tags
         }
     }
-    
+
     private func saveChanges() {
         // Update the product with new values
         product.productName = productName
         product.brand = brand
         product.category = category.rawValue
         product.isOnSale = isOnSale
-        
+
         // Update price if location is selected (use repository so reputation updates)
         if let location = selectedLocation, let priceValue = Double(price) {
             Task {
@@ -1744,13 +1769,13 @@ struct ProductEditView: View {
                 )
             }
         }
-        
+
         // Update tags
         product.tags = NSSet(array: selectedTags)
-        
+
         onSave(product)
     }
-    
+
     private func updateProductPrice(product: GroceryItem, newPrice: Double, location: Location) async {
         do {
             let context = await CoreDataStack.shared.viewContext
@@ -1763,7 +1788,7 @@ struct ProductEditView: View {
                 print("Error: Could not find product in context")
                 return
             }
-            
+
             // Get the location in the current context
             let locationFetchRequest: NSFetchRequest<Location> = Location.fetchRequest()
             locationFetchRequest.predicate = NSPredicate(format: "id == %@", location.id ?? "")
@@ -1773,13 +1798,17 @@ struct ProductEditView: View {
                 print("Error: Could not find location in context")
                 return
             }
-            
+
             // Check if there's an existing price for this product and location
             let priceFetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
-            priceFetchRequest.predicate = NSPredicate(format: "groceryItem == %@ AND location.id == %@", productInContext, locationInContext.id ?? "")
+            priceFetchRequest.predicate = NSPredicate(
+                format: "groceryItem == %@ AND location.id == %@",
+                productInContext,
+                locationInContext.id ?? ""
+            )
             priceFetchRequest.fetchLimit = 1
             let existingPrices = try context.fetch(priceFetchRequest)
-            
+
             if let existingPrice = existingPrices.first {
                 // Update existing price for this location
                 existingPrice.price = newPrice
@@ -1799,14 +1828,15 @@ struct ProductEditView: View {
                 )
                 print("Created new price for location: \(locationInContext.name ?? "Unknown")")
             }
-            
+
             try context.save()
-            print("Successfully updated product price to $\(newPrice) for location: \(locationInContext.name ?? "Unknown")")
+            print("Successfully updated product price to $\(newPrice) for location: " +
+                  "\(locationInContext.name ?? "Unknown")")
         } catch {
             print("Error updating product price: \(error)")
         }
     }
-    
+
     private func getCurrentUsername() async -> String {
         do {
             let context = await CoreDataStack.shared.viewContext
@@ -1824,17 +1854,15 @@ struct ProductEditView: View {
     }
 }
 
-
-
 // Product Edit Tag Picker View
 struct ProductEditTagPickerView: View {
     let availableTags: [Tag]
     @Binding var selectedTags: [Tag]
     let onDone: () -> Void
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var searchText = ""
-    
+
     var filteredTags: [Tag] {
         if searchText.isEmpty {
             return availableTags
@@ -1844,7 +1872,7 @@ struct ProductEditTagPickerView: View {
             }
         }
     }
-    
+
     var body: some View {
         NavigationView {
             VStack {
@@ -1854,11 +1882,11 @@ struct ProductEditTagPickerView: View {
                         .foregroundColor(.gray)
                     TextField("Search tags...", text: $searchText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
+
                     if !searchText.isEmpty {
-                        Button(action: {
+                        Button {
                             searchText = ""
-                        }) {
+                        } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.gray)
                         }
@@ -1866,7 +1894,7 @@ struct ProductEditTagPickerView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
-                
+
                 if availableTags.isEmpty {
                     VStack(spacing: 16) {
                         Image(systemName: "tag.slash")
@@ -1884,13 +1912,13 @@ struct ProductEditTagPickerView: View {
                 } else {
                     List {
                         ForEach(filteredTags, id: \.id) { tag in
-                            Button(action: {
+                            Button {
                                 if selectedTags.contains(where: { $0.id == tag.id }) {
                                     selectedTags.removeAll { $0.id == tag.id }
                                 } else {
                                     selectedTags.append(tag)
                                 }
-                            }) {
+                            } label: {
                                 HStack {
                                     Circle()
                                         .fill(Color(hex: tag.displayColor))

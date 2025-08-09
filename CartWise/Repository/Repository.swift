@@ -9,7 +9,20 @@ import CoreData
 protocol ProductRepositoryProtocol: Sendable {
     func fetchAllProducts() async throws -> [GroceryItem]
     func fetchListProducts() async throws -> [GroceryItem]
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool, isOnSale: Bool) async throws -> GroceryItem
+    func createProduct(
+        id: String,
+        productName: String,
+        brand: String?,
+        category: String?,
+        price: Double,
+        currency: String,
+        store: String?,
+        location: String?,
+        imageURL: String?,
+        barcode: String?,
+        isInShoppingList: Bool,
+        isOnSale: Bool
+    ) async throws -> GroceryItem
     func updateProduct(_ product: GroceryItem) async throws
     func updateProductWithPrice(product: GroceryItem, price: Double, store: String, location: String?) async throws
     func deleteProduct(_ product: GroceryItem) async throws
@@ -50,7 +63,20 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
         // Cache-first: return shopping list data immediately
         return try await coreDataContainer.fetchListProducts()
     }
-    func createProduct(id: String, productName: String, brand: String?, category: String?, price: Double, currency: String, store: String?, location: String?, imageURL: String?, barcode: String?, isInShoppingList: Bool = false, isOnSale: Bool = false) async throws -> GroceryItem {
+    func createProduct(
+        id: String,
+        productName: String,
+        brand: String?,
+        category: String?,
+        price: Double,
+        currency: String,
+        store: String?,
+        location: String?,
+        imageURL: String?,
+        barcode: String?,
+        isInShoppingList: Bool = false,
+        isOnSale: Bool = false
+    ) async throws -> GroceryItem {
         print("Repository: Creating product with store: '\(store ?? "nil")'")
         // Create locally first
         let product = try await coreDataContainer.createProduct(
@@ -75,7 +101,12 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
         try await coreDataContainer.updateProduct(product)
     }
     func updateProductWithPrice(product: GroceryItem, price: Double, store: String, location: String?) async throws {
-        try await coreDataContainer.updateProductWithPrice(product: product, price: price, store: store, location: location)
+        try await coreDataContainer.updateProductWithPrice(
+            product: product,
+            price: price,
+            store: store,
+            location: location
+        )
     }
     func deleteProduct(_ product: GroceryItem) async throws {
         // Permanently delete from local cache
@@ -152,7 +183,8 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     if let shopper = itemPriceResult.shopper {
                         itemShoppers[productName] = shopper
                     }
-                    print("Repository: Found \(productName) at \(store) for $\(price) by \(itemPriceResult.shopper ?? "Unknown")")
+                    print("Repository: Found \(productName) at \(store) for $\(price) " +
+                          "by \(itemPriceResult.shopper ?? "Unknown")")
                 } else {
                     unavailableItems += 1
                     print("Repository: \(productName) not available at \(store)")
@@ -161,7 +193,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             // Calculate availability percentage
             let availabilityPercentage = Double(availableItems) / Double(shoppingList.count)
             let minimumAvailability = 0.85 // 85% minimum availability threshold
-            
+
             // Only include stores that have at least 85% of items available
             if availableItems > 0 && availabilityPercentage >= minimumAvailability {
                 let storePrice = LocalStorePrice(
@@ -174,9 +206,13 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
                     itemShoppers: itemShoppers.isEmpty ? nil : itemShoppers
                 )
                 storePrices.append(storePrice)
-                print("Repository: Store \(store) total: $\(totalPrice), available: \(availableItems)/\(shoppingList.count) (\(String(format: "%.1f", availabilityPercentage * 100))%) - INCLUDED")
+                print("Repository: Store \(store) total: $\(totalPrice), " +
+                      "available: \(availableItems)/\(shoppingList.count) " +
+                      "(\(String(format: "%.1f", availabilityPercentage * 100))%) - INCLUDED")
             } else {
-                print("Repository: Store \(store) available: \(availableItems)/\(shoppingList.count) (\(String(format: "%.1f", availabilityPercentage * 100))%) - EXCLUDED (below 85% threshold)")
+                print("Repository: Store \(store) available: \(availableItems)/\(shoppingList.count) " +
+                      "(\(String(format: "%.1f", availabilityPercentage * 100))%) - " +
+                      "EXCLUDED (below 85% threshold)")
             }
         }
         // Sort by total price (cheapest first) and take top 3
@@ -194,7 +230,8 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
             totalItems: shoppingList.count,
             availableItems: top3StorePrices.map { $0.availableItems }.max() ?? 0
         )
-        print("Repository: Local price comparison complete. Top 3 stores: \(top3StorePrices.map { "\($0.store): $\($0.totalPrice)" }.joined(separator: ", "))")
+        let storeList = top3StorePrices.map { "\($0.store): $\($0.totalPrice)" }.joined(separator: ", ")
+        print("Repository: Local price comparison complete. Top 3 stores: \(storeList)")
         return comparison
     }
     // Helper method to get all stores from the database
@@ -205,9 +242,12 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     private func getItemPriceAtStore(item: GroceryItem, store: String) async throws -> Double? {
         return try await coreDataContainer.getItemPriceAtStore(item: item, store: store)
     }
-    
+
     // Helper method to get the price and shopper of an item at a specific store
-    private func getItemPriceAndShopperAtStore(item: GroceryItem, store: String) async throws -> (price: Double?, shopper: String?) {
+    private func getItemPriceAndShopperAtStore(
+        item: GroceryItem,
+        store: String
+    ) async throws -> (price: Double?, shopper: String?) {
         return try await coreDataContainer.getItemPriceAndShopperAtStore(item: item, store: store)
     }
     // MARK: - Tag Methods
@@ -223,7 +263,7 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws {
         try await coreDataContainer.addTagsToProduct(product, tags: tags)
     }
-    
+
     func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async throws {
         try await coreDataContainer.replaceTagsForProduct(product, tags: tags)
     }
@@ -233,16 +273,16 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     func initializeDefaultTags() async throws {
         try await coreDataContainer.initializeDefaultTags()
     }
-    
+
     // MARK: - ProductImage Methods
     func saveProductImage(for product: GroceryItem, imageURL: String, imageData: Data?) async throws {
         try await coreDataContainer.saveProductImage(for: product, imageURL: imageURL, imageData: imageData)
     }
-    
+
     func getProductImage(for product: GroceryItem) async throws -> ProductImage? {
         return try await coreDataContainer.getProductImage(for: product)
     }
-    
+
     func deleteProductImage(for product: GroceryItem) async throws {
         try await coreDataContainer.deleteProductImage(for: product)
     }

@@ -17,7 +17,7 @@ struct ShopperLevel {
 
 class ReputationSystem: ObservableObject {
     static let shared = ReputationSystem()
-    
+
     let levels: [ShopperLevel] = [
         ShopperLevel(
             name: "New Shopper",
@@ -62,43 +62,41 @@ class ReputationSystem: ObservableObject {
             description: "A legend in the shopping community"
         )
     ]
-    
+
     func getCurrentLevel(updates: Int) -> ShopperLevel {
-        for level in levels.reversed() {
-            if updates >= level.minUpdates {
-                return level
-            }
+        for level in levels.reversed() where updates >= level.minUpdates {
+            return level
         }
         return levels.first!
     }
-    
+
     func getNextLevel(updates: Int) -> ShopperLevel? {
         let currentLevel = getCurrentLevel(updates: updates)
         guard let currentIndex = levels.firstIndex(where: { $0.name == currentLevel.name }) else {
             return nil
         }
-        
+
         let nextIndex = currentIndex + 1
         return nextIndex < levels.count ? levels[nextIndex] : nil
     }
-    
+
     func getProgressToNextLevel(updates: Int) -> Double {
         let currentLevel = getCurrentLevel(updates: updates)
         guard let nextLevel = getNextLevel(updates: updates) else {
             return 1.0 // Max level reached
         }
-        
+
         let updatesInCurrentLevel = updates - currentLevel.minUpdates
         let updatesNeededForNextLevel = nextLevel.minUpdates - currentLevel.minUpdates
-        
+
         return Double(updatesInCurrentLevel) / Double(updatesNeededForNextLevel)
     }
-    
+
     func getUpdatesToNextLevel(updates: Int) -> Int {
         guard let nextLevel = getNextLevel(updates: updates) else {
             return 0 // Max level reached
         }
-        
+
         return nextLevel.minUpdates - updates
     }
-} 
+}

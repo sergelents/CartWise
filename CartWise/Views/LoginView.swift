@@ -12,7 +12,9 @@ struct LoginView: View {
     @State private var username = ""
     @State private var password = ""
     init() {
-        _viewModel = StateObject(wrappedValue: AuthViewModel(context: PersistenceController.shared.container.viewContext))
+        _viewModel = StateObject(
+            wrappedValue: AuthViewModel(context: PersistenceController.shared.container.viewContext)
+        )
     }
     var body: some View {
         NavigationStack {
@@ -59,17 +61,18 @@ struct LoginView: View {
                         .padding(.horizontal)
                 }
                 // Login Button
-                Button(action: {
+                Button {
                     Task {
                         print("Login button tapped with username: \(username)")
                         await viewModel.login(username: username, password: password)
-                        print("Login completed. User: \(String(describing: viewModel.user)), Error: \(String(describing: viewModel.error))")
+                        print("Login completed. User: \(String(describing: viewModel.user)), " +
+                              "Error: \(String(describing: viewModel.error))")
                         if viewModel.user != nil {
                             isLoggedIn = true
                             print("User logged in successfully")
                         }
                     }
-                }) {
+                } label: {
                     if viewModel.isLoading {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: AppColors.textSecondary))
