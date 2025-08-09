@@ -7,7 +7,6 @@
 import SwiftUI
 struct FavoriteItemsView: View {
     @EnvironmentObject var productViewModel: ProductViewModel
-    @State private var showingProductDetail = false
     @State private var selectedProduct: GroceryItem?
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -104,7 +103,6 @@ struct FavoriteItemsView: View {
                                 product: product,
                                 onTap: {
                                     selectedProduct = product
-                                    showingProductDetail = true
                                 },
                                 onRemoveFromFavorites: {
                                     Task {
@@ -125,10 +123,8 @@ struct FavoriteItemsView: View {
                 .shadow(color: Color.black.opacity(0.08), radius: 16, x: 0, y: 8)
         )
         .padding(.vertical, 16)
-        .sheet(isPresented: $showingProductDetail) {
-            if let product = selectedProduct {
-                ProductDetailView(product: product, selectedLocation: nil)
-            }
+        .sheet(item: $selectedProduct) { product in
+            ProductDetailView(product: product, selectedLocation: nil)
         }
         .task {
             await productViewModel.loadFavoriteProducts()
