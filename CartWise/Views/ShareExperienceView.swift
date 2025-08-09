@@ -138,7 +138,8 @@ struct ShareExperienceView: View {
                         .frame(minHeight: 100)
                         .onAppear {
                             if let comparison = priceComparison, let bestStore = comparison.bestStore {
-                                comment = "Found great prices at \(bestStore)! Total: $\(String(format: "%.2f", comparison.bestTotalPrice))"
+                                comment = "Found great prices at \(bestStore)! " +
+                                          "Total: $\(String(format: "%.2f", comparison.bestTotalPrice))"
                             }
                         }
                 }

@@ -724,7 +724,8 @@ struct ProductPriceView: View {
                     // Last updated info from GroceryItemPrice
                     if let lastUpdated = locationPrice.lastUpdated {
                         VStack(spacing: 2) {
-                            Text("Last Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
+                            Text("Last Updated: " +
+                                 DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))
                             .font(.system(size: 12, weight: .regular))
                                 .foregroundColor(.gray)
                             if let updatedBy = locationPrice.updatedBy {
@@ -870,7 +871,8 @@ struct LocationPriceRow: View {
                 // Last updated info from GroceryItemPrice
                 if let lastUpdated = price.lastUpdated {
                     VStack(spacing: 2) {
-                        Text("Last Updated: \(DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))")
+                        Text("Last Updated: " +
+                             DateFormatter.localizedString(from: lastUpdated, dateStyle: .short, timeStyle: .short))
                         .font(.system(size: 12, weight: .regular))
                             .foregroundColor(.gray)
                         if let updatedBy = price.updatedBy {
@@ -1710,8 +1712,8 @@ struct ProductEditView: View {
                 guard let loc = price.location else { return false }
                 return !loc.isDeleted
             }
-            if let mostRecentPrice = validPrices.max(by: { 
-                ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) 
+            if let mostRecentPrice = validPrices.max(by: {
+                ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast)
             }) {
                 price = String(format: "%.2f", mostRecentPrice.price)
                 selectedLocation = mostRecentPrice.location

@@ -271,7 +271,9 @@ struct SearchItemsView: View {
         await viewModel.loadLocations()
         userLocations = viewModel.locations
         // Set selected location to default or first favorited location
-        selectedLocation = userLocations.first { $0.isDefault } ?? userLocations.first { $0.favorited } ?? userLocations.first
+        selectedLocation = userLocations.first { $0.isDefault } ??
+                           userLocations.first { $0.favorited } ??
+                           userLocations.first
     }
 }
 // MARK: - Search Result Row

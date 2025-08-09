@@ -86,19 +86,7 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             return products
         }
     }
-    // func fetchRecentProducts(limit: Int) async throws -> [GroceryItem] {
-    //     // Use viewContext through the actor
-    //     let context = await coreDataStack.viewContext
-    //     return try await context.perform {
-    //         let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
-    //     // Get all products (not just shopping list) sorted by creation date
-    //         request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.createdAt, ascending: false)]
-    //         request.fetchLimit = limit
-    //         return try context.fetch(request)
-    //     }
-    // }
-    // createProduct was creating GroceryItem objects in background Core Data context,
-    // but ViewModel expecting objects from main context.
+
     func createProduct(
         id: String,
         productName: String,
