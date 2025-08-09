@@ -13,7 +13,9 @@ struct MyProfileView: View {
     @State private var isLoadingUser: Bool = true
     @State private var showAddLocation: Bool = false
     @State private var selectedTab: ProfileTab = .favorites
-
+    @AppStorage("profileIconName") private var profileIconName: String = "person.crop.circle.fill"
+    @State private var isAvatarPickerPresented: Bool = false
+    
     enum ProfileTab: String, CaseIterable {
         case favorites = "Favorites"
         case locations = "Locations"
@@ -32,7 +34,9 @@ struct MyProfileView: View {
                         // Profile Card
                         ProfileCard(
                             currentUsername: currentUsername,
-                            isLoadingUser: isLoadingUser
+                            isLoadingUser: isLoadingUser,
+                            profileIconName: profileIconName,
+                            onAvatarTapped: { isAvatarPickerPresented = true }
                         )
 
                         // Tabbed Content
@@ -60,6 +64,9 @@ struct MyProfileView: View {
             .sheet(isPresented: $showAddLocation) {
                 AddLocationView()
                     .environmentObject(productViewModel)
+            }
+            .sheet(isPresented: $isAvatarPickerPresented) {
+                ProfileIconPickerView(selectedIcon: $profileIconName)
             }
         }
     }
@@ -171,29 +178,38 @@ struct TabSelector: View {
 struct ProfileCard: View {
     let currentUsername: String
     let isLoadingUser: Bool
-
+    let profileIconName: String
+    let onAvatarTapped: () -> Void
+    
     var body: some View {
         VStack(spacing: 20) {
             // Profile Avatar
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                AppColors.accentGreen.opacity(0.15),
-                                AppColors.accentGreen.opacity(0.05)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+            Button(action: onAvatarTapped) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    AppColors.accentGreen.opacity(0.15),
+                                    AppColors.accentGreen.opacity(0.05)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .frame(width: 80, height: 80)
-
-                Image(systemName: "person.crop.circle.fill")
-                    .resizable()
-                    .frame(width: 64, height: 64)
-                    .foregroundColor(AppColors.accentGreen)
+                        .frame(width: 92, height: 92)
+                        .overlay(
+                            Circle()
+                                .stroke(AppColors.accentGreen.opacity(0.2), lineWidth: 1)
+                        )
+                    Image(systemName: profileIconName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 64, height: 64)
+                        .foregroundColor(AppColors.accentGreen)
+                }
             }
+            .buttonStyle(PlainButtonStyle())
             .padding(.top, 16)
 
             // User Info
@@ -222,6 +238,64 @@ struct ProfileCard: View {
                 .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
         )
         .padding(.horizontal)
+    }
+}
+
+// MARK: - Profile Icon Picker
+struct ProfileIconPickerView: View {
+    @Binding var selectedIcon: String
+    @Environment(\.dismiss) private var dismiss
+    private let icons: [String] = [
+        "person.crop.circle.fill",
+        "person.circle.fill",
+        "person.fill",
+        "person.2.circle.fill",
+        "cart.fill",
+        "star.circle.fill",
+        "bolt.circle.fill",
+        "leaf.circle.fill",
+        "heart.circle.fill"
+    ]
+    private let columns: [GridItem] = Array(repeating: GridItem(.flexible(), spacing: 16), count: 3)
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(icons, id: \.self) { icon in
+                        Button(action: {
+                            selectedIcon = icon
+                            dismiss()
+                        }) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.white)
+                                    .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(icon == selectedIcon ? AppColors.accentGreen : Color.clear, lineWidth: 2)
+                                    )
+                                Image(systemName: icon)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 48, height: 48)
+                                    .foregroundColor(AppColors.accentGreen)
+                                    .padding(20)
+                            }
+                            .frame(height: 100)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(16)
+            }
+            .background(AppColors.backgroundSecondary.ignoresSafeArea())
+            .navigationTitle("Choose an Icon")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
     }
 }
 

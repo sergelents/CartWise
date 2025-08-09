@@ -497,6 +497,7 @@ struct ExperienceDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var newComment = ""
     @State private var newRating: Int16 = 0
+    @FocusState private var isNewCommentFocused: Bool
     var body: some View {
         NavigationView {
             ScrollView {
@@ -573,6 +574,11 @@ struct ExperienceDetailView: View {
                             TextField("Write a comment...", text: $newComment, axis: .vertical)
                                 .textFieldStyle(.roundedBorder)
                                 .lineLimit(3...6)
+                                .focused($isNewCommentFocused)
+                                .submitLabel(.send)
+                                .onSubmit {
+                                    postComment()
+                                }
                             Button("Post Comment") {
                                 postComment()
                             }
@@ -594,6 +600,12 @@ struct ExperienceDetailView: View {
                         dismiss()
                     }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        isNewCommentFocused = false
+                    }
+                }
             }
         }
     }
@@ -606,6 +618,7 @@ struct ExperienceDetailView: View {
         )
         newComment = ""
         newRating = 0
+        isNewCommentFocused = false
     }
 }
 struct CommentView: View {
