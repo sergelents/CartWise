@@ -26,21 +26,19 @@ struct CategoryItemsView: View {
         // Load all products and filter by category
         let allProducts = await viewModel.fetchAllProducts()
         let filtered = allProducts.filter { groceryItem in
-            // First check if the category field matches
-            if let productCategory = groceryItem.category {
-                if productCategory.lowercased() == category.rawValue.lowercased() {
-                    return true
-                }
+            // Primary: Check if category field matches (set from barcode scanning)
+            if let productCategory = groceryItem.category, !productCategory.isEmpty {
+                return productCategory.lowercased() == category.rawValue.lowercased()
             }
-            // Then check product name against category keywords
+            
+            // Fallback: Use keyword matching only for products without category (legacy data)
             if let productName = groceryItem.productName {
                 let categoryKeywords = getCategoryKeywords(for: category)
-                let matches = categoryKeywords.contains { keyword in
+                return categoryKeywords.contains { keyword in
                     productName.lowercased().contains(keyword.lowercased())
                 }
-                print("CategoryItemsView: Filtering by name: \(productName) - Keywords: \(categoryKeywords) - Matches: \(matches)")
-                return matches
             }
+            
             return false
         }
         print("CategoryItemsView: Total products: \(allProducts.count), Filtered products: \(filtered.count)")
@@ -58,9 +56,9 @@ struct CategoryItemsView: View {
         case .dairy:
             return ["dairy", "eggs", "milk", "cheese", "yogurt", "butter", "cream"]
         case .bakery:
-            return ["bakery", "bread", "pastry", "cake", "cookie", "muffin", "donut"]
+            return ["bakery", "bread", "pastry", "cake", "cookie", "muffin", "donut", "croissant", "bagel", "pretzel", "scone", "waffle", "pancake"]
         case .produce:
-            return ["produce", "vegetable", "fruit", "fresh", "organic", "apple", "banana", "tomato"]
+            return ["produce", "vegetable", "fruit", "apple", "banana", "tomato", "lettuce", "carrot", "onion", "potato", "broccoli", "spinach", "cucumber", "bell pepper", "orange", "grape", "strawberry", "avocado"]
         case .pantry:
             return ["pantry", "canned", "staple", "rice", "pasta", "sauce", "condiment"]
         case .beverages:
@@ -735,7 +733,7 @@ struct ProductPriceView: View {
                     Text("at \(currentSelectedLocation?.name ?? "Unknown Location")")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
-                    Text("Tap 'Update Price' to add a price for this location")
+                    Text("Tap 'Edit' to add a price for this location")
                         .font(.system(size: 12))
                         .foregroundColor(.gray.opacity(0.7))
                         .multilineTextAlignment(.center)
