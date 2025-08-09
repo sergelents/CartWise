@@ -86,9 +86,9 @@ struct AddItemsView: View {
                 // Action Buttons
                 VStack(spacing: 12) {
                     // Scan Button
-                    Button(action: {
+                    Button {
                         showingCamera.toggle()
-                    }) {
+                    } label: {
                         HStack {
                             Image(systemName: showingCamera ? "stop.fill" : "camera.fill")
                                 .font(.system(size: 18))
@@ -166,7 +166,8 @@ struct AddItemsView: View {
                     addToShoppingList: $addToShoppingList,
                     isExistingProduct: $isExistingProduct,
                     isScanInProgress: isScanInProgress,
-                    onConfirm: { barcode, productName, company, price, category, isOnSale, location, tags, addToShoppingList in
+                    onConfirm: { barcode, productName, company, price, category, isOnSale, location, tags,
+                                 addToShoppingList in
                         showingBarcodeConfirmation = false
                         isScanInProgress = false
                         Task {
@@ -238,8 +239,8 @@ struct AddItemsView: View {
 
                         // Get the most recent price and location
                         if let prices = existingProduct.prices as? Set<GroceryItemPrice>,
-                           let mostRecentPrice = prices.max(by: {
-                               ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast)
+                           let mostRecentPrice = prices.max(by: { 
+                               ($0.lastUpdated ?? Date.distantPast) < ($1.lastUpdated ?? Date.distantPast) 
                            }) {
                             pendingPrice = String(format: "%.2f", mostRecentPrice.price)
                             pendingLocation = mostRecentPrice.location
@@ -336,8 +337,8 @@ struct AddItemsView: View {
                 } else {
                     // Success - show success message and clear the scanned barcode
                     let shoppingListText = addToShoppingList ? " and added to shopping list" : ""
-                    successMessage = wasExistingProduct ?
-                        "Product updated successfully!\(shoppingListText)" :
+                    successMessage = wasExistingProduct ? 
+                        "Product updated successfully!\(shoppingListText)" : 
                         "Product added successfully!\(shoppingListText)"
                     showingSuccess = true
                     scannedBarcode = ""
@@ -518,13 +519,13 @@ struct TagPickerView: View {
                 .padding(.top)
                 List {
                     ForEach(filteredTags, id: \.id) { tag in
-                        Button(action: {
+                        Button {
                             if localSelectedTags.contains(where: { $0.id == tag.id }) {
                                 localSelectedTags.removeAll { $0.id == tag.id }
                             } else {
                                 localSelectedTags.append(tag)
                             }
-                        }) {
+                        } label: {
                             HStack {
                                 Text(tag.displayName)
                                 Spacer()
@@ -689,9 +690,9 @@ struct BarcodeConfirmationView: View {
                             Text("Category")
                                 .font(.headline)
                                 .foregroundColor(AppColors.textPrimary)
-                            Button(action: {
+                            Button {
                                 showCategoryPicker = true
-                            }) {
+                            } label: {
                                 HStack {
                                     Text(selectedCategory.rawValue)
                                         .font(.body)
@@ -722,9 +723,9 @@ struct BarcodeConfirmationView: View {
                             Text("Location")
                                 .font(.headline)
                                 .foregroundColor(AppColors.textPrimary)
-                            Button(action: {
+                            Button {
                                 showLocationPicker = true
-                            }) {
+                            } label: {
                                 HStack {
                                     Text(selectedLocation?.name ?? "Select location...")
                                         .font(.body)
@@ -746,9 +747,9 @@ struct BarcodeConfirmationView: View {
                             .font(.headline)
                             .foregroundColor(AppColors.textPrimary)
                             .padding(.bottom, 4)
-                        Button(action: {
+                        Button {
                             showingTagPicker = true
-                        }) {
+                        } label: {
                             HStack {
                                 Text(selectedTags.isEmpty ? "Select tags..." : "\(selectedTags.count) tags selected")
                                     .font(.body)
@@ -822,7 +823,7 @@ struct BarcodeConfirmationView: View {
                     // Action Buttons - Center Bottom
                     VStack(spacing: 16) {
                         // Always show for testing
-                        Button(action: {
+                        Button {
                             onConfirm(
                                 barcode,
                                 productName,
@@ -834,7 +835,7 @@ struct BarcodeConfirmationView: View {
                                 selectedTags,
                                 addToShoppingList
                             )
-                        }) {
+                        } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: isExistingProduct ? "arrow.clockwise" : "plus")
                                     .font(.system(size: 18, weight: .semibold))
@@ -903,11 +904,11 @@ struct ManualBarcodeEntryView: View {
                 Spacer()
                 // Action Buttons
                 VStack(spacing: 12) {
-                    Button(action: {
+                    Button {
                         if !barcode.isEmpty {
                             onBarcodeEntered(barcode)
                         }
-                    }) {
+                    } label: {
                         Text("Add Item")
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
@@ -918,9 +919,9 @@ struct ManualBarcodeEntryView: View {
                     }
                     .disabled(barcode.isEmpty)
                     .padding(.horizontal)
-                    Button(action: {
+                    Button {
                         dismiss()
-                    }) {
+                    } label: {
                         Text("Cancel")
                             .fontWeight(.semibold)
                             .foregroundColor(AppColors.accentGreen)

@@ -49,9 +49,9 @@ struct SocialFeedView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
+                    Button {
                         showingAddExperience = true
-                    }) {
+                    } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
                     }
@@ -203,10 +203,10 @@ struct AddExperienceView: View {
                             .font(.headline)
                         HStack(spacing: 12) {
                             ForEach(1...5, id: \.self) { star in
-                                Button(action: {
+                                Button {
                                     // If tapping the same star, clear the rating, otherwise set to the tapped star
                                     rating = rating == Int16(star) ? 0 : Int16(star)
-                                }) {
+                                } label: {
                                     Image(systemName: star <= rating ? "star.fill" : "star")
                                         .foregroundColor(star <= rating ? .orange : .gray)
                                         .font(.title2)
@@ -221,10 +221,10 @@ struct AddExperienceView: View {
                 // Optional Product Information
                 if selectedType == "product_review" || selectedType == "price_update" {
                     Section("Product Information (Optional)") {
-                        Button(action: {
+                        Button {
                             loadAvailableProducts()
                             showingProductPicker = true
-                        }) {
+                        } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Product")
@@ -250,10 +250,10 @@ struct AddExperienceView: View {
                 // Optional Store Information
                 if selectedType == "store_review" || selectedType == "price_update" {
                     Section("Store Information (Optional)") {
-                        Button(action: {
+                        Button {
                             loadAvailableLocations()
                             showingLocationPicker = true
-                        }) {
+                        } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Store")
@@ -433,10 +433,10 @@ struct ProductPickerView: View {
                     // Products List
                     List {
                         ForEach(filteredProducts, id: \.id) { product in
-                            Button(action: {
+                            Button {
                                 selectedProduct = product
                                 dismiss()
-                            }) {
+                            } label: {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(product.productName ?? "Unknown Product")
@@ -558,10 +558,10 @@ struct ExperienceDetailView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 12) {
                                 ForEach(1...5, id: \.self) { star in
-                                    Button(action: {
+                                    Button {
                                         // If tapping the same star, clear the rating, otherwise set to the tapped star
                                         newRating = newRating == Int16(star) ? 0 : Int16(star)
-                                    }) {
+                                    } label: {
                                         Image(systemName: star <= newRating ? "star.fill" : "star")
                                             .foregroundColor(star <= newRating ? .orange : .gray)
                                             .font(.title2)

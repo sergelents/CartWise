@@ -30,7 +30,7 @@ struct CategoryItemsView: View {
             if let productCategory = groceryItem.category, !productCategory.isEmpty {
                 return productCategory.lowercased() == category.rawValue.lowercased()
             }
-
+            
             // Fallback: Use keyword matching only for products without category (legacy data)
             if let productName = groceryItem.productName {
                 let categoryKeywords = getCategoryKeywords(for: category)
@@ -38,7 +38,7 @@ struct CategoryItemsView: View {
                     productName.lowercased().contains(keyword.lowercased())
                 }
             }
-
+            
             return false
         }
         print("CategoryItemsView: Total products: \(allProducts.count), Filtered products: \(filtered.count)")
@@ -56,12 +56,9 @@ struct CategoryItemsView: View {
         case .dairy:
             return ["dairy", "eggs", "milk", "cheese", "yogurt", "butter", "cream"]
         case .bakery:
-            return ["bakery", "bread", "pastry", "cake", "cookie", "muffin", "donut",
-                    "croissant", "bagel", "pretzel", "scone", "waffle", "pancake"]
+            return ["bakery", "bread", "pastry", "cake", "cookie", "muffin", "donut", "croissant", "bagel", "pretzel", "scone", "waffle", "pancake"]
         case .produce:
-            return ["produce", "vegetable", "fruit", "apple", "banana", "tomato", "lettuce", "carrot",
-                    "onion", "potato", "broccoli", "spinach", "cucumber", "bell pepper", "orange",
-                    "grape", "strawberry", "avocado"]
+            return ["produce", "vegetable", "fruit", "apple", "banana", "tomato", "lettuce", "carrot", "onion", "potato", "broccoli", "spinach", "cucumber", "bell pepper", "orange", "grape", "strawberry", "avocado"]
         case .pantry:
             return ["pantry", "canned", "staple", "rice", "pasta", "sauce", "condiment"]
         case .beverages:
@@ -239,9 +236,9 @@ struct ProductCard: View {
     // Display product details when tapped
     @State private var showingDetail = false
     var body: some View {
-        Button(action: {
+        Button {
             showingDetail = true
-        }) {
+        } label: {
             HStack(spacing: 12) {
                 // Product image
                 ProductImageView(
@@ -928,9 +925,9 @@ struct AddToShoppingListAndFavoritesView: View {
     var body: some View {
         HStack(spacing: 14) {
             // Add to List Button - Fixed size to prevent movement
-            Button(action: {
+            Button {
                 toggleShoppingList()
-            }) {
+            } label: {
                 HStack(spacing: 8) {
                     Image(systemName: isInShoppingList ? "checkmark.circle.fill" : "plus.circle.fill")
                         .font(.system(size: 16))
@@ -951,9 +948,9 @@ struct AddToShoppingListAndFavoritesView: View {
             Spacer()
 
             // Add to Favorite Button - Fixed size to prevent movement
-            Button(action: {
+            Button {
                 toggleFavorites()
-            }) {
+            } label: {
                 HStack(spacing: 8) {
                     Image(systemName: isInFavorites ? "checkmark.circle.fill" : "plus.circle.fill")
                         .font(.system(size: 16))
@@ -1092,9 +1089,9 @@ struct UpdatePriceView: View {
                 .font(.system(size: 17, weight: .bold))
                 .foregroundColor(.primary)
                 .padding(.top, 2)
-            Button(action: {
+            Button {
                 showSheet = true
-            }) {
+            } label: {
                 Text("Update Price")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(AppColors.accentGreen)
@@ -1384,13 +1381,13 @@ struct ProductTagsView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header button to toggle expansion (only if there are tags)
-            Button(action: {
+            Button {
                 if !product.tagArray.isEmpty {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         isExpanded.toggle()
                     }
                 }
-            }) {
+            } label: {
                 HStack {
                     Image(systemName: "tag")
                         .font(.system(size: 16))
@@ -1555,9 +1552,9 @@ struct ProductEditView: View {
                             Text("Location")
                                 .font(.headline)
                                 .foregroundColor(.primary)
-                            Button(action: {
+                            Button {
                                 showLocationPicker = true
-                            }) {
+                            } label: {
                                 HStack {
                                     Text(selectedLocation?.name ?? "Select location...")
                                         .font(.body)
@@ -1622,9 +1619,9 @@ struct ProductEditView: View {
                     // Action Buttons
                     VStack(spacing: 16) {
                         // Save Button
-                        Button(action: {
+                        Button {
                             saveChanges()
-                        }) {
+                        } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "checkmark")
                                     .font(.system(size: 18, weight: .semibold))
@@ -1639,9 +1636,9 @@ struct ProductEditView: View {
                         }
 
                         // Delete Button
-                        Button(action: {
+                        Button {
                             onDelete()
-                        }) {
+                        } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "trash")
                                     .font(.system(size: 18, weight: .semibold))
@@ -1872,9 +1869,9 @@ struct ProductEditTagPickerView: View {
                         .textFieldStyle(RoundedBorderTextFieldStyle())
 
                     if !searchText.isEmpty {
-                        Button(action: {
+                        Button {
                             searchText = ""
-                        }) {
+                        } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.gray)
                         }
@@ -1900,13 +1897,13 @@ struct ProductEditTagPickerView: View {
                 } else {
                     List {
                         ForEach(filteredTags, id: \.id) { tag in
-                            Button(action: {
+                            Button {
                                 if selectedTags.contains(where: { $0.id == tag.id }) {
                                     selectedTags.removeAll { $0.id == tag.id }
                                 } else {
                                     selectedTags.append(tag)
                                 }
-                            }) {
+                            } label: {
                                 HStack {
                                     Circle()
                                         .fill(Color(hex: tag.displayColor))

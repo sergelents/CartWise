@@ -43,9 +43,9 @@ struct SearchResultsSection: View {
                         .font(.poppins(size: 14, weight: .regular))
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
-                    Button(action: {
+                    Button {
                         showingBarcodeScanner = true
-                    }) {
+                    } label: {
                         HStack {
                             Image(systemName: "camera.fill")
                                 .font(.system(size: 18))
@@ -81,9 +81,9 @@ struct SearchResultsSection: View {
                 // Divider and barcode scanner option
                 Divider()
                     .padding(.horizontal)
-                Button(action: {
+                Button {
                     showingBarcodeScanner = true
-                }) {
+                } label: {
                     HStack {
                         Image(systemName: "barcode.viewfinder")
                             .foregroundColor(AppColors.accentGreen)

@@ -54,7 +54,7 @@ struct SignUpView: View {
                         .font(.caption)
                         .padding(.horizontal)
                 }
-                Button(action: {
+                Button {
                     Task {
                         print("Sign up button tapped with username: \(username)")
                         await viewModel.signUp(username: username, password: password)
@@ -64,7 +64,7 @@ struct SignUpView: View {
                             print("User signed up successfully")
                         }
                     }
-                }) {
+                } label: {
                     if viewModel.isLoading {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: AppColors.textSecondary))

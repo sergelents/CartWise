@@ -29,9 +29,9 @@ struct RatingPromptView: View {
             Spacer()
             // Action Buttons
             VStack(spacing: 12) {
-                Button(action: {
+                Button {
                     showRatingScreen = true
-                }) {
+                } label: {
                     Text("Rate my experience")
                         .font(.poppins(size: 16, weight: .semibold))
                         .foregroundColor(.white)
@@ -41,9 +41,9 @@ struct RatingPromptView: View {
                         .cornerRadius(12)
                         .contentShape(Rectangle())
                 }
-                Button(action: {
+                Button {
                     dismiss()
-                }) {
+                } label: {
                     Text("No thanks")
                         .font(.poppins(size: 16, weight: .regular))
                         .foregroundColor(.gray)
@@ -81,7 +81,7 @@ struct ShoppingExperienceRatingView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Grocery Store")
                     .font(.poppins(size: 20, weight: .bold))
-                // Store location integration will be added in future update
+                // TODO: Connect to Google Maps API for live store info
                 HStack {
                     Image(systemName: "mappin.and.ellipse")
                         .foregroundColor(AppColors.accentGreen)
@@ -112,10 +112,10 @@ struct ShoppingExperienceRatingView: View {
             Spacer()
             // Action Buttons
             VStack(spacing: 12) {
-                Button(action: {
-                    // Submit rating data - implementation pending
+                Button {
+                    // TODO: Handle submit logic
                     dismissAll()
-                }) {
+                } label: {
                     Text("Submit")
                         .font(.poppins(size: 16, weight: .semibold))
                         .foregroundColor(.white)
@@ -125,9 +125,9 @@ struct ShoppingExperienceRatingView: View {
                         .cornerRadius(12)
                         .contentShape(Rectangle())
                 }
-                Button(action: {
+                Button {
                     dismissAll()
-                }) {
+                } label: {
                     Text("Cancel")
                         .font(.poppins(size: 16, weight: .regular))
                         .foregroundColor(.gray)

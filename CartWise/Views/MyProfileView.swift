@@ -146,11 +146,11 @@ struct TabSelector: View {
     var body: some View {
         HStack(spacing: 0) {
             ForEach(MyProfileView.ProfileTab.allCases, id: \.self) { tab in
-                Button(action: {
+                Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selectedTab = tab
                     }
-                }) {
+                } label: {
                     VStack(spacing: 8) {
                         Text(tab.rawValue)
                             .font(.poppins(size: 16, weight: selectedTab == tab ? .semibold : .medium))
@@ -261,18 +261,17 @@ struct ProfileIconPickerView: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(icons, id: \.self) { icon in
-                        Button(action: {
+                        Button {
                             selectedIcon = icon
                             dismiss()
-                        }) {
+                        } label: {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12)
                                     .fill(Color.white)
                                     .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .stroke(icon == selectedIcon ? AppColors.accentGreen : Color.clear,
-                                                    lineWidth: 2)
+                                            .stroke(icon == selectedIcon ? AppColors.accentGreen : Color.clear, lineWidth: 2)
                                     )
                                 Image(systemName: icon)
                                     .resizable()

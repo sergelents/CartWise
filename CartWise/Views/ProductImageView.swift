@@ -137,8 +137,7 @@ struct ProductImageView: View {
         }
         .onDisappear {
             // Clean up notification observer
-            NotificationCenter.default.removeObserver(
-                self, name: NSNotification.Name("ProductImageUpdated"), object: nil)
+            NotificationCenter.default.removeObserver(self, name: NSNotification.Name("ProductImageUpdated"), object: nil)
         }
         .sheet(isPresented: $showingCamera) {
             // Camera view
@@ -150,17 +149,17 @@ struct ProductImageView: View {
             }
         }
     }
-
+    
     // Helper methods
     private func loadImageFromURL(_ urlString: String) {
         guard let url = URL(string: urlString) else {
             hasError = true
             return
         }
-
+        
         isLoading = true
         hasError = false
-
+        
         Task {
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
@@ -183,7 +182,7 @@ struct ProductImageView: View {
             }
         }
     }
-
+    
     /// Displays an image with proper styling and overlays
     private func displayImage(_ image: UIImage) -> some View {
         Image(uiImage: image)
@@ -194,7 +193,7 @@ struct ProductImageView: View {
             .overlay(saleBadgeOverlay)
             .overlay(cameraButtonOverlay)
     }
-
+    
     /// Handles the loading state for URL-based images
     @ViewBuilder
     private func handleURLImageLoading(_ imageURL: String) -> some View {
@@ -213,7 +212,7 @@ struct ProductImageView: View {
                 }
         }
     }
-
+    
     // View components
     private var loadingView: some View {
         RoundedRectangle(cornerRadius: cornerRadius)
@@ -304,9 +303,9 @@ struct ProductImageView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        Button(action: {
+                        Button {
                             showingCamera = true
-                        }) {
+                        } label: {
                             Image(systemName: "camera")
                                 .font(.poppins(size: 20, weight: .medium))
                                 .foregroundColor(.white)
@@ -371,8 +370,7 @@ struct ProductImageView: View {
 
                         // Force UI update trigger as backup
                         imageUpdateTrigger.toggle()
-                        print("ProductImageView: Triggered UI update, sent notifications for product: " +
-                              "\(product.id ?? "unknown")")
+                        print("ProductImageView: Triggered UI update, sent notifications for product: \(product.id ?? "unknown")")
                     } catch {
                         print("Error saving user image: \(error)")
                     }

@@ -40,7 +40,7 @@ struct ShoppingListCard: View {
             HStack {
                 if isEditing {
                     HStack(spacing: 16) {
-                        Button(action: {
+                        Button {
                             // Remove selected items from shopping list
                             for id in selectedItemsForDeletion {
                                 if let product = productViewModel.products.first(where: { $0.id == id }) {
@@ -51,31 +51,30 @@ struct ShoppingListCard: View {
                             }
                             isEditing = false
                             selectedItemsForDeletion.removeAll()
-                        }) {
+                        } label: {
                             Text("Delete")
                                 .font(.poppins(size: 15, weight: .regular))
                                 .underline()
                                 .foregroundColor(.red)
                         }
-                        Button(action: {
+                        Button {
                             if selectedItemsForDeletion.count == productViewModel.products.count {
                                 selectedItemsForDeletion.removeAll()
                             } else {
                                 selectedItemsForDeletion = Set(productViewModel.products.compactMap { $0.id })
                             }
-                        }) {
-                            Text(selectedItemsForDeletion.count == productViewModel.products.count ? 
-                                 "Deselect All" : "Select All")
+                        } label: {
+                            Text(selectedItemsForDeletion.count == productViewModel.products.count ? "Deselect All" : "Select All")
                                 .font(.poppins(size: 15, weight: .regular))
                                 .underline()
                                 .foregroundColor(.blue)
                         }
                     }
                     Spacer()
-                    Button(action: {
+                    Button {
                         isEditing = false
                         selectedItemsForDeletion.removeAll()
-                    }) {
+                    } label: {
                         Text("Cancel")
                             .font(.poppins(size: 15, weight: .regular))
                             .underline()
@@ -86,9 +85,9 @@ struct ShoppingListCard: View {
                         .font(.poppins(size: 15, weight: .regular))
                         .foregroundColor(.gray)
                     Spacer()
-                    Button(action: {
+                    Button {
                         isEditing.toggle()
-                    }) {
+                    } label: {
                         Text("Edit")
                             .font(.poppins(size: 15, weight: .regular))
                             .underline()
@@ -161,9 +160,9 @@ struct ShoppingListCard: View {
             }
             // Add Button & Check All Button
             HStack(spacing: 56) {
-                Button(action: {
+                Button {
                     showingAddProductModal = true
-                }) {
+                } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(.white)
@@ -174,7 +173,7 @@ struct ShoppingListCard: View {
                         .fill(AppColors.accentGreen)
                         .shadow(color: AppColors.accentGreen.opacity(0.3), radius: 8, x: 0, y: 4)
                 )
-                Button(action: {
+                Button {
                     // Check if we're about to complete all items (not uncheck them)
                     let allCompleted = productViewModel.products.allSatisfy { $0.isCompleted }
                     if allCompleted {
@@ -189,7 +188,7 @@ struct ShoppingListCard: View {
                             await productViewModel.toggleAllProductsCompletion()
                         }
                     }
-                }) {
+                } label: {
                     Image(systemName: "checkmark.circle")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(.white)

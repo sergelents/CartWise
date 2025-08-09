@@ -13,10 +13,10 @@ struct CategoryPickerView: View {
     var body: some View {
         NavigationView {
             List(ProductCategory.allCases, id: \.self) { category in
-                Button(action: {
+                Button {
                     selectedCategory = category
                     dismiss()
-                }) {
+                } label: {
                     HStack {
                         Text(category.rawValue)
                             .font(.poppins(size: 16, weight: .regular))
