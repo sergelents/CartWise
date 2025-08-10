@@ -57,6 +57,11 @@ struct MyProfileView: View {
             }
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    SampleDataToggleButton()
+                }
+            }
             .task {
                 await loadCurrentUser()
             }
@@ -383,6 +388,115 @@ struct ReputationTabView: View {
                 userLevel = "New Shopper"
                 isLoading = false
             }
+        }
+    }
+}
+
+// MARK: - Sample Data Toggle Button
+struct SampleDataToggleButton: View {
+    @State private var hasSampleData = false
+    @State private var isProcessing = false
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    
+    var body: some View {
+        Button {
+            Task {
+                if hasSampleData {
+                    await removeSampleData()
+                } else {
+                    await addSampleData()
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: isProcessing ? "clock" : (hasSampleData ? "trash" : "plus.circle"))
+                    .font(.system(size: 14, weight: .medium))
+                Text(isProcessing ? "Loading..." : (hasSampleData ? "Remove Sample Data" : "Load Sample Data"))
+                    .font(.poppins(size: 14, weight: .medium))
+            }
+            .foregroundColor(isProcessing ? .gray : (hasSampleData ? .red : AppColors.accentGreen))
+        }
+        .disabled(isProcessing)
+        .alert("Sample Data", isPresented: $showAlert) {
+            Button("OK") { }
+        } message: {
+            Text(alertMessage)
+        }
+        .task {
+            await checkSampleDataStatus()
+        }
+        .onAppear {
+            Task {
+                await checkSampleDataStatus()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SampleDataCleared"))) { _ in
+            Task {
+                await checkSampleDataStatus()
+            }
+        }
+    }
+    
+    private func checkSampleDataStatus() async {
+        // Check if any data exists (since sample data is the only data that should be present)
+        let context = PersistenceController.shared.container.viewContext
+        let fetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+        
+        do {
+            let count = try context.count(for: fetchRequest)
+            await MainActor.run {
+                hasSampleData = count > 0
+            }
+        } catch {
+            print("Error checking sample data status: \(error)")
+            await MainActor.run {
+                hasSampleData = false
+            }
+        }
+    }
+    
+    private func addSampleData() async {
+        isProcessing = true
+        
+        do {
+            await CoreDataStack.shared.seedSampleData()
+            await MainActor.run {
+                hasSampleData = true
+                alertMessage = "Sample data loaded successfully!\n\nAdded:\n• 25 products across 8 categories\n• 5 shopping locations\n• 8 items to shopping list\n• 6 favorite items\n• 5 social feed entries"
+                showAlert = true
+            }
+        } catch {
+            await MainActor.run {
+                alertMessage = "Error adding sample data: \(error.localizedDescription)"
+                showAlert = true
+            }
+        }
+        
+        await MainActor.run {
+            isProcessing = false
+        }
+    }
+    
+    private func removeSampleData() async {
+        isProcessing = true
+        
+        do {
+            await CoreDataStack.shared.clearSampleData()
+            await MainActor.run {
+                hasSampleData = false
+                alertMessage = "Sample data removed successfully!"
+                showAlert = true
+            }
+        } catch {
+            await MainActor.run {
+                alertMessage = "Error removing sample data: \(error.localizedDescription)"
+                showAlert = true
+            }
+        }
+        
+        await MainActor.run {
+            isProcessing = false
         }
     }
 }

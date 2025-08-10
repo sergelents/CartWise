@@ -452,7 +452,7 @@ struct AddItemsView: View {
                 comment = "Price updated for \(productName) at \(storeName)\(addressString): $\(formattedPrice)"
             }
             // Create the social experience
-            let experience = ShoppingExperience(
+            _ = ShoppingExperience(
                 context: context,
                 id: UUID().uuidString,
                 comment: comment,

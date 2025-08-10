@@ -28,7 +28,26 @@ struct APIResponse: Codable {
 struct Pagination: Codable {
     let currentPage: Int
     let nextPage: Int?
-    let totalPages: Int  // Note: This comes as string, not int
+    let totalPages: String  // API returns this as a string or Int (sometimes empty)
+    
+    enum CodingKeys: String, CodingKey {
+        case currentPage, nextPage, totalPages
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        currentPage = try container.decode(Int.self, forKey: .currentPage)
+        nextPage = try container.decodeIfPresent(Int.self, forKey: .nextPage)
+        
+        // Handle totalPages which can be either String or Int
+        if let stringValue = try? container.decode(String.self, forKey: .totalPages) {
+            totalPages = stringValue
+        } else if let intValue = try? container.decode(Int.self, forKey: .totalPages) {
+            totalPages = String(intValue)
+        } else {
+            totalPages = ""
+        }
+    }
 }
 // MARK: - Product Model
 struct APIProduct: Codable {
