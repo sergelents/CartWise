@@ -4,8 +4,10 @@
 //
 //  Created by Serg Tsogtbaatar on 7/7/25.
 //
-import CoreData
 import Foundation
+import CoreData
+import UIKit
+import SwiftUI
 actor CoreDataStack {
     static let shared = CoreDataStack()
     private init() {}
@@ -88,6 +90,419 @@ actor CoreDataStack {
         } catch {
             print("Failed to delete store: \(error.localizedDescription)")
             fatalError("Could not delete and recreate Core Data store: \(error.localizedDescription)")
+        }
+    }
+    
+    // MARK: - Sample Data Seeding
+    
+    /// Seeds the database with sample data for testing and demonstration
+    func seedSampleData() async {
+        await persistentContainer.performBackgroundTask { context in
+            do {
+                print("CoreDataStack: Starting sample data seeding...")
+                
+                // Create sample locations
+                let locations = self.createSampleLocations(in: context)
+                
+                // Seed existing tags from TagSeedData
+                try TagSeedData.seedTags(in: context)
+                
+                // Get all available tags for assignment
+                let tagFetchRequest: NSFetchRequest<Tag> = Tag.fetchRequest()
+                let tags = try context.fetch(tagFetchRequest)
+                
+                // Create sample products with prices and tags
+                let products = self.createSampleProducts(in: context, locations: locations, tags: tags)
+                
+                // Create sample shopping list items
+                self.createSampleShoppingListItems(products: products, in: context)
+                
+                // Create sample favorite items
+                self.createSampleFavoriteItems(products: products, in: context)
+                
+                // Create sample social feed entries
+                self.createSampleSocialFeedEntries(products: products, locations: locations, in: context)
+                
+                try context.save()
+                print("CoreDataStack: Sample data seeding completed successfully")
+                print("CoreDataStack: Created \(products.count) products, \(locations.count) locations, \(tags.count) tags")
+                
+            } catch {
+                print("CoreDataStack: Error seeding sample data: \(error.localizedDescription)")
+            }
+        }
+        
+        // After Core Data operations are complete, fetch images for all sample products
+        await fetchImagesForSampleProducts()
+    }
+    
+    /// Clears all sample data from the database
+    func clearSampleData() async {
+        await persistentContainer.performBackgroundTask { [self] context in
+            do {
+                print("CoreDataStack: Clearing sample data...")
+                
+                // Delete each entity type individually to ensure proper cleanup
+                let entityNames = ["GroceryItem", "Location", "GroceryItemPrice", "ProductImage", "ShoppingExperience", "UserEntity", "Tag"]
+                
+                for entityName in entityNames {
+                    let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: entityName)
+                    let objects = try context.fetch(fetchRequest)
+                    
+                    for object in objects {
+                        context.delete(object)
+                    }
+                    
+                    print("CoreDataStack: Deleted \(objects.count) \(entityName) objects")
+                }
+                
+                try context.save()
+                print("CoreDataStack: Sample data cleared successfully")
+                
+            } catch {
+                print("CoreDataStack: Error clearing sample data: \(error.localizedDescription)")
+            }
+        }
+        
+        // Notify UI to refresh after background task is complete
+        await MainActor.run {
+            NotificationCenter.default.post(name: NSNotification.Name("SampleDataCleared"), object: nil)
+        }
+    }
+    
+    // MARK: - Private Helper Methods
+    
+    private func createSampleLocations(in context: NSManagedObjectContext) -> [Location] {
+        let locationData = [
+            ("Safeway", "123 Main St, Portland, OR"),
+            ("Fred Meyer", "456 Oak Ave, Portland, OR"),
+            ("Trader Joe's", "789 Pine St, Portland, OR"),
+            ("Whole Foods", "321 Market St, Portland, OR"),
+            ("WinCo Foods", "654 Division St, Portland, OR")
+        ]
+        
+        // Get or create current user
+        let userFetchRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+        userFetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+        userFetchRequest.fetchLimit = 1
+        
+        let currentUser: UserEntity
+        do {
+            let users = try context.fetch(userFetchRequest)
+            if let existingUser = users.first {
+                currentUser = existingUser
+            } else {
+                // Create a sample user if none exists
+                currentUser = UserEntity(context: context)
+                currentUser.id = UUID().uuidString
+                currentUser.username = "SampleUser"
+                currentUser.createdAt = Date()
+            }
+        } catch {
+            // Create a sample user if fetch fails
+            currentUser = UserEntity(context: context)
+            currentUser.id = UUID().uuidString
+            currentUser.username = "SampleUser"
+            currentUser.createdAt = Date()
+        }
+        
+        var locations: [Location] = []
+        
+        for (name, address) in locationData {
+            let location = Location(context: context)
+            location.id = UUID().uuidString
+            location.name = name
+            location.address = address
+            location.city = "Portland"
+            location.state = "OR"
+            location.zipCode = "97201"
+            location.createdAt = Date()
+            location.user = currentUser // Assign to current user
+            locations.append(location)
+        }
+        
+        print("CoreDataStack: Created \(locations.count) sample locations for user: \(currentUser.username ?? "Unknown")")
+        return locations
+    }
+    
+    private func createSampleProducts(in context: NSManagedObjectContext, locations: [Location], tags: [Tag]) -> [GroceryItem] {
+        let productData = [
+            // Dairy & Eggs
+            ("Organic Whole Milk", "Organic Valley", "Dairy & Eggs", 4.99),
+            ("Large Eggs", "Farm Fresh", "Dairy & Eggs", 3.49),
+            ("Greek Yogurt", "Chobani", "Dairy & Eggs", 5.99),
+            ("Cheddar Cheese", "Tillamook", "Dairy & Eggs", 6.99),
+            
+            // Produce
+            ("Fresh Spinach", "Earthbound Farm", "Produce", 3.49),
+            ("Organic Apples", "Honeycrisp", "Produce", 4.99),
+            ("Avocados", "Hass", "Produce", 3.99),
+            
+            // Beverages
+            ("Pepsi Cola", "Pepsi", "Beverages", 2.49),
+            ("Starry Lemon Lime Soda", "PepsiCo", "Beverages", 2.49),
+            ("Sparkling Water", "LaCroix", "Beverages", 5.99),
+            
+            // Pantry Items
+            ("Olive Oil", "Bertolli", "Pantry Items", 8.99),
+            ("Pasta", "Barilla", "Pantry Items", 2.99),
+            ("Tomato Sauce", "Rao's", "Pantry Items", 4.99),
+            
+            // Bakery
+            ("Sourdough Bread", "Artisan Bakery", "Bakery", 4.99),
+            ("Chocolate Chip Cookies", "Grandma's", "Bakery", 3.99),
+            ("Croissants", "French Bakery", "Bakery", 5.99),
+            
+            // Meat & Seafood
+            ("Chicken Breast", "Organic Valley", "Meat & Seafood", 12.99),
+            ("Salmon Fillet", "Wild Alaskan", "Meat & Seafood", 18.99),
+            ("Ground Beef", "Grass Fed", "Meat & Seafood", 8.99),
+            
+            // Frozen Foods
+            ("Frozen Pizza", "DiGiorno", "Frozen Foods", 7.99),
+            ("Ice Cream", "Ben & Jerry's", "Frozen Foods", 5.99),
+            ("Frozen Vegetables", "Bird's Eye", "Frozen Foods", 3.99),
+            
+            // Household & Personal Care
+            ("Laundry Detergent", "Tide", "Household & Personal Care", 12.99),
+            ("Toothpaste", "Colgate", "Household & Personal Care", 3.99),
+            ("Shampoo", "Head & Shoulders", "Household & Personal Care", 6.99)
+        ]
+        
+        var products: [GroceryItem] = []
+        
+        for (name, brand, category, basePrice) in productData {
+            let product = GroceryItem(context: context)
+            product.id = UUID().uuidString
+            product.productName = name
+            product.brand = brand
+            product.category = category
+            product.barcode = String(format: "%013d", Int.random(in: 1000000000000...9999999999999))
+            product.isOnSale = Bool.random()
+            product.createdAt = Date()
+            
+            // Create product image without URL - let the app fetch real images
+            let productImage = ProductImage(context: context)
+            productImage.id = UUID().uuidString
+            productImage.imageURL = nil // Let the app fetch real images from API
+            productImage.createdAt = Date()
+            product.productImage = productImage
+            
+            // Add prices at different locations
+            for location in locations {
+                let priceVariation = Double.random(in: -1.0...1.0)
+                let price = GroceryItemPrice(context: context)
+                price.id = UUID().uuidString
+                price.price = basePrice + priceVariation
+                price.currency = "USD"
+                price.location = location
+                price.store = location.name // Set the store name for price comparison
+                price.groceryItem = product
+                price.createdAt = Date()
+                price.lastUpdated = Date() // Set lastUpdated for price comparison logic
+            }
+            
+            // Assign relevant tags to products
+            assignTagsToProduct(product: product, tags: tags, category: category, brand: brand, isOnSale: product.isOnSale)
+            
+            products.append(product)
+        }
+        
+        print("CoreDataStack: Created \(products.count) sample products")
+        return products
+    }
+    
+    private func createSampleShoppingListItems(products: [GroceryItem], in context: NSManagedObjectContext) {
+        // Select products that have good price coverage across stores
+        // Choose products from different categories to ensure variety
+        let categories = ["Dairy & Eggs", "Produce", "Beverages", "Pantry Items", "Bakery", "Meat & Seafood", "Frozen Foods", "Household & Personal Care"]
+        var selectedProducts: [GroceryItem] = []
+        
+        // Take 1 product from each category to ensure good store coverage
+        for category in categories.prefix(8) {
+            if let product = products.first(where: { $0.category == category }) {
+                selectedProducts.append(product)
+            }
+        }
+        
+        // If we don't have 8 products yet, add more random ones
+        while selectedProducts.count < 8 && selectedProducts.count < products.count {
+            let remainingProducts = products.filter { !selectedProducts.contains($0) }
+            if let randomProduct = remainingProducts.randomElement() {
+                selectedProducts.append(randomProduct)
+            } else {
+                break
+            }
+        }
+        
+        for product in selectedProducts {
+            product.isInShoppingList = true
+        }
+        
+        print("CoreDataStack: Added \(selectedProducts.count) items to shopping list")
+    }
+    
+    private func createSampleFavoriteItems(products: [GroceryItem], in context: NSManagedObjectContext) {
+        // Add 6 random products to favorites
+        let favoriteProducts = Array(products.shuffled().prefix(6))
+        
+        for product in favoriteProducts {
+            product.isFavorite = true
+        }
+        
+        print("CoreDataStack: Added \(favoriteProducts.count) items to favorites")
+    }
+    
+    private func createSampleSocialFeedEntries(products: [GroceryItem], locations: [Location], in context: NSManagedObjectContext) {
+        let sampleEntries = [
+            ("Found great deals on organic produce at %@!", 5, 0),
+            ("%@ has the best prices on dairy products", 4, 1),
+            ("Love the fresh bread selection at %@", 5, 2),
+            ("%@ organic section is amazing", 5, 3),
+            ("Great value for money at %@", 4, 4)
+        ]
+        
+        for (commentTemplate, rating, locationIndex) in sampleEntries {
+            let experience = ShoppingExperience(context: context)
+            experience.id = UUID().uuidString
+            experience.groceryItem = products.randomElement()
+            
+            // Use the specific location for this entry
+            let location = locations[locationIndex % locations.count]
+            experience.location = location
+            
+            // Format the comment with the actual location name
+            let locationName = location.name ?? "Unknown Store"
+            let comment = String(format: commentTemplate, locationName)
+            
+            experience.rating = Int16(rating) // Store as simple integer rating (1-5)
+            experience.comment = comment
+            experience.createdAt = Date()
+        }
+        
+        print("CoreDataStack: Created \(sampleEntries.count) sample social feed entries")
+    }
+    
+    private func assignTagsToProduct(product: GroceryItem, tags: [Tag], category: String?, brand: String?, isOnSale: Bool) {
+        var assignedTags: [Tag] = []
+        
+        // Assign tags based on product characteristics
+        for tag in tags {
+            let tagName = tag.name?.lowercased() ?? ""
+            let productName = product.productName?.lowercased() ?? ""
+            
+            // Organic products (only if product name actually contains "organic")
+            if productName.contains("organic") && tagName == "organic" {
+                assignedTags.append(tag)
+            }
+            
+            // Sale items (exact match)
+            if isOnSale && tagName == "on sale" {
+                assignedTags.append(tag)
+            }
+            
+            // Category-based tags (only broad categories, not specific items)
+            if let category = category?.lowercased() {
+                if category.contains("dairy") && tagName == "dairy" {
+                    assignedTags.append(tag)
+                }
+                if category.contains("meat") && tagName == "meat" {
+                    assignedTags.append(tag)
+                }
+                if category.contains("produce") && (tagName == "fruits" || tagName == "vegetables") {
+                    assignedTags.append(tag)
+                }
+                if category.contains("beverages") && tagName == "beverages" {
+                    assignedTags.append(tag)
+                }
+                if category.contains("frozen") && tagName == "frozen foods" {
+                    assignedTags.append(tag)
+                }
+            }
+            
+            // Specific item tags (only if product name actually contains the item)
+            if productName.contains("bread") && tagName == "bread" {
+                assignedTags.append(tag)
+            }
+            if productName.contains("pasta") && tagName == "pasta" {
+                assignedTags.append(tag)
+            }
+            if productName.contains("rice") && tagName == "rice" {
+                assignedTags.append(tag)
+            }
+            if productName.contains("oil") && tagName == "oils" {
+                assignedTags.append(tag)
+            }
+        }
+        
+        // Assign the tags to the product
+        product.tags = NSSet(array: assignedTags)
+        
+        if !assignedTags.isEmpty {
+            print("CoreDataStack: Assigned \(assignedTags.count) tags to '\(product.productName ?? "Unknown")'")
+        }
+    }
+    
+    // MARK: - Image Fetching for Sample Data
+    
+    /// Fetches images for sample products using the same API as new items
+    private func fetchImagesForSampleProducts() async {
+        print("CoreDataStack: Starting image fetch for sample products")
+        
+        // Get all products from Core Data
+        let context = persistentContainer.viewContext
+        let fetchRequest: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
+        
+        do {
+            let products = try context.fetch(fetchRequest)
+            print("CoreDataStack: Found \(products.count) products to fetch images for")
+            
+            // Create ImageService instance
+            let imageService = ImageService()
+            
+            // Fetch images for each product
+            for product in products {
+                do {
+                    let productName = product.productName ?? ""
+                    let brand = product.brand
+                    let category = product.category
+                    
+                    print("CoreDataStack: Fetching image for '\(productName)'")
+                    
+                    if let imageURL = try await imageService.fetchImageURL(for: productName, brand: brand, category: category) {
+                        print("CoreDataStack: Got image URL for '\(productName)': \(imageURL)")
+                        
+                        // Download image data
+                        if let url = URL(string: imageURL) {
+                            let (imageData, _) = try await URLSession.shared.data(from: url)
+                            
+                            // Update product with image data on main thread
+                            await MainActor.run {
+                                // Save image to Core Data
+                                if let productImage = product.productImage {
+                                    productImage.imageURL = imageURL
+                                    productImage.imageData = imageData
+                                    productImage.updatedAt = Date()
+                                }
+                                
+                                // Force a UI update
+                                product.objectWillChange.send()
+                            }
+                            
+                            print("CoreDataStack: Successfully saved image for '\(productName)'")
+                        }
+                    } else {
+                        print("CoreDataStack: No image URL found for '\(productName)'")
+                    }
+                } catch {
+                    print("CoreDataStack: Error fetching image for '\(product.productName ?? "")': \(error.localizedDescription)")
+                }
+            }
+            
+            print("CoreDataStack: Completed image fetching for sample products")
+            
+        } catch {
+            print("CoreDataStack: Error fetching products for image update: \(error.localizedDescription)")
         }
     }
 }

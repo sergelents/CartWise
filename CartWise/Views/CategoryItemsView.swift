@@ -485,7 +485,7 @@ struct ProductDetailView: View {
                 print("Updated existing price for location: \(locationInContext.name ?? "Unknown")")
             } else {
                 // Create new price for this specific location
-                let newPrice = GroceryItemPrice(
+                _ = GroceryItemPrice(
                     context: context,
                     id: UUID().uuidString,
                     price: newPrice,
@@ -602,7 +602,7 @@ struct ProductDetailView: View {
             let addressString = addressComponents.isEmpty ? "" : " (\(addressComponents.joined(separator: ", ")))"
             let comment = "Price updated: \(productName) is now $\(formattedPrice) at \(storeName)\(addressString)"
             // Create the social experience
-            let experience = ShoppingExperience(
+            _ = ShoppingExperience(
                 context: context,
                 id: UUID().uuidString,
                 comment: comment,
@@ -1816,7 +1816,7 @@ struct ProductEditView: View {
                 print("Updated existing price for location: \(locationInContext.name ?? "Unknown")")
             } else {
                 // Create new price for this specific location
-                let newPrice = GroceryItemPrice(
+                _ = GroceryItemPrice(
                     context: context,
                     id: UUID().uuidString,
                     price: newPrice,
