@@ -10,6 +10,7 @@ struct LocationsSectionView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var productViewModel: ProductViewModel
     @State private var showAddLocation: Bool = false
+    @State private var showAllLocations: Bool = false
     @State private var locations: [Location] = []
     @State private var isLoading: Bool = true
     var body: some View {
@@ -82,9 +83,15 @@ struct LocationsSectionView: View {
                 VStack(spacing: 12) {
                     ForEach(locations.prefix(3)) { location in
                         LocationRowView(location: location)
+                            .onTapGesture {
+                                // Handle location tap - could show location details or edit
+                                print("Tapped location: \(location.name ?? "Unknown")")
+                            }
                     }
                     if locations.count > 3 {
                         Button {
+                            // Show all locations in a sheet or navigate to full list
+                            showAllLocations = true
                         } label: {
                             HStack(spacing: 8) {
                                 Text("View All \(locations.count) Locations")
@@ -96,6 +103,7 @@ struct LocationsSectionView: View {
                         }
                     }
                 }
+                .padding(.vertical, 8)
             }
         }
         .padding(20)
@@ -110,6 +118,9 @@ struct LocationsSectionView: View {
         .sheet(isPresented: $showAddLocation) {
             AddLocationView()
                 .environmentObject(productViewModel)
+        }
+        .sheet(isPresented: $showAllLocations) {
+            AllLocationsView(locations: locations)
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSManagedObjectContextDidSave)) { _ in
             Task {
@@ -202,5 +213,32 @@ struct LocationRowView: View {
             components.append(zipCode)
         }
         return components.isEmpty ? "No address" : components.joined(separator: ", ")
+    }
+}
+
+// MARK: - All Locations View
+struct AllLocationsView: View {
+    let locations: [Location]
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            List(locations) { location in
+                LocationRowView(location: location)
+                    .onTapGesture {
+                        // Handle location tap
+                        print("Tapped location: \(location.name ?? "Unknown")")
+                    }
+            }
+            .navigationTitle("All Locations")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }

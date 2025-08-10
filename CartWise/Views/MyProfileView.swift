@@ -459,14 +459,38 @@ struct SampleDataToggleButton: View {
     private func addSampleData() async {
         isProcessing = true
         
+        await MainActor.run {
+            alertMessage = "Loading sample data, this might take a while..."
+            showAlert = true
+        }
+        
         do {
             await CoreDataStack.shared.seedSampleData()
+            
+            // Hide the loading alert first
+            await MainActor.run {
+                showAlert = false
+            }
+            
+            // Small delay to ensure the first alert is dismissed
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            
+            // Show the success alert
             await MainActor.run {
                 hasSampleData = true
-                alertMessage = "Sample data loaded successfully!\n\nAdded:\n• 25 products across 8 categories\n• 5 shopping locations\n• 8 items to shopping list\n• 6 favorite items\n• 5 social feed entries"
+                alertMessage = "Sample data loaded successfully!\n\nAdded:\n• 25 products across 8 categories\n• 5 shopping locations\n• 8 items to shopping list\n• 6 favorite items\n• 5 social feed entries\n• Product images (if available)"
                 showAlert = true
             }
         } catch {
+            // Hide the loading alert first
+            await MainActor.run {
+                showAlert = false
+            }
+            
+            // Small delay to ensure the first alert is dismissed
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            
+            // Show the error alert
             await MainActor.run {
                 alertMessage = "Error adding sample data: \(error.localizedDescription)"
                 showAlert = true
