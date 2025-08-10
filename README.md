@@ -7,16 +7,15 @@ A crowd-sourced shopping iOS application that helps users manage shopping lists,
 ### 📱 Core Shopping Features
 - **Shopping List Management**: Add, remove, and organize items in your shopping list
 - **Barcode Scanning**: Scan product barcodes to quickly add items
-- **Price Tracking**: Manual price entry and automatic Amazon price lookup
+- **Price Tracking**: Manual price entry
 - **Category Organization**: Browse products by categories
 - **Favorites**: Save frequently purchased items
 
 ### 💰 Price Management
 - **Manual Price Entry**: Users can manually enter prices when adding new items
-- **Amazon Price Integration**: Automatic price lookup from Amazon API
 - **Price Display**: Individual item prices displayed in shopping list
 - **Total Calculation**: Real-time calculation of total shopping list cost
-- **Local Price Comparison**: Compare prices across different stores using local data
+- **Local Price Comparison**: Compare prices across different stores using local user data
 
 ### 🏪 Store & Location Features
 - **Store Management**: Add and manage different store locations
@@ -37,7 +36,7 @@ A crowd-sourced shopping iOS application that helps users manage shopping lists,
 ### 👥 Social Features
 - **User Reputation System**: Build reputation through helpful contributions
 - **Social Feed**: Share shopping experiences and tips
-- **Community Features**: Connect with other shoppers
+- **Community Features**: Connect with other shoppers (in-progress)
 
 ## 📋 Prerequisites
 
