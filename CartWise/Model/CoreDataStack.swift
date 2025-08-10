@@ -368,45 +368,49 @@ actor CoreDataStack {
         // Assign tags based on product characteristics
         for tag in tags {
             let tagName = tag.name?.lowercased() ?? ""
+            let productName = product.productName?.lowercased() ?? ""
             
-            // Organic products
-            if (product.productName?.lowercased().contains("organic") == true || 
-                brand?.lowercased().contains("organic") == true) && 
-                tagName.contains("organic") {
+            // Organic products (only if product name actually contains "organic")
+            if productName.contains("organic") && tagName == "organic" {
                 assignedTags.append(tag)
             }
             
-            // Sale items
-            if isOnSale && tagName.contains("on sale") {
+            // Sale items (exact match)
+            if isOnSale && tagName == "on sale" {
                 assignedTags.append(tag)
             }
             
-            // Category-based tags
+            // Category-based tags (only broad categories, not specific items)
             if let category = category?.lowercased() {
-                if category.contains("dairy") && tagName.contains("dairy") {
+                if category.contains("dairy") && tagName == "dairy" {
                     assignedTags.append(tag)
                 }
-                if category.contains("meat") && tagName.contains("meat") {
+                if category.contains("meat") && tagName == "meat" {
                     assignedTags.append(tag)
                 }
-                if category.contains("produce") && (tagName.contains("fruits") || tagName.contains("vegetables")) {
+                if category.contains("produce") && (tagName == "fruits" || tagName == "vegetables") {
                     assignedTags.append(tag)
                 }
-                if category.contains("beverages") && tagName.contains("beverages") {
+                if category.contains("beverages") && tagName == "beverages" {
                     assignedTags.append(tag)
                 }
-                if category.contains("bakery") && tagName.contains("bread") {
+                if category.contains("frozen") && tagName == "frozen foods" {
                     assignedTags.append(tag)
                 }
-                if category.contains("pantry") && (tagName.contains("pasta") || tagName.contains("rice") || tagName.contains("oils")) {
-                    assignedTags.append(tag)
-                }
-                if category.contains("frozen") && tagName.contains("frozen") {
-                    assignedTags.append(tag)
-                }
-                if category.contains("household") && (tagName.contains("kitchen") || tagName.contains("bathroom") || tagName.contains("laundry")) {
-                    assignedTags.append(tag)
-                }
+            }
+            
+            // Specific item tags (only if product name actually contains the item)
+            if productName.contains("bread") && tagName == "bread" {
+                assignedTags.append(tag)
+            }
+            if productName.contains("pasta") && tagName == "pasta" {
+                assignedTags.append(tag)
+            }
+            if productName.contains("rice") && tagName == "rice" {
+                assignedTags.append(tag)
+            }
+            if productName.contains("oil") && tagName == "oils" {
+                assignedTags.append(tag)
             }
         }
         
