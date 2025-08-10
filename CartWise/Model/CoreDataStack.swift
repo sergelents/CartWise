@@ -299,6 +299,7 @@ actor CoreDataStack {
                 price.store = location.name // Set the store name for price comparison
                 price.groceryItem = product
                 price.createdAt = Date()
+                price.lastUpdated = Date() // Set lastUpdated for price comparison logic
             }
             
             // Assign relevant tags to products
@@ -312,14 +313,33 @@ actor CoreDataStack {
     }
     
     private func createSampleShoppingListItems(products: [GroceryItem], in context: NSManagedObjectContext) {
-        // Add 8 random products to shopping list
-        let shoppingListProducts = Array(products.shuffled().prefix(8))
+        // Select products that have good price coverage across stores
+        // Choose products from different categories to ensure variety
+        let categories = ["Dairy & Eggs", "Produce", "Beverages", "Pantry Items", "Bakery", "Meat & Seafood", "Frozen Foods", "Household & Personal Care"]
+        var selectedProducts: [GroceryItem] = []
         
-        for product in shoppingListProducts {
+        // Take 1 product from each category to ensure good store coverage
+        for category in categories.prefix(8) {
+            if let product = products.first(where: { $0.category == category }) {
+                selectedProducts.append(product)
+            }
+        }
+        
+        // If we don't have 8 products yet, add more random ones
+        while selectedProducts.count < 8 && selectedProducts.count < products.count {
+            let remainingProducts = products.filter { !selectedProducts.contains($0) }
+            if let randomProduct = remainingProducts.randomElement() {
+                selectedProducts.append(randomProduct)
+            } else {
+                break
+            }
+        }
+        
+        for product in selectedProducts {
             product.isInShoppingList = true
         }
         
-        print("CoreDataStack: Added \(shoppingListProducts.count) items to shopping list")
+        print("CoreDataStack: Added \(selectedProducts.count) items to shopping list")
     }
     
     private func createSampleFavoriteItems(products: [GroceryItem], in context: NSManagedObjectContext) {
