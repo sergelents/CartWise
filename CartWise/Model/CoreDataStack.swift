@@ -296,8 +296,10 @@ actor CoreDataStack {
                 price.price = basePrice + priceVariation
                 price.currency = "USD"
                 price.location = location
+                price.store = location.name // Set the store name for price comparison
                 price.groceryItem = product
                 price.createdAt = Date()
+                price.updatedAt = Date()
             }
             
             // Assign relevant tags to products

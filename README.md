@@ -161,6 +161,25 @@ To change it:
    - Use barcode scanner or manual entry
    - Add price and store information
 
+### Testing with Sample Data
+For testing and demonstration purposes, the app includes sample data feature:
+
+1. **Navigate to Profile**: Tap the profile icon in the bottom navigation
+2. **Load Sample Data**: Tap the **"Load Sample Data"** button in the top-right corner
+3. **Wait for Loading**: The app will show a loading message while creating sample data
+4. **Explore the Data**: Once loaded, you'll have:
+   - **25 products** across 8 categories (Dairy, Produce, Beverages, etc.)
+   - **5 shopping locations** (Safeway, Fred Meyer, Trader Joe's, etc.)
+   - **8 items** in your shopping list
+   - **6 favorite items**
+   - **5 social feed entries** with ratings and comments
+   - **Product images** (fetched from external APIs)
+   - **Smart tags** assigned based on product characteristics
+
+5. **Remove Sample Data**: Tap **"Remove Sample Data"** to clear all sample data and start fresh
+
+**Note**: Sample data is perfect for testing features, demonstrating the app, or exploring functionality without manually adding items.
+
 ### Key Features to Try
 - **Barcode Scanning**: Tap the camera icon to scan product barcodes
 - **Price Comparison**: View total costs across different stores
