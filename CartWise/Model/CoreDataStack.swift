@@ -299,7 +299,6 @@ actor CoreDataStack {
                 price.store = location.name // Set the store name for price comparison
                 price.groceryItem = product
                 price.createdAt = Date()
-                price.updatedAt = Date()
             }
             
             // Assign relevant tags to products
