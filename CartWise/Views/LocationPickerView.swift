@@ -65,7 +65,7 @@ struct LocationPickerView: View {
                         }
                         Button(action: {
                             showAddLocation = true
-                        }) {
+                        }, label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "plus.circle.fill")
                                     .font(.system(size: 16, weight: .medium))
@@ -79,7 +79,7 @@ struct LocationPickerView: View {
                                 RoundedRectangle(cornerRadius: 12)
                                     .stroke(AppColors.accentGreen, lineWidth: 2)
                             )
-                        }
+                        })
                     }
                     Spacer()
                 } else {
@@ -89,7 +89,7 @@ struct LocationPickerView: View {
                             Button(action: {
                                 selectedLocation = location
                                 dismiss()
-                            }) {
+                            }, label: {
                                 HStack(spacing: 12) {
                                     // Location Icon
                                     ZStack {
@@ -131,7 +131,7 @@ struct LocationPickerView: View {
                                     }
                                 }
                                 .padding(.vertical, 4)
-                            }
+                            })
                             .buttonStyle(PlainButtonStyle())
                         }
                     }
@@ -150,10 +150,10 @@ struct LocationPickerView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         showAddLocation = true
-                    }) {
+                    }, label: {
                         Image(systemName: "plus")
                             .foregroundColor(AppColors.accentGreen)
-                    }
+                    })
                 }
             }
         }

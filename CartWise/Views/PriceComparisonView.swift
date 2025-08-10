@@ -25,37 +25,43 @@ struct PriceComparisonView: View {
                         .scaleEffect(0.8)
                 } else {
                     HStack(spacing: 12) {
-                        Button(action: {
-                            showingShareExperience = true
-                        }) {
-                            Image(systemName: "bubble.left.and.bubble.right")
-                                .foregroundColor(.blue)
-                        }
-                        Button(action: {
-                            Task {
-                                await onLocalComparison()
+                        Button(
+                            action: {
+                                showingShareExperience = true
+                            },
+                            label: {
+                                Image(systemName: "bubble.left.and.bubble.right")
+                                    .foregroundColor(.blue)
                             }
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                                .foregroundColor(.blue)
-                        }
+                        )
+                        Button(
+                            action: {
+                                Task {
+                                    await onLocalComparison()
+                                }
+                            },
+                            label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .foregroundColor(.blue)
+                            }
+                        )
                     }
                 }
             }
             .padding(.horizontal)
             .padding(.top, 8)
-            
+
             // Availability threshold info
             HStack {
                 Text("Only showing stores with 85%+ of your items")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 Spacer()
             }
             .padding(.horizontal)
             .padding(.top, 4)
-            
+
             // Price comparison content
             if let comparison = priceComparison {
                 if comparison.storePrices.isEmpty {
@@ -63,7 +69,7 @@ struct PriceComparisonView: View {
                         Text("No stores meet the 85% availability threshold")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                        
+
                         Text("Add more items with store information or try stores with better inventory")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -148,12 +154,12 @@ struct StorePriceRow: View {
                         .font(.subheadline)
                         .fontWeight(isBest ? .bold : .medium)
                         .foregroundColor(isBest ? .green : .primary)
-                    Text("\(storePrice.availableItems)/\(storePrice.availableItems + storePrice.unavailableItems) items")
+                    Text("\(storePrice.availableItems)/" +
+                         "\(storePrice.availableItems + storePrice.unavailableItems) items")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
             }
-            
 
         }
         .padding(.vertical, 4)

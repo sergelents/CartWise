@@ -9,15 +9,15 @@ class AppCoordinator: ObservableObject {
     @Published var selectedTab: TabItem = .yourList
     @Published var showSplash = true
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-    
+
     func selectTab(_ tab: TabItem) {
         selectedTab = tab
     }
-    
+
     func logout() {
         isLoggedIn = false
     }
-    
+
     func hideSplash() {
         withAnimation(.easeInOut(duration: 0.5)) {
             showSplash = false
@@ -53,7 +53,7 @@ struct AppCoordinatorView: View {
     @ObservedObject var coordinator: AppCoordinator
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
     @EnvironmentObject var productViewModel: ProductViewModel
-    
+
     var body: some View {
         ZStack {
             // Main app content
@@ -101,7 +101,7 @@ struct AppCoordinatorView: View {
                 LoginView()
             }
         }
-        
+
         // Splash screen overlay
         if coordinator.showSplash {
             SplashScreenView()

@@ -17,7 +17,7 @@ struct ProductImageView: View {
     let cornerRadius: CGFloat
     let showSaleBadge: Bool
     let showCameraButton: Bool
-    
+
     // State
     @State private var loadedImage: UIImage?
     @State private var isLoading = false
@@ -25,7 +25,7 @@ struct ProductImageView: View {
     @State private var showingCamera = false
     @State private var userCapturedImage: UIImage?
     @State private var imageUpdateTrigger = false
-    
+
     init(
         product: GroceryItem,
         size: CGSize = CGSize(width: 180, height: 180),
@@ -39,7 +39,7 @@ struct ProductImageView: View {
         self.showSaleBadge = showSaleBadge
         self.showCameraButton = showCameraButton
     }
-    
+
     var body: some View {
         Group {
             if let loadedImage = loadedImage {
@@ -114,7 +114,7 @@ struct ProductImageView: View {
                 hasError = false
                 print("ProductImageView: Initialized with existing image data")
             }
-            
+
             // Listen for product image updates
             NotificationCenter.default.addObserver(
                 forName: NSNotification.Name("ProductImageUpdated"),
@@ -137,7 +137,11 @@ struct ProductImageView: View {
         }
         .onDisappear {
             // Clean up notification observer
-            NotificationCenter.default.removeObserver(self, name: NSNotification.Name("ProductImageUpdated"), object: nil)
+            NotificationCenter.default.removeObserver(
+                self,
+                name: NSNotification.Name("ProductImageUpdated"),
+                object: nil
+            )
         }
         .sheet(isPresented: $showingCamera) {
             // Camera view
@@ -149,17 +153,17 @@ struct ProductImageView: View {
             }
         }
     }
-    
+
     // Helper methods
     private func loadImageFromURL(_ urlString: String) {
         guard let url = URL(string: urlString) else {
             hasError = true
             return
         }
-        
+
         isLoading = true
         hasError = false
-        
+
         Task {
             do {
                 let (data, _) = try await URLSession.shared.data(from: url)
@@ -182,7 +186,7 @@ struct ProductImageView: View {
             }
         }
     }
-    
+
     /// Displays an image with proper styling and overlays
     private func displayImage(_ image: UIImage) -> some View {
         Image(uiImage: image)
@@ -193,7 +197,7 @@ struct ProductImageView: View {
             .overlay(saleBadgeOverlay)
             .overlay(cameraButtonOverlay)
     }
-    
+
     /// Handles the loading state for URL-based images
     @ViewBuilder
     private func handleURLImageLoading(_ imageURL: String) -> some View {
@@ -212,7 +216,7 @@ struct ProductImageView: View {
                 }
         }
     }
-    
+
     // View components
     private var loadingView: some View {
         RoundedRectangle(cornerRadius: cornerRadius)
@@ -231,9 +235,7 @@ struct ProductImageView: View {
             .overlay(saleBadgeOverlay)
             .overlay(cameraButtonOverlay)
     }
-    
 
-    
     /// Error state view when image loading fails
     private var failureView: some View {
         RoundedRectangle(cornerRadius: cornerRadius)
@@ -255,7 +257,7 @@ struct ProductImageView: View {
             .overlay(saleBadgeOverlay)
             .overlay(cameraButtonOverlay)
     }
-    
+
     /// Placeholder view when no image is available
     private var noImagePlaceholder: some View {
         RoundedRectangle(cornerRadius: cornerRadius)
@@ -277,7 +279,7 @@ struct ProductImageView: View {
             .overlay(saleBadgeOverlay)
             .overlay(cameraButtonOverlay)
     }
-    
+
     /// Sale badge overlay for products on sale
     private var saleBadgeOverlay: some View {
         VStack {
@@ -297,7 +299,7 @@ struct ProductImageView: View {
         }
         .padding(.top, 10)
     }
-    
+
     /// Camera button overlay for taking product photos (only shown in detail view)
     private var cameraButtonOverlay: some View {
         Group {
@@ -305,9 +307,9 @@ struct ProductImageView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        Button(action: {
+                        Button {
                             showingCamera = true
-                        }) {
+                        } label: {
                             Image(systemName: "camera")
                                 .font(.poppins(size: 20, weight: .medium))
                                 .foregroundColor(.white)
@@ -323,9 +325,9 @@ struct ProductImageView: View {
             }
         }
     }
-    
+
     // Camera integration
-    
+
     /// Saves a captured image to Core Data and updates the UI
     private func saveUserImage(_ image: UIImage) {
         // Save the captured image to Core Data
@@ -334,7 +336,7 @@ struct ProductImageView: View {
                 print("ProductImageView: saveUserImage called with image size: \(image.size)")
                 if let imageData = image.jpegData(compressionQuality: 0.8) {
                     print("ProductImageView: Created JPEG data, size: \(imageData.count) bytes")
-                    
+
                     // Ensure ProductImage entity exists
                     if product.productImage == nil {
                         print("ProductImageView: Creating new ProductImage entity")
@@ -344,35 +346,36 @@ struct ProductImageView: View {
                         newProductImage.updatedAt = Date()
                         product.productImage = newProductImage
                     }
-                    
+
                     // Update the product's image data
                     product.productImage?.imageData = imageData
                     product.productImage?.imageURL = nil // Clear URL since we have local data
                     product.productImage?.updatedAt = Date()
-                    
+
                     // Save to Core Data
                     do {
                         try product.managedObjectContext?.save()
                         print("User image saved successfully to Core Data")
-                        
+
                         // Immediately set the loaded image for instant UI update
                         loadedImage = image
                         isLoading = false
                         hasError = false
-                        
+
                         // Force objectWillChange to notify all observers
                         product.objectWillChange.send()
-                        
+
                         // Send notification for all ProductImageView instances
                         NotificationCenter.default.post(
                             name: NSNotification.Name("ProductImageUpdated"),
                             object: nil,
                             userInfo: ["productId": product.id ?? ""]
                         )
-                        
+
                         // Force UI update trigger as backup
                         imageUpdateTrigger.toggle()
-                        print("ProductImageView: Triggered UI update, sent notifications for product: \(product.id ?? "unknown")")
+                        print("ProductImageView: Triggered UI update, sent notifications for product: " +
+                              "\(product.id ?? "unknown")")
                     } catch {
                         print("Error saving user image: \(error)")
                     }
@@ -382,4 +385,4 @@ struct ProductImageView: View {
             }
         }
     }
-} 
+}

@@ -178,27 +178,31 @@ class CameraViewController: UIViewController {
 }
 // MARK: - AVCaptureMetadataOutputObjectsDelegate
 extension CameraViewController: AVCaptureMetadataOutputObjectsDelegate {
-    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+    func metadataOutput(
+        _ output: AVCaptureMetadataOutput,
+        didOutput metadataObjects: [AVMetadataObject],
+        from connection: AVCaptureConnection
+    ) {
         guard isScanning else { return }
         if let metadataObject = metadataObjects.first,
            let readableObject = metadataObject as? AVMetadataMachineReadableCodeObject,
            let stringValue = readableObject.stringValue {
-            
+
             // Clean the barcode value
             let cleanedBarcode = cleanBarcodeValue(stringValue)
-            
+
             // Stop scanning to prevent multiple scans
             stopScanning()
-            
+
             // Provide haptic feedback
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
             impactFeedback.impactOccurred()
-            
+
             // Call the callback with cleaned barcode
             onBarcodeScanned?(cleanedBarcode)
         }
     }
-    
+
     private func cleanBarcodeValue(_ barcode: String) -> String {
         // Remove leading zeros for EAN-13 barcodes (which are 13 digits)
         if barcode.count == 13 && barcode.hasPrefix("0") {

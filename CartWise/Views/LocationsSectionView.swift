@@ -25,9 +25,9 @@ struct LocationsSectionView: View {
                         .foregroundColor(.gray)
                 }
                 Spacer()
-                Button(action: {
+                Button {
                     showAddLocation = true
-                }) {
+                } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 24))
                         .foregroundColor(AppColors.accentGreen)
@@ -58,9 +58,9 @@ struct LocationsSectionView: View {
                             .foregroundColor(.gray)
                             .multilineTextAlignment(.center)
                     }
-                    Button(action: {
+                    Button {
                         showAddLocation = true
-                    }) {
+                    } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 16, weight: .medium))
@@ -84,9 +84,8 @@ struct LocationsSectionView: View {
                         LocationRowView(location: location)
                     }
                     if locations.count > 3 {
-                        Button(action: {
-                            // TODO: Navigate to full locations list
-                        }) {
+                        Button {
+                        } label: {
                             HStack(spacing: 8) {
                                 Text("View All \(locations.count) Locations")
                                     .font(.poppins(size: 14, weight: .medium))

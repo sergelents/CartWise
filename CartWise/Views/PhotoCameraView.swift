@@ -19,12 +19,11 @@ struct PhotoCameraView: View {
     @StateObject private var cameraController = PhotoCameraController()
     @State private var capturedImage: UIImage?
     @State private var showingConfirmation = false
-    
     init(showCameraSwitch: Bool = false, onImageCaptured: @escaping (UIImage?) -> Void) {
         self.showCameraSwitch = showCameraSwitch
         self.onImageCaptured = onImageCaptured
     }
-    
+
     var body: some View {
         if showingConfirmation, let image = capturedImage {
             // Photo confirmation view
@@ -34,15 +33,15 @@ struct PhotoCameraView: View {
             cameraView
         }
     }
-    
+
     private var cameraView: some View {
         NavigationView {
             VStack(spacing: 0) {
-            
+
             // Add some spacing above camera
             Spacer()
                 .frame(height: 40)
-            
+
             // Camera preview (no frame overlay)
             ZStack {
                 // Camera preview
@@ -50,7 +49,7 @@ struct PhotoCameraView: View {
                     .frame(height: 400)
                     .clipped()
                     .cornerRadius(12)
-                
+
                 // Loading overlay
                 if !cameraController.isCameraReady {
                     Color.black
@@ -69,27 +68,27 @@ struct PhotoCameraView: View {
                 }
             }
             .padding(.horizontal, 16)
-            
+
             // Instructions
             VStack(spacing: 8) {
                 Text("Position your product within the frame")
                     .font(.poppins(size: 16, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(.top, 16)
-                
+
                 Text("Make sure the product is well-lit and clearly visible")
                     .font(.poppins(size: 14))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
-            
+
             Spacer()
-            
+
             // Bottom controls
             HStack {
                 Spacer()
-                
+
                 // Capture button (green)
                 Button(action: {
                     cameraController.capturePhoto { image in
@@ -98,7 +97,7 @@ struct PhotoCameraView: View {
                             showingConfirmation = true
                         }
                     }
-                }) {
+                }, label: {
                     Circle()
                         .fill(Color.green)
                         .frame(width: 70, height: 70)
@@ -107,9 +106,9 @@ struct PhotoCameraView: View {
                                 .stroke(Color.white, lineWidth: 3)
                                 .frame(width: 60, height: 60)
                         )
-                }
+                })
                 .disabled(!cameraController.isCameraReady)
-                
+
                 Spacer()
             }
             .padding(.bottom, 50)
@@ -151,13 +150,13 @@ struct PhotoCameraView: View {
             Text("Please enable camera access in Settings to take product photos.")
         }
     }
-    
+
     private func confirmationView(image: UIImage) -> some View {
         NavigationView {
             VStack(spacing: 0) {
-            
+
             Spacer(minLength: 20)
-            
+
             // Preview captured image
             Image(uiImage: image)
                 .resizable()
@@ -165,30 +164,30 @@ struct PhotoCameraView: View {
                 .frame(height: 400)
                 .cornerRadius(12)
                 .padding(.horizontal, 16)
-            
+
             // Instructions
             VStack(spacing: 8) {
                 Text("How does your photo look?")
                     .font(.poppins(size: 16, weight: .medium))
                     .foregroundColor(.primary)
                     .padding(.top, 16)
-                
+
                 Text("Use the photo for the product image or retake")
                     .font(.poppins(size: 14))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
-            
+
             Spacer()
-            
+
             // Bottom controls - Use Photo and Retake
             HStack(spacing: 20) {
                 // Retake button
                 Button(action: {
                     showingConfirmation = false
                     capturedImage = nil
-                }) {
+                }, label: {
                     HStack {
                         Image(systemName: "arrow.clockwise")
                         Text("Retake")
@@ -199,13 +198,13 @@ struct PhotoCameraView: View {
                     .padding(.vertical, 12)
                     .background(Color(.systemGray5))
                     .cornerRadius(12)
-                }
-                
+                })
+
                 // Use Photo button
                 Button(action: {
                     onImageCaptured(image)
                     dismiss()
-                }) {
+                }, label: {
                     HStack {
                         Image(systemName: "checkmark")
                         Text("Use Photo")
@@ -216,7 +215,7 @@ struct PhotoCameraView: View {
                     .padding(.vertical, 12)
                     .background(Color.green)
                     .cornerRadius(12)
-                }
+                })
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 80)
@@ -238,14 +237,14 @@ struct PhotoCameraView: View {
 // Camera preview view
 struct CameraPreviewView: UIViewRepresentable {
     let cameraController: PhotoCameraController
-    
+
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
         view.backgroundColor = UIColor.black
         cameraController.previewView = view
         return view
     }
-    
+
     func updateUIView(_ uiView: UIView, context: Context) {
         // Update preview layer frame when view bounds change
         if let previewLayer = cameraController.currentPreviewLayer {
@@ -265,25 +264,22 @@ class PhotoCameraController: ObservableObject {
     private var photoOutput: AVCapturePhotoOutput?
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private var currentCamera: AVCaptureDevice?
-    
     @Published var showPermissionAlert = false
     @Published var isCameraReady = false
-    
     // Photo capture delegate
     private var photoCaptureDelegate: PhotoCaptureDelegate?
-    
     // Notification observers for app lifecycle
     private var foregroundObserver: NSObjectProtocol?
     private var backgroundObserver: NSObjectProtocol?
-    
+
     init() {
         setupLifecycleObservers()
     }
-    
+
     deinit {
         removeLifecycleObservers()
     }
-    
+
     var previewView: UIView? {
         didSet {
             if let view = previewView {
@@ -291,11 +287,11 @@ class PhotoCameraController: ObservableObject {
             }
         }
     }
-    
+
     var currentPreviewLayer: AVCaptureVideoPreviewLayer? {
         return previewLayer
     }
-    
+
     func checkPermissions() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -320,24 +316,23 @@ class PhotoCameraController: ObservableObject {
             }
         }
     }
-    
     private func setupCamera() {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
-            
+
             self.captureSession = AVCaptureSession()
             guard let captureSession = self.captureSession else { return }
-            
+
             // Configure session quality
             captureSession.sessionPreset = .photo
-            
+
             // Get the back camera
             self.currentCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
             guard let camera = self.currentCamera else {
                 print("Unable to access camera")
                 return
             }
-            
+
             do {
                 let input = try AVCaptureDeviceInput(device: camera)
                 if captureSession.canAddInput(input) {
@@ -347,7 +342,7 @@ class PhotoCameraController: ObservableObject {
                 print("Error setting up camera input: \(error)")
                 return
             }
-            
+
             // Setup photo output
             self.photoOutput = AVCapturePhotoOutput()
             if let photoOutput = self.photoOutput, captureSession.canAddOutput(photoOutput) {
@@ -356,23 +351,23 @@ class PhotoCameraController: ObservableObject {
             } else {
                 print("Failed to add photo output")
             }
-            
+
             captureSession.startRunning()
-            
+
             DispatchQueue.main.async {
                 self.isCameraReady = true
             }
         }
     }
-    
+
     private func setupPreviewLayer(for view: UIView) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let captureSession = self.captureSession else { return }
-            
+
             self.previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
             self.previewLayer?.videoGravity = .resizeAspectFill
             self.previewLayer?.frame = view.bounds
-            
+
             if let previewLayer = self.previewLayer {
                 view.layer.addSublayer(previewLayer)
                 // Force layout update
@@ -381,24 +376,24 @@ class PhotoCameraController: ObservableObject {
             }
         }
     }
-    
+
     func switchCamera() {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self, let captureSession = self.captureSession else { return }
-            
+
             captureSession.beginConfiguration()
-            
+
             // Remove current input
             if let currentInput = captureSession.inputs.first {
                 captureSession.removeInput(currentInput)
             }
-            
+
             // Switch camera position
             let newPosition: AVCaptureDevice.Position = self.currentCamera?.position == .back ? .front : .back
             self.currentCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: newPosition)
-            
+
             guard let camera = self.currentCamera else { return }
-            
+
             do {
                 let input = try AVCaptureDeviceInput(device: camera)
                 if captureSession.canAddInput(input) {
@@ -407,11 +402,11 @@ class PhotoCameraController: ObservableObject {
             } catch {
                 print("Error switching camera: \(error)")
             }
-            
+
             captureSession.commitConfiguration()
         }
     }
-    
+
     // App lifecycle handling
     private func setupLifecycleObservers() {
         foregroundObserver = NotificationCenter.default.addObserver(
@@ -421,7 +416,7 @@ class PhotoCameraController: ObservableObject {
         ) { [weak self] _ in
             self?.handleAppWillEnterForeground()
         }
-        
+
         backgroundObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil,
@@ -430,7 +425,7 @@ class PhotoCameraController: ObservableObject {
             self?.handleAppDidEnterBackground()
         }
     }
-    
+
     private func removeLifecycleObservers() {
         if let observer = foregroundObserver {
             NotificationCenter.default.removeObserver(observer)
@@ -441,68 +436,68 @@ class PhotoCameraController: ObservableObject {
             backgroundObserver = nil
         }
     }
-    
+
     private func handleAppWillEnterForeground() {
         // Restart camera when app returns to foreground
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self,
                   let session = self.captureSession else { return }
-            
+
             if !session.isRunning {
                 print("Restarting camera session after returning to foreground")
                 session.startRunning()
-                
+
                 DispatchQueue.main.async {
                     self.isCameraReady = true
                 }
             }
         }
     }
-    
+
     private func handleAppDidEnterBackground() {
         // Stop camera session when app goes to background
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self,
                   let session = self.captureSession else { return }
-            
+
             if session.isRunning {
                 print("Stopping camera session as app goes to background")
                 session.stopRunning()
-                
+
                 DispatchQueue.main.async {
                     self.isCameraReady = false
                 }
             }
         }
     }
-    
+
     func capturePhoto(completion: @escaping (UIImage?) -> Void) {
         guard let photoOutput = photoOutput else {
             print("Photo output not available")
             completion(nil)
             return
         }
-        
+
         let settings = AVCapturePhotoSettings()
         settings.flashMode = .auto
         settings.isAutoRedEyeReductionEnabled = true
-        
+
         // Create and retain the delegate
         photoCaptureDelegate = PhotoCaptureDelegate(completion: completion)
         photoOutput.capturePhoto(with: settings, delegate: photoCaptureDelegate!)
     }
-    
+
     func cleanup() {
         removeLifecycleObservers()
-        
+
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
-            
+
             // Check if session exists and is running before stopping
             if let session = self.captureSession, session.isRunning {
                 session.stopRunning()
             }
-            
+
             // Clean up references
             self.captureSession = nil
             self.photoOutput = nil
@@ -516,25 +511,24 @@ class PhotoCameraController: ObservableObject {
 // Photo capture delegate
 class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     let completion: (UIImage?) -> Void
-    
+
     init(completion: @escaping (UIImage?) -> Void) {
         self.completion = completion
     }
-    
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         if let error = error {
             print("Error capturing photo: \(error)")
             completion(nil)
             return
         }
-        
+
         guard let imageData = photo.fileDataRepresentation(),
               let image = UIImage(data: imageData) else {
             print("Failed to create image from photo data")
             completion(nil)
             return
         }
-        
+
         completion(image)
     }
 }

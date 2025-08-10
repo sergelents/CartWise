@@ -21,7 +21,16 @@ extension ShoppingExperience {
     @NSManaged public var comments: NSSet?
 }
 extension ShoppingExperience {
-    convenience init(context: NSManagedObjectContext, id: String, comment: String, rating: Int16 = 0, type: String? = nil, user: UserEntity? = nil, groceryItem: GroceryItem? = nil, location: Location? = nil) {
+    convenience init(
+        context: NSManagedObjectContext,
+        id: String,
+        comment: String,
+        rating: Int16 = 0,
+        type: String? = nil,
+        user: UserEntity? = nil,
+        groceryItem: GroceryItem? = nil,
+        location: Location? = nil
+    ) {
         self.init(context: context)
         self.id = id
         self.comment = comment
@@ -33,7 +42,7 @@ extension ShoppingExperience {
         self.createdAt = Date()
     }
 }
-extension ShoppingExperience : Identifiable {
+extension ShoppingExperience: Identifiable {
     // Computed property for easier access to comments
     var commentArray: [UserComment] {
         let set = comments as? Set<UserComment> ?? []
@@ -61,8 +70,6 @@ extension ShoppingExperience : Identifiable {
             return "New Product"
         case "general":
             return "General Comment"
-        case "new_product":
-            return "New Product"
         default:
             return "Shopping Experience"
         }

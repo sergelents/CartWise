@@ -67,7 +67,8 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
             } catch {
                 lastError = error
                 if attempt < retries {
-                    try await Task.sleep(nanoseconds: UInt64(pow(2.0, Double(attempt))) * 1_000_000_000) // Exponential backoff
+                    // Exponential backoff
+                    try await Task.sleep(nanoseconds: UInt64(pow(2.0, Double(attempt))) * 1_000_000_000)
                 }
             }
         }

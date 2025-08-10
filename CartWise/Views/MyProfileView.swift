@@ -15,20 +15,19 @@ struct MyProfileView: View {
     @State private var selectedTab: ProfileTab = .favorites
     @AppStorage("profileIconName") private var profileIconName: String = "person.crop.circle.fill"
     @State private var isAvatarPickerPresented: Bool = false
-    
     enum ProfileTab: String, CaseIterable {
         case favorites = "Favorites"
         case locations = "Locations"
         case reputation = "Reputation"
     }
-    
+
     var body: some View {
         NavigationView {
             ZStack {
                 // Background
                 AppColors.backgroundSecondary
                     .ignoresSafeArea()
-                
+
                 ScrollView {
                     VStack(spacing: 24) {
                         // Profile Card
@@ -38,10 +37,10 @@ struct MyProfileView: View {
                             profileIconName: profileIconName,
                             onAvatarTapped: { isAvatarPickerPresented = true }
                         )
-                        
+
                         // Tabbed Content
                         TabbedContentView(selectedTab: $selectedTab)
-                        
+
                         // Logout Button
                         LogoutButton(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -110,12 +109,12 @@ struct MyProfileView: View {
 // MARK: - Tabbed Content View
 struct TabbedContentView: View {
     @Binding var selectedTab: MyProfileView.ProfileTab
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Tab Selector
             TabSelector(selectedTab: $selectedTab)
-            
+
             // Tab Content
             VStack(spacing: 0) {
                 if selectedTab == .favorites {
@@ -143,20 +142,20 @@ struct TabbedContentView: View {
 // MARK: - Tab Selector
 struct TabSelector: View {
     @Binding var selectedTab: MyProfileView.ProfileTab
-    
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(MyProfileView.ProfileTab.allCases, id: \.self) { tab in
-                Button(action: {
+                Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         selectedTab = tab
                     }
-                }) {
+                } label: {
                     VStack(spacing: 8) {
                         Text(tab.rawValue)
                             .font(.poppins(size: 16, weight: selectedTab == tab ? .semibold : .medium))
                             .foregroundColor(selectedTab == tab ? AppColors.accentGreen : .gray)
-                        
+
                         // Underline indicator
                         Rectangle()
                             .fill(selectedTab == tab ? AppColors.accentGreen : Color.clear)
@@ -180,7 +179,7 @@ struct ProfileCard: View {
     let isLoadingUser: Bool
     let profileIconName: String
     let onAvatarTapped: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 20) {
             // Profile Avatar
@@ -211,7 +210,7 @@ struct ProfileCard: View {
             }
             .buttonStyle(PlainButtonStyle())
             .padding(.top, 16)
-            
+
             // User Info
             VStack(spacing: 8) {
                 if isLoadingUser {
@@ -223,7 +222,7 @@ struct ProfileCard: View {
                         .font(.poppins(size: 24, weight: .bold))
                         .foregroundColor(AppColors.textPrimary)
                 }
-                
+
                 Text("Manage your account and preferences")
                     .font(.poppins(size: 14, weight: .regular))
                     .foregroundColor(.gray)
@@ -262,17 +261,20 @@ struct ProfileIconPickerView: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(icons, id: \.self) { icon in
-                        Button(action: {
+                        Button {
                             selectedIcon = icon
                             dismiss()
-                        }) {
+                        } label: {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12)
                                     .fill(Color.white)
                                     .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .stroke(icon == selectedIcon ? AppColors.accentGreen : Color.clear, lineWidth: 2)
+                                            .stroke(
+                                                icon == selectedIcon ? AppColors.accentGreen : Color.clear,
+                                                lineWidth: 2
+                                            )
                                     )
                                 Image(systemName: icon)
                                     .resizable()
@@ -302,7 +304,7 @@ struct ProfileIconPickerView: View {
 // MARK: - Logout Button Component
 struct LogoutButton: View {
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
@@ -339,14 +341,14 @@ struct ReputationTabView: View {
     @State private var userUpdates: Int = 0
     @State private var userLevel: String = "New Shopper"
     @State private var isLoading: Bool = true
-    
+
     var body: some View {
         VStack(spacing: 20) {
             if isLoading {
                 VStack(spacing: 16) {
                     ProgressView()
                         .scaleEffect(1.2)
-                    
+
                     Text("Loading reputation data...")
                         .font(.poppins(size: 14, weight: .medium))
                         .foregroundColor(.gray)
@@ -367,7 +369,7 @@ struct ReputationTabView: View {
             }
         }
     }
-    
+
     private func loadUserReputation() async {
         if let reputation = await ReputationManager.shared.getCurrentUserReputation() {
             await MainActor.run {

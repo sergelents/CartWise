@@ -13,13 +13,13 @@ struct SplashScreenView: View {
             // Background
             Color.white
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 8) {
                 // CartWise logo
                 Text("CartWise")
                     .font(.system(size: 52, weight: .bold, design: .default))
                     .foregroundColor(Color(red: 0.2, green: 0.8, blue: 0.2))
-                
+
                 // Tagline
                 Text("Smart Shopping Made Simple")
                     .font(.system(size: 16, weight: .medium, design: .default))
@@ -31,4 +31,4 @@ struct SplashScreenView: View {
 
 #Preview {
     SplashScreenView()
-} 
+}

@@ -11,44 +11,44 @@ struct ReputationCardView: View {
     let updates: Int
     let level: String
     @State private var progressValue: Double = 0.0
-    
+
     private var currentLevel: ShopperLevel {
         ReputationSystem.shared.getCurrentLevel(updates: updates)
     }
-    
+
     private var nextLevel: ShopperLevel? {
         ReputationSystem.shared.getNextLevel(updates: updates)
     }
-    
+
     private var progressToNextLevel: Double {
         ReputationSystem.shared.getProgressToNextLevel(updates: updates)
     }
-    
+
     private var updatesToNextLevel: Int {
         ReputationSystem.shared.getUpdatesToNextLevel(updates: updates)
     }
-    
+
     var body: some View {
         VStack(spacing: 20) {
             // Level Badge
             LevelBadgeView(level: currentLevel)
-            
+
             // Level Info
             VStack(spacing: 8) {
                 Text(currentLevel.name)
                     .font(.poppins(size: 20, weight: .bold))
                     .foregroundColor(AppColors.textPrimary)
-                
+
                 Text(currentLevel.description)
                     .font(.poppins(size: 14, weight: .regular))
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
             }
-            
+
             // Statistics
             StatisticsView(updates: updates)
-            
+
             // Progress Section
             if let nextLevel = nextLevel {
                 ProgressSectionView(
@@ -79,7 +79,7 @@ struct ReputationCardView: View {
 // MARK: - Level Badge View
 struct LevelBadgeView: View {
     let level: ShopperLevel
-    
+
     var body: some View {
         ZStack {
             Circle()
@@ -94,7 +94,7 @@ struct LevelBadgeView: View {
                     )
                 )
                 .frame(width: 80, height: 80)
-            
+
             Image(systemName: level.icon)
                 .font(.system(size: 32, weight: .medium))
                 .foregroundColor(level.color)
@@ -105,13 +105,13 @@ struct LevelBadgeView: View {
 // MARK: - Statistics View
 struct StatisticsView: View {
     let updates: Int
-    
+
     var body: some View {
         VStack(spacing: 12) {
             Text("\(updates)")
                 .font(.poppins(size: 32, weight: .bold))
                 .foregroundColor(AppColors.accentGreen)
-            
+
             Text("Price Updates")
                 .font(.poppins(size: 14, weight: .medium))
                 .foregroundColor(.gray)
@@ -126,7 +126,7 @@ struct ProgressSectionView: View {
     let nextLevel: ShopperLevel
     let progress: Double
     let updatesToNext: Int
-    
+
     var body: some View {
         VStack(spacing: 16) {
             // Progress Bar
@@ -135,27 +135,27 @@ struct ProgressSectionView: View {
                     Text("Progress to \(nextLevel.name)")
                         .font(.poppins(size: 14, weight: .medium))
                         .foregroundColor(AppColors.textPrimary)
-                    
+
                     Spacer()
-                    
+
                     Text("\(Int(progress * 100))%")
                         .font(.poppins(size: 14, weight: .semibold))
                         .foregroundColor(AppColors.accentGreen)
                 }
-                
+
                 ProgressBarView(progress: progress)
             }
-            
+
             // Updates needed
             HStack(spacing: 8) {
                 Image(systemName: "arrow.up.circle.fill")
                     .foregroundColor(AppColors.accentGreen)
                     .font(.system(size: 16))
-                
+
                 Text("\(updatesToNext) more updates to reach \(nextLevel.name)")
                     .font(.poppins(size: 12, weight: .medium))
                     .foregroundColor(.gray)
-                
+
                 Spacer()
             }
         }
@@ -166,7 +166,7 @@ struct ProgressSectionView: View {
 struct ProgressBarView: View {
     let progress: Double
     @State private var animatedProgress: Double = 0.0
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -174,7 +174,7 @@ struct ProgressBarView: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.gray.opacity(0.2))
                     .frame(height: 8)
-                
+
                 // Progress
                 RoundedRectangle(cornerRadius: 8)
                     .fill(
@@ -208,11 +208,11 @@ struct MaxLevelView: View {
             Image(systemName: "star.circle.fill")
                 .font(.system(size: 32))
                 .foregroundColor(.yellow)
-            
+
             Text("Maximum Level Reached!")
                 .font(.poppins(size: 16, weight: .bold))
                 .foregroundColor(AppColors.textPrimary)
-            
+
             Text("You've achieved the highest level in the CartWise community!")
                 .font(.poppins(size: 12, weight: .medium))
                 .foregroundColor(.gray)
@@ -226,4 +226,4 @@ struct MaxLevelView: View {
     ReputationCardView(updates: 75, level: "Expert Shopper")
         .padding()
         .background(AppColors.backgroundSecondary)
-} 
+}
