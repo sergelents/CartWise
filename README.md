@@ -43,7 +43,7 @@ A crowd-sourced shopping iOS application that helps users manage shopping lists,
 ### System Requirements
 - **macOS**: 12.0 (Monterey) or later
 - **Xcode**: 15.0 or later
-- **iOS**: 16.0 or later (for device deployment)
+- **iOS**: 17.6 or later (for device deployment)
 - **RAM**: 8GB minimum, 16GB recommended
 - **Storage**: 10GB free space
 
