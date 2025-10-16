@@ -13,6 +13,11 @@ protocol NetworkServiceProtocol: Sendable {
     func searchProductsOnWalmart(by query: String) async throws -> [APIProduct]
     func fetchProductWithRetry(by name: String, retries: Int) async throws -> APIProduct?
     func searchGroceryPrice(productName: String, store: Store) async throws -> APIProduct?
+    // MealMe: image-focused search
+    func searchProductsOnMealMe(by query: String) async throws -> [APIProduct]
+    // Keychain management
+    func setMealMeAPIKey(_ apiKey: String) -> Bool
+    func hasMealMeAPIKey() -> Bool
 }
 enum Store: String, CaseIterable, Codable {
     case amazon = "Amazon"
@@ -30,6 +35,10 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
     private let session: URLSession
     private let baseURL = "https://api-to-find-grocery-prices.p.rapidapi.com"
     private let apiKey = "84e64a5488msh5075a47a5c27140p17850bjsnb78c0cf33881"
+    // MealMe configuration
+    private let mealMeBaseURL = "https://api.mealme.ai"
+    private let mealMeApiKeyHeader = "X-API-Key" // adjust to "Authorization" with Bearer if required
+    private let keychainHelper = KeychainHelper.shared
     init(session: URLSession = .shared) {
         self.session = session
     }
@@ -48,6 +57,43 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         let response = try await performRequest(url: url, responseType: APIResponse.self)
         return response.products
     }
+
+    // MARK: - MealMe: Product/Image search
+    func searchProductsOnMealMe(by query: String) async throws -> [APIProduct] {
+        guard let url = buildMealMeSearchURL(query: query) else {
+            throw NetworkError.invalidURL
+        }
+        let response: MealMeSearchResponse = try await performMealMeRequest(url: url, responseType: MealMeSearchResponse.self)
+        // Map MealMe items to APIProduct minimally for image fetching
+        let products: [APIProduct] = response.results.compactMap { item in
+            let name = item.title ?? item.name ?? ""
+            let image = item.imageUrl ?? item.image ?? ""
+            guard !name.isEmpty, !image.isEmpty else { return nil }
+            return APIProduct(
+                name: name,
+                price: item.price ?? "",
+                currency: item.currency ?? "",
+                customerReview: "",
+                customerReviewCount: "",
+                shippingMessage: "",
+                amazonLink: item.link ?? item.url ?? "",
+                image: image,
+                boughtInfo: ""
+            )
+        }
+        return products
+    }
+    
+    // MARK: - Keychain Management
+    
+    func setMealMeAPIKey(_ apiKey: String) -> Bool {
+        return keychainHelper.saveMealMeAPIKey(apiKey)
+    }
+    
+    func hasMealMeAPIKey() -> Bool {
+        return keychainHelper.loadMealMeAPIKey() != nil
+    }
+    
     func searchGroceryPrice(productName: String, store: Store) async throws -> APIProduct? {
         let url = try buildStoreSearchURL(for: productName, store: store)
         let response = try await performRequest(url: url, responseType: APIResponse.self)
@@ -129,6 +175,71 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
             throw NetworkError.httpError(httpResponse.statusCode)
         }
     }
+
+    // MARK: - MealMe helpers
+    private func buildMealMeSearchURL(query: String) -> URL? {
+        // Common image/search path; adjust per MealMe docs if different
+        var components = URLComponents(string: "\(mealMeBaseURL)/search")
+        components?.queryItems = [
+            URLQueryItem(name: "query", value: query)
+        ]
+        return components?.url
+    }
+
+    private func performMealMeRequest<T: Decodable>(url: URL, responseType: T.Type) async throws -> T {
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        // Get API key from Keychain
+        if let mealMeApiKey = keychainHelper.loadMealMeAPIKey(), !mealMeApiKey.isEmpty {
+            request.setValue(mealMeApiKey, forHTTPHeaderField: mealMeApiKeyHeader)
+        } else {
+            print("MealMe: No API key found in Keychain")
+            throw NetworkError.invalidResponse
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.invalidResponse
+        }
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("MealMe: Raw JSON response: \(jsonString)")
+        }
+        switch httpResponse.statusCode {
+        case 200:
+            do {
+                let decoder = JSONDecoder()
+                return try decoder.decode(responseType, from: data)
+            } catch {
+                print("MealMe: Decoding error: \(error)")
+                throw NetworkError.decodingError(error)
+            }
+        case 404:
+            throw NetworkError.productNotFound
+        case 429:
+            throw NetworkError.rateLimitExceeded
+        case 500...599:
+            throw NetworkError.serverError(httpResponse.statusCode)
+        default:
+            throw NetworkError.httpError(httpResponse.statusCode)
+        }
+    }
+}
+
+// MARK: - MealMe Response Models (minimal for images)
+struct MealMeSearchResponse: Decodable {
+    let results: [MealMeItem]
+}
+
+struct MealMeItem: Decodable {
+    let title: String?
+    let name: String?
+    let imageUrl: String?
+    let image: String?
+    let url: String?
+    let link: String?
+    let price: String?
+    let currency: String?
 }
 // MARK: - Enhanced Error Handling
 enum NetworkError: Error, LocalizedError, Sendable {
