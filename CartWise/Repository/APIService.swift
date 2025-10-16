@@ -28,7 +28,13 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         guard let url = buildMealMeSearchURL(query: query) else {
             throw NetworkError.invalidURL
         }
-        let response: MealMeSearchResponse = try await performMealMeRequest(url: url, responseType: MealMeSearchResponse.self)
+        // Use retry with exponential backoff for resilience
+        let response: MealMeSearchResponse = try await performMealMeRequestWithRetry(
+            url: url,
+            responseType: MealMeSearchResponse.self,
+            retries: 3,
+            initialDelaySeconds: 0.6
+        )
         // Map MealMe items to APIProduct minimally for image fetching
         let products: [APIProduct] = response.results.compactMap { item in
             let name = item.title ?? item.name ?? ""
@@ -49,16 +55,6 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
         return products
     }
     
-    // MARK: - Keychain Management
-    
-    func setMealMeAPIKey(_ apiKey: String) -> Bool {
-        return keychainHelper.saveMealMeAPIKey(apiKey)
-    }
-    
-    func hasMealMeAPIKey() -> Bool {
-        return keychainHelper.loadMealMeAPIKey() != nil
-    }
-    
     // MARK: - MealMe helpers
     private func buildMealMeSearchURL(query: String) -> URL? {
         // Common image/search path; adjust per MealMe docs if different
@@ -67,6 +63,61 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
             URLQueryItem(name: "query", value: query)
         ]
         return components?.url
+    }
+
+    // MARK: - MealMe Retry Wrapper
+    private func performMealMeRequestWithRetry<T: Decodable>(
+        url: URL,
+        responseType: T.Type,
+        retries: Int = 3,
+        initialDelaySeconds: Double = 0.5
+    ) async throws -> T {
+        var attempt = 0
+        var delay = initialDelaySeconds
+        var lastError: Error?
+        while attempt < retries {
+            do {
+                return try await performMealMeRequest(url: url, responseType: responseType)
+            } catch {
+                lastError = error
+                // Decide if this error is retryable
+                if shouldRetryMealMe(error: error) {
+                    attempt += 1
+                    if attempt >= retries { break }
+                    // Exponential backoff with jitter (±20%)
+                    let jitter = Double.random(in: 0.8...1.2)
+                    let sleepSeconds = max(0.2, delay * jitter)
+                    let nanos = UInt64(sleepSeconds * 1_000_000_000)
+                    try? await Task.sleep(nanoseconds: nanos)
+                    delay *= 2
+                    continue
+                } else {
+                    throw error
+                }
+            }
+        }
+        throw lastError ?? NetworkError.maxRetriesExceeded
+    }
+
+    private func shouldRetryMealMe(error: Error) -> Bool {
+        if let netErr = error as? NetworkError {
+            switch netErr {
+            case .rateLimitExceeded:
+                return true
+            case .serverError:
+                return true
+            case .httpError(let code):
+                // Retry on 408, 425, 429 and all 5xx
+                return code == 408 || code == 425 || code == 429 || (500...599).contains(code)
+            case .invalidResponse, .noData:
+                // transient transport issues
+                return true
+            default:
+                return false
+            }
+        }
+        // Unknown errors: do not retry
+        return false
     }
 
     private func performMealMeRequest<T: Decodable>(url: URL, responseType: T.Type) async throws -> T {
@@ -107,23 +158,19 @@ final class NetworkService: NetworkServiceProtocol, @unchecked Sendable {
             throw NetworkError.httpError(httpResponse.statusCode)
         }
     }
+    
+    // MARK: - Keychain Management
+
+    func setMealMeAPIKey(_ apiKey: String) -> Bool {
+        return keychainHelper.saveMealMeAPIKey(apiKey)
+    }
+
+    func hasMealMeAPIKey() -> Bool {
+        return keychainHelper.loadMealMeAPIKey() != nil
+    }
+
 }
 
-// MARK: - MealMe Response Models (minimal for images)
-struct MealMeSearchResponse: Decodable {
-    let results: [MealMeItem]
-}
-
-struct MealMeItem: Decodable {
-    let title: String?
-    let name: String?
-    let imageUrl: String?
-    let image: String?
-    let url: String?
-    let link: String?
-    let price: String?
-    let currency: String?
-}
 // MARK: - Enhanced Error Handling
 enum NetworkError: Error, LocalizedError, Sendable {
     case invalidURL
@@ -170,3 +217,4 @@ enum NetworkError: Error, LocalizedError, Sendable {
         }
     }
 }
+
