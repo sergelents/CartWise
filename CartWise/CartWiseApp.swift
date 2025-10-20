@@ -15,9 +15,13 @@ struct CartWiseApp: App {
         
         let networkService = NetworkService()
         if !networkService.hasMealMeAPIKey() {
-            let apiKey = APIKeys.mealMeAPIKey
-            _ = networkService.setMealMeAPIKey(apiKey)
-            print("MealMe API key initialized successfully")
+            // Use environment variable for API key (required for CI/CD and production)
+            if let apiKey = ProcessInfo.processInfo.environment["MEALME_API_KEY"], !apiKey.isEmpty {
+                _ = networkService.setMealMeAPIKey(apiKey)
+                print("MealMe API key initialized successfully from environment")
+            } else {
+                print("Warning: MEALME_API_KEY environment variable not set. Image fetching will be disabled.")
+            }
         }
     }
     // Create a CoreDataStack instance for the app

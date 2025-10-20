@@ -28,6 +28,8 @@ jobs:
         fi
     
     - name: Build
+      env:
+        MEALME_API_KEY: ${{ secrets.MEALME_API_KEY }}
       run: |
         xcodebuild -project CartWise.xcodeproj \
           -scheme CartWise \
