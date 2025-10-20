@@ -3,3 +3,11 @@ GoogleService-Info.plist
 # Xcode user-specific files
 *.xcuserstate
 UserInterfaceState.xcuserstate
+
+# API Keys and sensitive data
+CartWise/Config/APIKeys.swift
+CartWise/Utilities/APIKey.swift
+APIKeys.swift
+APIKey.swift
+Config/
+*.plist

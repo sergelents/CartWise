@@ -12,6 +12,13 @@ struct CartWiseApp: App {
     @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
     init() {
         // Tags are now seeded automatically by CoreDataStack
+        
+        let networkService = NetworkService()
+        if !networkService.hasMealMeAPIKey() {
+            let apiKey = APIKeys.mealMeAPIKey
+            _ = networkService.setMealMeAPIKey(apiKey)
+            print("MealMe API key initialized successfully")
+        }
     }
     // Create a CoreDataStack instance for the app
     private let coreDataStack = CoreDataStack.shared
