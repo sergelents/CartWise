@@ -12,17 +12,13 @@ import SwiftUI
 
 struct YourListView: View {
     @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: ShoppingListCoordinator
     @State private var suggestedStore: String = "Whole Foods Market"
     @State private var storeAddress: String = "1701 Wewatta St."
     @State private var total: Double = 0.00
     @State private var allItemsChecked: Bool = false
     @State private var isEditing: Bool = false
     @State private var selectedItemsForDeletion: Set<String> = []
-    @State private var showingAddProductModal = false
-    @State private var showingRatingPrompt: Bool = false
-    @State private var showingDuplicateAlert = false
-    @State private var duplicateProductName = ""
-    @State private var showingCheckAllConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -37,9 +33,18 @@ struct YourListView: View {
                         isEditing: $isEditing,
                         allItemsChecked: $allItemsChecked,
                         selectedItemsForDeletion: $selectedItemsForDeletion,
-                        showingRatingPrompt: $showingRatingPrompt,
-                        showingAddProductModal: $showingAddProductModal,
-                        showingCheckAllConfirmation: $showingCheckAllConfirmation
+                        showingRatingPrompt: Binding(
+                            get: { coordinator.showingRatingPrompt },
+                            set: { _ in }
+                        ),
+                        showingAddProductModal: Binding(
+                            get: { coordinator.showingAddProductModal },
+                            set: { _ in }
+                        ),
+                        showingCheckAllConfirmation: Binding(
+                            get: { coordinator.showingCheckAllConfirmation },
+                            set: { _ in }
+                        )
                     )
                     // Price Comparison Card
                     PriceComparisonView(
@@ -50,6 +55,9 @@ struct YourListView: View {
                         },
                         onLocalComparison: {
                             await productViewModel.loadLocalPriceComparison()
+                        },
+                        onShareExperience: {
+                            coordinator.showShareExperience(priceComparison: productViewModel.priceComparison)
                         }
                     )
                     .padding(.horizontal)
@@ -58,29 +66,66 @@ struct YourListView: View {
                 .padding(.top)
             }
             .navigationTitle("Your Shopping List")
-            .sheet(isPresented: $showingRatingPrompt) {
+            .sheet(isPresented: Binding(
+                get: { coordinator.showingRatingPrompt },
+                set: { _ in coordinator.hideRatingPrompt() }
+            )) {
                 RatingPromptView()
             }
-            .sheet(isPresented: $showingAddProductModal) {
-                SmartAddProductModal(onAdd: addProductToSystem)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-                    .ignoresSafeArea(.keyboard, edges: .bottom)
+            .sheet(isPresented: Binding(
+                get: { coordinator.showingAddProductModal },
+                set: { _ in coordinator.hideAddProductModal() }
+            )) {
+                SmartAddProductModal(onAdd: { name, brand, category, price in
+                    Task {
+                        // Check for duplicate first
+                        if await productViewModel.isDuplicateProduct(name: name) {
+                            coordinator.showDuplicateAlert(productName: name)
+                            return
+                        }
+                        
+                        // Proceed with creation if no duplicate
+                        if let brand = brand, !brand.isEmpty {
+                            await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category)
+                        } else {
+                            await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
+                        }
+                        
+                        // Refresh price comparison after adding product
+                        await productViewModel.loadLocalPriceComparison()
+                    }
+                })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
             }
-            .alert("Duplicate Product", isPresented: $showingDuplicateAlert) {
+            .sheet(isPresented: Binding(
+                get: { coordinator.showingShareExperience },
+                set: { _ in coordinator.hideShareExperience() }
+            )) {
+                ShareExperienceView(priceComparison: coordinator.currentPriceComparison)
+            }
+            .alert("Duplicate Product", isPresented: Binding(
+                get: { coordinator.showingDuplicateAlert },
+                set: { _ in coordinator.hideDuplicateAlert() }
+            )) {
                 Button("OK") {
-                    showingDuplicateAlert = false
+                    coordinator.hideDuplicateAlert()
                 }
             } message: {
-                Text("A product named \"\(duplicateProductName)\" already exists in your list.")
+                Text("A product named \"\(coordinator.duplicateProductName)\" already exists in your list.")
             }
-            .alert("All done shopping?", isPresented: $showingCheckAllConfirmation) {
+            .alert("All done shopping?", isPresented: Binding(
+                get: { coordinator.showingCheckAllConfirmation },
+                set: { _ in coordinator.hideCheckAllConfirmation() }
+            )) {
                 Button("Cancel", role: .cancel) {
-                    // Do nothing, just dismiss the alert
+                    coordinator.hideCheckAllConfirmation()
                 }
                 Button("Clear List") {
                     Task {
                         await productViewModel.clearShoppingList()
+                        coordinator.hideCheckAllConfirmation()
                     }
                 }
             } message: {
@@ -88,9 +133,11 @@ struct YourListView: View {
             }
             .onAppear {
                 Task {
+                    // Load data directly through ViewModel
                     await productViewModel.loadShoppingListProducts()
-                    print("YourListView: Loaded \(productViewModel.products.count) shopping list products")
                     await productViewModel.loadLocalPriceComparison()
+                    
+                    print("YourListView: Loaded \(productViewModel.products.count) shopping list products")
                     print("YourListView: Price comparison loaded: " +
                           "\(productViewModel.priceComparison?.storePrices.count ?? 0) stores")
                     if let comparison = productViewModel.priceComparison {
@@ -105,24 +152,6 @@ struct YourListView: View {
         }
     }
 
-    private func addProductToSystem(name: String, brand: String?, category: String?, price: Double? = nil) {
-        Task {
-            // Check for duplicate first
-            if await productViewModel.isDuplicateProduct(name: name) {
-                duplicateProductName = name
-                showingDuplicateAlert = true
-                return
-            }
-            // Proceed with creation if no duplicate
-            if let brand = brand, !brand.isEmpty {
-                await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category)
-            } else {
-                await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
-            }
-            // Refresh price comparison after adding product
-            await productViewModel.loadLocalPriceComparison()
-        }
-    }
 }
 
 #Preview {

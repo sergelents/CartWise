@@ -11,7 +11,16 @@ struct PriceComparisonView: View {
     let isLoading: Bool
     let onRefresh: () async -> Void
     let onLocalComparison: () async -> Void
+    let onShareExperience: (() -> Void)?
     @State private var showingShareExperience = false
+    
+    init(priceComparison: PriceComparison?, isLoading: Bool, onRefresh: @escaping () async -> Void, onLocalComparison: @escaping () async -> Void, onShareExperience: (() -> Void)? = nil) {
+        self.priceComparison = priceComparison
+        self.isLoading = isLoading
+        self.onRefresh = onRefresh
+        self.onLocalComparison = onLocalComparison
+        self.onShareExperience = onShareExperience
+    }
     var body: some View {
         VStack(spacing: 12) {
             // Header
@@ -27,7 +36,11 @@ struct PriceComparisonView: View {
                     HStack(spacing: 12) {
                         Button(
                             action: {
-                                showingShareExperience = true
+                                if let onShareExperience = onShareExperience {
+                                    onShareExperience()
+                                } else {
+                                    showingShareExperience = true
+                                }
                             },
                             label: {
                                 Image(systemName: "bubble.left.and.bubble.right")
