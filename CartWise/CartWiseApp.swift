@@ -8,11 +8,21 @@ import SwiftUI
 import CoreData
 @main
 struct CartWiseApp: App {
-    @StateObject private var appCoordinator = AppCoordinator()
-    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    @StateObject private var productViewModel: ProductViewModel
+    @StateObject private var appCoordinator: AppCoordinator
+    
     init() {
-        // Tags are now seeded automatically by CoreDataStack
+        // Create repository once
+        let repository = ProductRepository()
         
+        // Initialize ProductViewModel with the repository
+        let productViewModel = ProductViewModel(repository: repository)
+        _productViewModel = StateObject(wrappedValue: productViewModel)
+        
+        // Initialize AppCoordinator with ProductViewModel
+        _appCoordinator = StateObject(wrappedValue: AppCoordinator(productViewModel: productViewModel))
+        
+        // Set up MealMe API key
         let networkService = NetworkService()
         if !networkService.hasMealMeAPIKey() {
             // Use environment variable for API key (required for CI/CD and production)

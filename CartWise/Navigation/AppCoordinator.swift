@@ -5,10 +5,22 @@
 //  Created by Serg Tsogtbaatar on 7/5/25.
 //
 import SwiftUI
+
+@MainActor
 class AppCoordinator: ObservableObject {
     @Published var selectedTab: TabItem = .yourList
     @Published var showSplash = true
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
+    
+    // MARK: - Sub-Coordinators
+    @Published var shoppingListCoordinator: ShoppingListCoordinator?
+    
+    // MARK: - Dependencies
+    private let productViewModel: ProductViewModel
+    
+    init(productViewModel: ProductViewModel) {
+        self.productViewModel = productViewModel
+    }
 
     func selectTab(_ tab: TabItem) {
         selectedTab = tab
@@ -16,12 +28,22 @@ class AppCoordinator: ObservableObject {
 
     func logout() {
         isLoggedIn = false
+        // Clean up coordinators on logout
+        shoppingListCoordinator = nil
     }
 
     func hideSplash() {
         withAnimation(.easeInOut(duration: 0.5)) {
             showSplash = false
         }
+    }
+    
+    // MARK: - Sub-Coordinator Management
+    func getShoppingListCoordinator() -> ShoppingListCoordinator {
+        if shoppingListCoordinator == nil {
+            shoppingListCoordinator = ShoppingListCoordinator(productViewModel: productViewModel)
+        }
+        return shoppingListCoordinator!
     }
 }
 enum TabItem: String, CaseIterable {
@@ -61,6 +83,7 @@ struct AppCoordinatorView: View {
                 if isLoggedIn {
                     TabView(selection: $coordinator.selectedTab) {
                     YourListView()
+                        .environmentObject(coordinator.getShoppingListCoordinator())
                         .tabItem {
                             Image(systemName: coordinator.selectedTab == .yourList ?
                                   TabItem.yourList.selectedIconName : TabItem.yourList.iconName)
