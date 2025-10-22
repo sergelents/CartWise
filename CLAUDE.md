@@ -83,7 +83,7 @@ The app requires a MealMe API key for product image fetching:
 The application uses a **hybrid MVVM+Coordinator Pattern**:
 
 - **ViewModels**: Handle business logic and state management (ProductViewModel, AuthViewModel, SocialFeedViewModel)
-- **Coordinators**: Manage navigation and flow (AppCoordinator, ShoppingListCoordinator)
+- **Coordinators**: Manage navigation and flow (AppCoordinator + 5 child coordinators for each tab)
 - **Views**: SwiftUI views that bind to ViewModels and Coordinators
 - **Services/Repository**: Data persistence and network integration
 
@@ -96,11 +96,17 @@ AppCoordinator (Root Navigation)
     ├── AuthViewModel + LoginView/SignUpView
     └── Tab-based Navigation (when logged in)
         ├── YourListView → ShoppingListCoordinator
-        ├── SearchItemsView
-        ├── AddItemsView
-        ├── SocialFeedView
-        └── MyProfileView
+        ├── SearchItemsView → SearchItemsCoordinator
+        ├── AddItemsView → AddItemsCoordinator
+        ├── SocialFeedView → SocialFeedCoordinator (owns SocialFeedViewModel)
+        └── MyProfileView → MyProfileCoordinator
 ```
+
+**Key Principles**:
+- Each tab has its own dedicated coordinator for managing feature-specific navigation
+- Coordinators are lazily initialized only when their tab is first accessed
+- ProductViewModel is shared across coordinators; SocialFeedViewModel is isolated within SocialFeedCoordinator
+- All coordinators are cleaned up on logout to prevent memory leaks
 
 ---
 
@@ -330,13 +336,27 @@ Integrates with `ReputationSystem` to track and promote shopper levels based on 
 class AppCoordinator: ObservableObject {
     @Published var selectedTab: TabItem = .yourList
     @Published var showSplash = true
-    @Published var shoppingListCoordinator: ShoppingListCoordinator?
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-    
+
+    // Child coordinators (lazily initialized)
+    @Published var shoppingListCoordinator: ShoppingListCoordinator?
+    @Published var searchItemsCoordinator: SearchItemsCoordinator?
+    @Published var addItemsCoordinator: AddItemsCoordinator?
+    @Published var socialFeedCoordinator: SocialFeedCoordinator?
+    @Published var myProfileCoordinator: MyProfileCoordinator?
+
+    private let productViewModel: ProductViewModel
+
     func selectTab(_ tab: TabItem)
     func logout()
     func hideSplash()
+
+    // Lazy coordinator getters
     func getShoppingListCoordinator() -> ShoppingListCoordinator
+    func getSearchItemsCoordinator() -> SearchItemsCoordinator
+    func getAddItemsCoordinator() -> AddItemsCoordinator
+    func getSocialFeedCoordinator() -> SocialFeedCoordinator
+    func getMyProfileCoordinator() -> MyProfileCoordinator
 }
 
 enum TabItem: String, CaseIterable {
@@ -351,10 +371,19 @@ enum TabItem: String, CaseIterable {
 **Navigation Flow**:
 1. Splash screen (2.5 seconds)
 2. Authentication check via `@AppStorage("isLoggedIn")`
-3. If logged in → TabView with 5 main tabs
+3. If logged in → TabView with 5 main tabs, each with its own coordinator
 4. If not logged in → LoginView
+5. On logout → All coordinators cleaned up via `cleanupCoordinators()`
 
-### ShoppingListCoordinator (Feature-level Coordinator)
+**Key Features**:
+- **Lazy Initialization**: Child coordinators only created when their tab is accessed
+- **Memory Management**: All coordinators reset on logout
+- **Single ProductViewModel**: Shared across coordinators that need it
+- **Isolated ViewModels**: SocialFeedViewModel stays within SocialFeedCoordinator
+
+### Child Coordinators (Feature-level)
+
+#### 1. ShoppingListCoordinator
 
 **Location**: `/CartWise/Navigation/ShoppingListCoordinator.swift`
 
@@ -368,18 +397,134 @@ class ShoppingListCoordinator: ObservableObject {
     @Published var showingCheckAllConfirmation = false
     @Published var currentPriceComparison: PriceComparison?
     @Published var duplicateProductName = ""
-    
+
     private let productViewModel: ProductViewModel
-    
-    // Show/hide methods for modals and alerts
 }
 ```
 
 **Responsibilities**:
-- Manages modal presentation state for shopping list features
-- Coordinates between YourListView and child components
-- Handles price comparison data passing
-- Alerts for duplicate products, check-all confirmations
+- Add product modal management
+- Price comparison display
+- Rating prompts and share experience flows
+- Duplicate product alerts
+- Check-all confirmation dialogs
+
+#### 2. SearchItemsCoordinator
+
+**Location**: `/CartWise/Navigation/SearchItemsCoordinator.swift`
+
+```swift
+@MainActor
+class SearchItemsCoordinator: ObservableObject {
+    @Published var showingTagPicker = false
+    @Published var selectedTag: Tag?
+    @Published var selectedProduct: GroceryItem?
+    @Published var showingProductDetail = false
+
+    private let productViewModel: ProductViewModel
+}
+```
+
+**Responsibilities**:
+- Tag picker modal for filtering products
+- Tag selection and clearing
+- Product detail navigation
+- Search results coordination
+
+#### 3. AddItemsCoordinator
+
+**Location**: `/CartWise/Navigation/AddItemsCoordinator.swift`
+
+```swift
+@MainActor
+class AddItemsCoordinator: ObservableObject {
+    @Published var showingBarcodeConfirmation = false
+    @Published var showingCategoryPicker = false
+    @Published var showingLocationPicker = false
+    @Published var showingTagPicker = false
+    @Published var showingCamera = false
+    @Published var showingError = false
+
+    // Pending barcode scan data
+    @Published var pendingBarcode: String = ""
+    @Published var pendingProductName: String = ""
+    @Published var pendingCompany: String = ""
+    @Published var pendingPrice: String = ""
+    @Published var pendingCategory: ProductCategory = .none
+    @Published var pendingIsOnSale: Bool = false
+    @Published var pendingLocation: Location?
+    @Published var selectedTags: [Tag] = []
+    @Published var addToShoppingList = false
+    @Published var isExistingProduct = false
+
+    private let productViewModel: ProductViewModel
+}
+```
+
+**Responsibilities**:
+- Barcode scanning flow management
+- Barcode confirmation modal with full product details
+- Category, location, and tag picker modals
+- Camera state management
+- Error alert handling
+- Pending scan data lifecycle (reset after completion)
+
+#### 4. SocialFeedCoordinator
+
+**Location**: `/CartWise/Navigation/SocialFeedCoordinator.swift`
+
+```swift
+@MainActor
+class SocialFeedCoordinator: ObservableObject {
+    @Published var showingAddExperience = false
+    @Published var showingExperienceDetail = false
+    @Published var showingProductPicker = false
+    @Published var showingLocationPicker = false
+    @Published var selectedExperience: ShoppingExperience?
+    @Published var selectedProduct: GroceryItem?
+    @Published var selectedLocation: Location?
+
+    let socialFeedViewModel: SocialFeedViewModel  // Owns its own ViewModel
+}
+```
+
+**Responsibilities**:
+- Add experience modal management
+- Experience detail view navigation
+- Product and location picker modals
+- Social feed entry selection
+- **Owns SocialFeedViewModel** (isolated from AppCoordinator)
+
+**Important**: This coordinator creates its own `SocialFeedViewModel` internally, keeping social feed logic encapsulated and separate from global state.
+
+#### 5. MyProfileCoordinator
+
+**Location**: `/CartWise/Navigation/MyProfileCoordinator.swift`
+
+```swift
+@MainActor
+class MyProfileCoordinator: ObservableObject {
+    @Published var showingAddLocation = false
+    @Published var showingAvatarPicker = false
+    @Published var selectedTab: ProfileTab = .favorites
+    @Published var currentUsername: String = ""
+    @Published var isLoadingUser: Bool = true
+
+    enum ProfileTab: String, CaseIterable {
+        case favorites = "Favorites"
+        case locations = "Locations"
+        case reputation = "Reputation"
+    }
+
+    private let productViewModel: ProductViewModel
+}
+```
+
+**Responsibilities**:
+- Add location modal
+- Avatar picker modal
+- Profile tab selection (Favorites/Locations/Reputation)
+- Username and loading state management
 
 ### AppCoordinatorView (Coordinator's View)
 
@@ -389,17 +534,27 @@ Acts as the bridge between SwiftUI navigation and the coordinator:
 struct AppCoordinatorView: View {
     @ObservedObject var coordinator: AppCoordinator
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-    
+    @EnvironmentObject var productViewModel: ProductViewModel
+
     var body: some View {
         ZStack {
             if isLoggedIn {
                 TabView(selection: $coordinator.selectedTab) {
-                    // 5 tab views
+                    YourListView()
+                        .environmentObject(coordinator.getShoppingListCoordinator())
+                    SearchItemsView()
+                        .environmentObject(coordinator.getSearchItemsCoordinator())
+                    AddItemsView(availableTags: productViewModel.tags)
+                        .environmentObject(coordinator.getAddItemsCoordinator())
+                    SocialFeedView()
+                        .environmentObject(coordinator.getSocialFeedCoordinator())
+                    MyProfileView()
+                        .environmentObject(coordinator.getMyProfileCoordinator())
                 }
             } else {
                 LoginView()
             }
-            
+
             if coordinator.showSplash {
                 SplashScreenView()
             }
@@ -407,6 +562,8 @@ struct AppCoordinatorView: View {
     }
 }
 ```
+
+**Pattern**: Each tab view receives its dedicated coordinator via `.environmentObject()`, enabling clean separation of navigation concerns.
 
 ---
 
@@ -853,13 +1010,17 @@ ProductViewModel.createSocialFeedEntryForPriceUpdate()
 ```
 CartWise/
 ├── CartWiseApp.swift (Entry point, DI setup)
-├── Navigation/ (Coordinators)
-│   ├── AppCoordinator.swift
-│   └── ShoppingListCoordinator.swift
+├── Navigation/ (Coordinators - 6 files)
+│   ├── AppCoordinator.swift (Root coordinator with lazy child initialization)
+│   ├── ShoppingListCoordinator.swift (Your List tab)
+│   ├── SearchItemsCoordinator.swift (Search Items tab)
+│   ├── AddItemsCoordinator.swift (Add Items tab)
+│   ├── SocialFeedCoordinator.swift (Social Feed tab - owns SocialFeedViewModel)
+│   └── MyProfileCoordinator.swift (My Profile tab)
 ├── ViewModel/ (Business logic)
-│   ├── ProductViewModel.swift
+│   ├── ProductViewModel.swift (Shared across coordinators)
 │   ├── AuthViewModel.swift
-│   └── SocialFeedViewModel.swift
+│   └── SocialFeedViewModel.swift (Owned by SocialFeedCoordinator)
 ├── Views/ (SwiftUI screens)
 │   ├── YourListView/
 │   ├── SearchItems/
@@ -930,25 +1091,23 @@ await viewModel.createProductForShoppingList(...)
 
 ### Working with Coordinators
 
-**Navigation Flow:**
-1. AppCoordinator handles top-level tab selection and authentication
-2. ShoppingListCoordinator manages modal presentation within shopping list feature
-3. Views access coordinators via `@EnvironmentObject`
+**Coordinator Pattern Implementation:**
+- AppCoordinator manages root navigation and owns 5 child coordinators
+- Each tab has its own coordinator: ShoppingListCoordinator, SearchItemsCoordinator, AddItemsCoordinator, SocialFeedCoordinator, MyProfileCoordinator
+- Coordinators are lazily initialized via getter methods (e.g., `getShoppingListCoordinator()`)
+- All coordinators are cleaned up on logout via `cleanupCoordinators()`
+- Views access their coordinator via `@EnvironmentObject`
 
-**Adding New Modals:**
-```swift
-// 1. Add published property to ShoppingListCoordinator
-@Published var showingMyNewModal = false
+**Adding New Navigation:**
+1. Add `@Published` modal state to the appropriate coordinator
+2. Add show/hide methods to manage the modal state
+3. Add `.sheet()` or `.fullScreenCover()` modifier in the view bound to coordinator state
+4. Remember to add new coordinators to `cleanupCoordinators()` method
 
-// 2. Add show/hide methods
-func showMyNewModal() { showingMyNewModal = true }
-func hideMyNewModal() { showingMyNewModal = false }
-
-// 3. Add sheet modifier in YourListView
-.sheet(isPresented: $coordinator.showingMyNewModal) {
-    MyNewModalView()
-}
-```
+**ViewModel Ownership:**
+- **Shared**: ProductViewModel is owned by CartWiseApp and passed to coordinators that need it
+- **Isolated**: SocialFeedViewModel is owned by SocialFeedCoordinator and not shared
+- **Pattern**: Create ViewModels within coordinators if they're only used by that feature; share at app level if used across multiple features
 
 ### Price Comparison Logic
 
@@ -1038,6 +1197,9 @@ do {
 4. **Image Blocking**: Don't await image fetches during product creation; let them happen asynchronously.
 5. **Coordinator Bypass**: Don't navigate directly from Views; always go through Coordinators.
 6. **API Key Exposure**: Never hardcode API keys; use environment variables and Keychain.
+7. **Coordinator Initialization**: Don't create coordinators directly in views; use AppCoordinator's lazy getters.
+8. **ViewModel Leakage**: Don't pass ViewModels between coordinators; only share ProductViewModel when needed.
+9. **Missing Cleanup**: Always add new coordinators to `cleanupCoordinators()` to prevent memory leaks on logout.
 
 ---
 
