@@ -11,13 +11,17 @@ class AppCoordinator: ObservableObject {
     @Published var selectedTab: TabItem = .yourList
     @Published var showSplash = true
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-    
+
     // MARK: - Sub-Coordinators
     @Published var shoppingListCoordinator: ShoppingListCoordinator?
-    
+    @Published var searchItemsCoordinator: SearchItemsCoordinator?
+    @Published var addItemsCoordinator: AddItemsCoordinator?
+    @Published var socialFeedCoordinator: SocialFeedCoordinator?
+    @Published var myProfileCoordinator: MyProfileCoordinator?
+
     // MARK: - Dependencies
     private let productViewModel: ProductViewModel
-    
+
     init(productViewModel: ProductViewModel) {
         self.productViewModel = productViewModel
     }
@@ -28,8 +32,8 @@ class AppCoordinator: ObservableObject {
 
     func logout() {
         isLoggedIn = false
-        // Clean up coordinators on logout
-        shoppingListCoordinator = nil
+        // Clean up all coordinators on logout
+        cleanupCoordinators()
     }
 
     func hideSplash() {
@@ -37,13 +41,50 @@ class AppCoordinator: ObservableObject {
             showSplash = false
         }
     }
-    
+
     // MARK: - Sub-Coordinator Management
+
     func getShoppingListCoordinator() -> ShoppingListCoordinator {
         if shoppingListCoordinator == nil {
             shoppingListCoordinator = ShoppingListCoordinator(productViewModel: productViewModel)
         }
         return shoppingListCoordinator!
+    }
+
+    func getSearchItemsCoordinator() -> SearchItemsCoordinator {
+        if searchItemsCoordinator == nil {
+            searchItemsCoordinator = SearchItemsCoordinator(productViewModel: productViewModel)
+        }
+        return searchItemsCoordinator!
+    }
+
+    func getAddItemsCoordinator() -> AddItemsCoordinator {
+        if addItemsCoordinator == nil {
+            addItemsCoordinator = AddItemsCoordinator(productViewModel: productViewModel)
+        }
+        return addItemsCoordinator!
+    }
+
+    func getSocialFeedCoordinator() -> SocialFeedCoordinator {
+        if socialFeedCoordinator == nil {
+            socialFeedCoordinator = SocialFeedCoordinator()
+        }
+        return socialFeedCoordinator!
+    }
+
+    func getMyProfileCoordinator() -> MyProfileCoordinator {
+        if myProfileCoordinator == nil {
+            myProfileCoordinator = MyProfileCoordinator(productViewModel: productViewModel)
+        }
+        return myProfileCoordinator!
+    }
+
+    private func cleanupCoordinators() {
+        shoppingListCoordinator = nil
+        searchItemsCoordinator = nil
+        addItemsCoordinator = nil
+        socialFeedCoordinator = nil
+        myProfileCoordinator = nil
     }
 }
 enum TabItem: String, CaseIterable {
@@ -82,60 +123,68 @@ struct AppCoordinatorView: View {
             Group {
                 if isLoggedIn {
                     TabView(selection: $coordinator.selectedTab) {
-                    YourListView()
-                        .environmentObject(coordinator.getShoppingListCoordinator())
-                        .tabItem {
-                            Image(systemName: coordinator.selectedTab == .yourList ?
-                                  TabItem.yourList.selectedIconName : TabItem.yourList.iconName)
-                            Text(TabItem.yourList.rawValue)
-                        }
-                        .tag(TabItem.yourList)
-                    SearchItemsView()
-                        .tabItem {
-                            Image(systemName: coordinator.selectedTab == .searchItems ?
-                                  TabItem.searchItems.selectedIconName : TabItem.searchItems.iconName)
-                            Text(TabItem.searchItems.rawValue)
-                        }
-                        .tag(TabItem.searchItems)
-                        .tint(Color.accentColorBlue)
-                    AddItemsView(availableTags: productViewModel.tags)
-                        .tabItem {
-                            Image(systemName: coordinator.selectedTab == .addItems ?
-                                  TabItem.addItems.selectedIconName : TabItem.addItems.iconName)
-                            Text(TabItem.addItems.rawValue)
-                        }
-                        .tag(TabItem.addItems)
-                    SocialFeedView()
-                        .tabItem {
-                            Image(systemName: coordinator.selectedTab == .socialFeed ?
-                                  TabItem.socialFeed.selectedIconName : TabItem.socialFeed.iconName)
-                            Text(TabItem.socialFeed.rawValue)
-                        }
-                        .tag(TabItem.socialFeed)
-                    MyProfileView()
-                        .tabItem {
-                            Image(systemName: coordinator.selectedTab == .myProfile ?
-                                  TabItem.myProfile.selectedIconName : TabItem.myProfile.iconName)
-                            Text(TabItem.myProfile.rawValue)
-                        }
-                        .tag(TabItem.myProfile)
-                }.tint(Color.accentColorBlue)
-            } else {
-                LoginView()
-            }
-        }
+                        YourListView()
+                            .environmentObject(coordinator.getShoppingListCoordinator())
+                            .tabItem {
+                                Image(systemName: coordinator.selectedTab == .yourList ?
+                                      TabItem.yourList.selectedIconName : TabItem.yourList.iconName)
+                                Text(TabItem.yourList.rawValue)
+                            }
+                            .tag(TabItem.yourList)
 
-        // Splash screen overlay
-        if coordinator.showSplash {
-            SplashScreenView()
-                .transition(.opacity)
-                .onAppear {
-                    // Hide splash after 2.5 seconds
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                        coordinator.hideSplash()
-                    }
+                        SearchItemsView()
+                            .environmentObject(coordinator.getSearchItemsCoordinator())
+                            .tabItem {
+                                Image(systemName: coordinator.selectedTab == .searchItems ?
+                                      TabItem.searchItems.selectedIconName : TabItem.searchItems.iconName)
+                                Text(TabItem.searchItems.rawValue)
+                            }
+                            .tag(TabItem.searchItems)
+                            .tint(Color.accentColorBlue)
+
+                        AddItemsView(availableTags: productViewModel.tags)
+                            .environmentObject(coordinator.getAddItemsCoordinator())
+                            .tabItem {
+                                Image(systemName: coordinator.selectedTab == .addItems ?
+                                      TabItem.addItems.selectedIconName : TabItem.addItems.iconName)
+                                Text(TabItem.addItems.rawValue)
+                            }
+                            .tag(TabItem.addItems)
+
+                        SocialFeedView()
+                            .environmentObject(coordinator.getSocialFeedCoordinator())
+                            .tabItem {
+                                Image(systemName: coordinator.selectedTab == .socialFeed ?
+                                      TabItem.socialFeed.selectedIconName : TabItem.socialFeed.iconName)
+                                Text(TabItem.socialFeed.rawValue)
+                            }
+                            .tag(TabItem.socialFeed)
+
+                        MyProfileView()
+                            .environmentObject(coordinator.getMyProfileCoordinator())
+                            .tabItem {
+                                Image(systemName: coordinator.selectedTab == .myProfile ?
+                                      TabItem.myProfile.selectedIconName : TabItem.myProfile.iconName)
+                                Text(TabItem.myProfile.rawValue)
+                            }
+                            .tag(TabItem.myProfile)
+                    }.tint(Color.accentColorBlue)
+                } else {
+                    LoginView()
                 }
-        }
+            }
+
+            // Splash screen overlay
+            if coordinator.showSplash {
+                SplashScreenView()
+                    .transition(.opacity)
+                    .onAppear {
+                        // Hide splash after 2.5 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                            coordinator.hideSplash()
+                        }
+                    }
+            }
         }
     }
 }
