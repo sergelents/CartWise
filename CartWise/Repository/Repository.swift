@@ -48,6 +48,13 @@ protocol ProductRepositoryProtocol: Sendable {
     func saveProductImage(for product: GroceryItem, imageURL: String, imageData: Data?) async throws
     func getProductImage(for product: GroceryItem) async throws -> ProductImage?
     func deleteProductImage(for product: GroceryItem) async throws
+    // Location methods
+    func fetchUserLocations() async throws -> [Location]
+    func createLocation(id: String, name: String, address: String, city: String, state: String, zipCode: String) async throws -> Location
+    func updateLocation(_ location: Location) async throws
+    func deleteLocation(_ location: Location) async throws
+    func toggleLocationFavorite(_ location: Location) async throws
+    func setLocationAsDefault(_ location: Location) async throws
 }
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     private let coreDataContainer: CoreDataContainerProtocol
@@ -285,6 +292,32 @@ final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
 
     func deleteProductImage(for product: GroceryItem) async throws {
         try await coreDataContainer.deleteProductImage(for: product)
+    }
+    
+    // MARK: - Location Methods
+    
+    func fetchUserLocations() async throws -> [Location] {
+        return try await coreDataContainer.fetchUserLocations()
+    }
+    
+    func createLocation(id: String, name: String, address: String, city: String, state: String, zipCode: String) async throws -> Location {
+        return try await coreDataContainer.createLocation(id: id, name: name, address: address, city: city, state: state, zipCode: zipCode)
+    }
+    
+    func updateLocation(_ location: Location) async throws {
+        try await coreDataContainer.updateLocation(location)
+    }
+    
+    func deleteLocation(_ location: Location) async throws {
+        try await coreDataContainer.deleteLocation(location)
+    }
+    
+    func toggleLocationFavorite(_ location: Location) async throws {
+        try await coreDataContainer.toggleLocationFavorite(location)
+    }
+    
+    func setLocationAsDefault(_ location: Location) async throws {
+        try await coreDataContainer.setLocationAsDefault(location)
     }
 }
 // This code was generated with the help of Claude, saving me 7 hours of research and development.

@@ -55,6 +55,13 @@ protocol CoreDataContainerProtocol: Sendable {
     func saveProductImage(for product: GroceryItem, imageURL: String, imageData: Data?) async throws
     func getProductImage(for product: GroceryItem) async throws -> ProductImage?
     func deleteProductImage(for product: GroceryItem) async throws
+    // Location methods
+    func fetchUserLocations() async throws -> [Location]
+    func createLocation(id: String, name: String, address: String, city: String, state: String, zipCode: String) async throws -> Location
+    func updateLocation(_ location: Location) async throws
+    func deleteLocation(_ location: Location) async throws
+    func toggleLocationFavorite(_ location: Location) async throws
+    func setLocationAsDefault(_ location: Location) async throws
 }
 final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
     private let coreDataStack: CoreDataStack
@@ -641,5 +648,107 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
         guard let lastUpdated = lastUpdated else { return false }
         let twoWeeksAgo = Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date()
         return lastUpdated >= twoWeeksAgo
+    }
+    
+    // MARK: - Location Methods
+    
+    func fetchUserLocations() async throws -> [Location] {
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            // Get current user
+            let userRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            userRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            userRequest.fetchLimit = 1
+            let users = try context.fetch(userRequest)
+            guard let currentUser = users.first else {
+                return []
+            }
+            
+            // Fetch user's locations
+            let request: NSFetchRequest<Location> = Location.fetchRequest()
+            request.predicate = NSPredicate(format: "user == %@", currentUser)
+            request.sortDescriptors = [
+                NSSortDescriptor(keyPath: \Location.isDefault, ascending: false),
+                NSSortDescriptor(keyPath: \Location.favorited, ascending: false),
+                NSSortDescriptor(keyPath: \Location.name, ascending: true)
+            ]
+            return try context.fetch(request)
+        }
+    }
+    
+    func createLocation(id: String, name: String, address: String, city: String, state: String, zipCode: String) async throws -> Location {
+        let context = await coreDataStack.viewContext
+        return try await context.perform {
+            // Get current user
+            let userRequest: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            userRequest.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            userRequest.fetchLimit = 1
+            let users = try context.fetch(userRequest)
+            guard let currentUser = users.first else {
+                throw NSError(domain: "CoreDataContainer", code: 404, userInfo: [NSLocalizedDescriptionKey: "No user found"])
+            }
+            
+            let location = Location(
+                context: context,
+                id: id,
+                name: name,
+                address: address,
+                city: city,
+                state: state,
+                zipCode: zipCode,
+                favorited: false,
+                isDefault: false
+            )
+            location.user = currentUser
+            
+            try context.save()
+            return location
+        }
+    }
+    
+    func updateLocation(_ location: Location) async throws {
+        let context = await coreDataStack.viewContext
+        try await context.perform {
+            let locationInContext = try context.existingObject(with: location.objectID) as! Location
+            // Properties are already updated on the location object passed in
+            // Just need to save the context
+            try context.save()
+        }
+    }
+    
+    func deleteLocation(_ location: Location) async throws {
+        let context = await coreDataStack.viewContext
+        try await context.perform {
+            let locationInContext = try context.existingObject(with: location.objectID)
+            context.delete(locationInContext)
+            try context.save()
+        }
+    }
+    
+    func toggleLocationFavorite(_ location: Location) async throws {
+        let context = await coreDataStack.viewContext
+        try await context.perform {
+            let locationInContext = try context.existingObject(with: location.objectID) as! Location
+            locationInContext.favorited.toggle()
+            try context.save()
+        }
+    }
+    
+    func setLocationAsDefault(_ location: Location) async throws {
+        let context = await coreDataStack.viewContext
+        try await context.perform {
+            // Remove default flag from all locations
+            let request: NSFetchRequest<Location> = Location.fetchRequest()
+            let allLocations = try context.fetch(request)
+            for loc in allLocations {
+                loc.isDefault = false
+            }
+            
+            // Set this location as default
+            let locationInContext = try context.existingObject(with: location.objectID) as! Location
+            locationInContext.isDefault = true
+            
+            try context.save()
+        }
     }
 }
