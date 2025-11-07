@@ -19,11 +19,31 @@ class AppCoordinator: ObservableObject {
     @Published var socialFeedCoordinator: SocialFeedCoordinator?
     @Published var myProfileCoordinator: MyProfileCoordinator?
 
-    // MARK: - Dependencies
-    private let productViewModel: ProductViewModel
+    // MARK: - Dependencies (View Models)
+    private let shoppingListViewModel: ShoppingListViewModel
+    private let searchViewModel: SearchViewModel
+    private let addItemsViewModel: AddItemsViewModel
+    private let profileViewModel: ProfileViewModel
+    private let locationViewModel: LocationViewModel
+    private let tagViewModel: TagViewModel
+    private let socialFeedViewModel: SocialFeedViewModel
 
-    init(productViewModel: ProductViewModel) {
-        self.productViewModel = productViewModel
+    init(
+        shoppingListViewModel: ShoppingListViewModel,
+        searchViewModel: SearchViewModel,
+        addItemsViewModel: AddItemsViewModel,
+        profileViewModel: ProfileViewModel,
+        locationViewModel: LocationViewModel,
+        tagViewModel: TagViewModel,
+        socialFeedViewModel: SocialFeedViewModel
+    ) {
+        self.shoppingListViewModel = shoppingListViewModel
+        self.searchViewModel = searchViewModel
+        self.addItemsViewModel = addItemsViewModel
+        self.profileViewModel = profileViewModel
+        self.locationViewModel = locationViewModel
+        self.tagViewModel = tagViewModel
+        self.socialFeedViewModel = socialFeedViewModel
     }
 
     func selectTab(_ tab: TabItem) {
@@ -46,21 +66,21 @@ class AppCoordinator: ObservableObject {
 
     func getShoppingListCoordinator() -> ShoppingListCoordinator {
         if shoppingListCoordinator == nil {
-            shoppingListCoordinator = ShoppingListCoordinator(productViewModel: productViewModel)
+            shoppingListCoordinator = ShoppingListCoordinator(shoppingListViewModel: shoppingListViewModel)
         }
         return shoppingListCoordinator!
     }
 
     func getSearchItemsCoordinator() -> SearchItemsCoordinator {
         if searchItemsCoordinator == nil {
-            searchItemsCoordinator = SearchItemsCoordinator(productViewModel: productViewModel)
+            searchItemsCoordinator = SearchItemsCoordinator(searchViewModel: searchViewModel, tagViewModel: tagViewModel)
         }
         return searchItemsCoordinator!
     }
 
     func getAddItemsCoordinator() -> AddItemsCoordinator {
         if addItemsCoordinator == nil {
-            addItemsCoordinator = AddItemsCoordinator(productViewModel: productViewModel)
+            addItemsCoordinator = AddItemsCoordinator(addItemsViewModel: addItemsViewModel, tagViewModel: tagViewModel)
         }
         return addItemsCoordinator!
     }
@@ -74,9 +94,16 @@ class AppCoordinator: ObservableObject {
 
     func getMyProfileCoordinator() -> MyProfileCoordinator {
         if myProfileCoordinator == nil {
-            myProfileCoordinator = MyProfileCoordinator(productViewModel: productViewModel)
+            myProfileCoordinator = MyProfileCoordinator(profileViewModel: profileViewModel, locationViewModel: locationViewModel)
         }
         return myProfileCoordinator!
+    }
+    
+    // MARK: - View Model Accessors
+    
+    /// Provides access to TagViewModel for views that need it
+    func getTagViewModel() -> TagViewModel {
+        return tagViewModel
     }
 
     private func cleanupCoordinators() {
@@ -114,8 +141,8 @@ enum TabItem: String, CaseIterable {
 }
 struct AppCoordinatorView: View {
     @ObservedObject var coordinator: AppCoordinator
+
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-    @EnvironmentObject var productViewModel: ProductViewModel
 
     var body: some View {
         ZStack {
@@ -142,7 +169,7 @@ struct AppCoordinatorView: View {
                             .tag(TabItem.searchItems)
                             .tint(Color.accentColorBlue)
 
-                        AddItemsView(availableTags: productViewModel.tags)
+                        AddItemsView(availableTags: coordinator.getTagViewModel().tags)
                             .environmentObject(coordinator.getAddItemsCoordinator())
                             .tabItem {
                                 Image(systemName: coordinator.selectedTab == .addItems ?
