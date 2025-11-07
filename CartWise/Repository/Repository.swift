@@ -6,9 +6,36 @@
 //
 import Foundation
 import CoreData
+
+/// Protocol defining the contract for product and shopping list data operations.
+/// All methods are async and can throw errors for proper error handling.
+/// This protocol follows the Repository pattern to abstract data layer operations.
 protocol ProductRepositoryProtocol: Sendable {
+    // MARK: - Product Operations
+    
+    /// Fetches all products from the data store
+    /// - Returns: Array of all grocery items
     func fetchAllProducts() async throws -> [GroceryItem]
+    
+    /// Fetches only products that are in the shopping list
+    /// - Returns: Array of grocery items in shopping list
     func fetchListProducts() async throws -> [GroceryItem]
+    
+    /// Creates a new product in the data store
+    /// - Parameters:
+    ///   - id: Unique identifier for the product
+    ///   - productName: Name of the product
+    ///   - brand: Optional brand name
+    ///   - category: Optional product category
+    ///   - price: Product price
+    ///   - currency: Currency code (e.g., "USD")
+    ///   - store: Optional store name
+    ///   - location: Optional location address
+    ///   - imageURL: Optional product image URL
+    ///   - barcode: Optional product barcode
+    ///   - isInShoppingList: Whether to add to shopping list
+    ///   - isOnSale: Whether product is on sale
+    /// - Returns: The created grocery item
     func createProduct(
         id: String,
         productName: String,
@@ -23,39 +50,170 @@ protocol ProductRepositoryProtocol: Sendable {
         isInShoppingList: Bool,
         isOnSale: Bool
     ) async throws -> GroceryItem
+    
+    /// Updates an existing product
+    /// - Parameter product: The product to update
     func updateProduct(_ product: GroceryItem) async throws
+    
+    /// Updates a product's price at a specific store (also updates reputation)
+    /// - Parameters:
+    ///   - product: The product to update
+    ///   - price: New price value
+    ///   - store: Store name
+    ///   - location: Optional location address
     func updateProductWithPrice(product: GroceryItem, price: Double, store: String, location: String?) async throws
+    
+    /// Permanently deletes a product from the data store
+    /// - Parameter product: The product to delete
     func deleteProduct(_ product: GroceryItem) async throws
+    
+    // MARK: - Shopping List Operations
+    
+    /// Removes a product from shopping list (soft delete - product still exists)
+    /// - Parameter product: The product to remove from shopping list
     func removeProductFromShoppingList(_ product: GroceryItem) async throws
+    
+    /// Toggles the completion status of a product in shopping list
+    /// - Parameter product: The product to toggle
     func toggleProductCompletion(_ product: GroceryItem) async throws
+    
+    /// Adds an existing product to the shopping list
+    /// - Parameter product: The product to add
     func addProductToShoppingList(_ product: GroceryItem) async throws
+    
+    // MARK: - Favorites Operations
+    
+    /// Fetches all products marked as favorites
+    /// - Returns: Array of favorite grocery items
     func fetchFavoriteProducts() async throws -> [GroceryItem]
+    
+    /// Adds a product to favorites
+    /// - Parameter product: The product to favorite
     func addProductToFavorites(_ product: GroceryItem) async throws
+    
+    /// Removes a product from favorites
+    /// - Parameter product: The product to unfavorite
     func removeProductFromFavorites(_ product: GroceryItem) async throws
+    
+    /// Toggles the favorite status of a product
+    /// - Parameter product: The product to toggle
     func toggleProductFavorite(_ product: GroceryItem) async throws
+    
+    // MARK: - Search Operations
+    
+    /// Searches for products by name
+    /// - Parameter name: Product name to search for
+    /// - Returns: Array of matching grocery items
     func searchProducts(by name: String) async throws -> [GroceryItem]
+    
+    /// Searches for products by barcode
+    /// - Parameter barcode: Barcode string to search for
+    /// - Returns: Array of matching grocery items
     func searchProductsByBarcode(_ barcode: String) async throws -> [GroceryItem]
+    
+    // MARK: - Price Comparison
+    
+    /// Compares prices across stores for a shopping list
+    /// - Parameter shoppingList: Array of products to compare
+    /// - Returns: Price comparison result with store totals
     func getLocalPriceComparison(for shoppingList: [GroceryItem]) async throws -> LocalPriceComparisonResult
-    // Tag-related methods
+    
+    // MARK: - Tag Operations
+    
+    /// Fetches all available tags
+    /// - Returns: Array of tags
     func fetchAllTags() async throws -> [Tag]
+    
+    /// Creates a new tag
+    /// - Parameters:
+    ///   - id: Unique identifier for the tag
+    ///   - name: Tag name
+    ///   - color: Tag color code
+    /// - Returns: The created tag
     func createTag(id: String, name: String, color: String) async throws -> Tag
+    
+    /// Updates an existing tag
+    /// - Parameter tag: The tag to update
     func updateTag(_ tag: Tag) async throws
+    
+    /// Adds tags to a product
+    /// - Parameters:
+    ///   - product: The product to tag
+    ///   - tags: Array of tags to add
     func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async throws
+    
+    /// Replaces all tags for a product
+    /// - Parameters:
+    ///   - product: The product to update
+    ///   - tags: New array of tags
     func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async throws
+    
+    /// Removes specific tags from a product
+    /// - Parameters:
+    ///   - product: The product to update
+    ///   - tags: Array of tags to remove
     func removeTagsFromProduct(_ product: GroceryItem, tags: [Tag]) async throws
+    
+    /// Initializes default tags in the system
     func initializeDefaultTags() async throws
-    // ProductImage methods
+    
+    // MARK: - Product Image Operations
+    
+    /// Saves a product image
+    /// - Parameters:
+    ///   - product: The product to associate the image with
+    ///   - imageURL: URL string of the image
+    ///   - imageData: Optional image binary data
     func saveProductImage(for product: GroceryItem, imageURL: String, imageData: Data?) async throws
+    
+    /// Retrieves a product's image
+    /// - Parameter product: The product to get image for
+    /// - Returns: ProductImage if exists, nil otherwise
     func getProductImage(for product: GroceryItem) async throws -> ProductImage?
+    
+    /// Deletes a product's image
+    /// - Parameter product: The product whose image to delete
     func deleteProductImage(for product: GroceryItem) async throws
-    // Location methods
+    
+    // MARK: - Location Operations
+    
+    /// Fetches all locations for the current user
+    /// - Returns: Array of user's locations
     func fetchUserLocations() async throws -> [Location]
+    
+    /// Creates a new location
+    /// - Parameters:
+    ///   - id: Unique identifier for the location
+    ///   - name: Location/store name
+    ///   - address: Street address
+    ///   - city: City name
+    ///   - state: State/province
+    ///   - zipCode: Postal code
+    /// - Returns: The created location
     func createLocation(id: String, name: String, address: String, city: String, state: String, zipCode: String) async throws -> Location
+    
+    /// Updates an existing location
+    /// - Parameter location: The location to update
     func updateLocation(_ location: Location) async throws
+    
+    /// Deletes a location
+    /// - Parameter location: The location to delete
     func deleteLocation(_ location: Location) async throws
+    
+    /// Toggles the favorite status of a location
+    /// - Parameter location: The location to toggle
     func toggleLocationFavorite(_ location: Location) async throws
+    
+    /// Sets a location as the default location
+    /// - Parameter location: The location to set as default
     func setLocationAsDefault(_ location: Location) async throws
 }
+
+// MARK: - Repository Implementation
+
+/// Concrete implementation of ProductRepositoryProtocol.
+/// Uses CoreDataContainer for data persistence operations.
+/// Follows the Repository pattern to provide a clean abstraction over data operations.
 final class ProductRepository: ProductRepositoryProtocol, @unchecked Sendable {
     private let coreDataContainer: CoreDataContainerProtocol
     init(coreDataContainer: CoreDataContainerProtocol = CoreDataContainer()) {
