@@ -8,19 +8,49 @@ import SwiftUI
 import CoreData
 @main
 struct CartWiseApp: App {
-    @StateObject private var productViewModel: ProductViewModel
     @StateObject private var appCoordinator: AppCoordinator
     
     init() {
-        // Create repository once
+        // Create shared dependencies
         let repository = ProductRepository()
+        let imageService = ImageService()
+        let socialFeedViewModel = SocialFeedViewModel()
         
-        // Initialize ProductViewModel with the repository
-        let productViewModel = ProductViewModel(repository: repository)
-        _productViewModel = StateObject(wrappedValue: productViewModel)
+        // Initialize all view models with dependencies
+        let shoppingListViewModel = ShoppingListViewModel(
+            repository: repository,
+            imageService: imageService,
+            socialFeedViewModel: socialFeedViewModel
+        )
+        let searchViewModel = SearchViewModel(
+            repository: repository,
+            imageService: imageService
+        )
+        let addItemsViewModel = AddItemsViewModel(
+            repository: repository,
+            imageService: imageService
+        )
+        let profileViewModel = ProfileViewModel(
+            repository: repository,
+            imageService: imageService
+        )
+        let locationViewModel = LocationViewModel(
+            repository: repository
+        )
+        let tagViewModel = TagViewModel(
+            repository: repository
+        )
         
-        // Initialize AppCoordinator with ProductViewModel
-        _appCoordinator = StateObject(wrappedValue: AppCoordinator(productViewModel: productViewModel))
+        // Initialize AppCoordinator with all view models
+        _appCoordinator = StateObject(wrappedValue: AppCoordinator(
+            shoppingListViewModel: shoppingListViewModel,
+            searchViewModel: searchViewModel,
+            addItemsViewModel: addItemsViewModel,
+            profileViewModel: profileViewModel,
+            locationViewModel: locationViewModel,
+            tagViewModel: tagViewModel,
+            socialFeedViewModel: socialFeedViewModel
+        ))
         
         // Set up MealMe API key
         let networkService = NetworkService()
@@ -34,13 +64,14 @@ struct CartWiseApp: App {
             }
         }
     }
+    
     // Create a CoreDataStack instance for the app
     private let coreDataStack = CoreDataStack.shared
+    
     var body: some Scene {
         WindowGroup {
             AppCoordinatorView(coordinator: appCoordinator)
                 .environment(\.managedObjectContext, coreDataStack.persistentContainer.viewContext)
-                .environmentObject(productViewModel)
                 .preferredColorScheme(.light)
         }
     }
