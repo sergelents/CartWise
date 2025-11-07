@@ -128,6 +128,66 @@ class SocialFeedViewModel: ObservableObject {
             user: user
         )
     }
+    
+    // Enhanced version that finds or creates location by store name/address
+    func createPriceUpdateExperienceForStore(
+        product: GroceryItem,
+        price: Double,
+        store: String,
+        locationAddress: String? = nil
+    ) async {
+        do {
+            let context = persistenceController.container.viewContext
+            // Refresh objects in context
+            let productObjectID = product.objectID
+            guard let productInContext = try? context.existingObject(
+                with: productObjectID
+            ) as? GroceryItem else { return }
+            
+            // Find or create the location by store name/address (best-effort lookup)
+            let locationFetch: NSFetchRequest<Location> = Location.fetchRequest()
+            if let locationAddress = locationAddress, !locationAddress.isEmpty {
+                locationFetch.predicate = NSPredicate(format: "name == %@ AND address == %@", store, locationAddress)
+            } else {
+                locationFetch.predicate = NSPredicate(format: "name == %@", store)
+            }
+            locationFetch.fetchLimit = 1
+            let locations = try context.fetch(locationFetch)
+            let locationInContext = locations.first
+            
+            // Get current user
+            let userFetch: NSFetchRequest<UserEntity> = UserEntity.fetchRequest()
+            userFetch.sortDescriptors = [NSSortDescriptor(keyPath: \UserEntity.createdAt, ascending: false)]
+            userFetch.fetchLimit = 1
+            guard let currentUser = try context.fetch(userFetch).first else { return }
+            
+            let comment = String(
+                format: "Price updated: %@ is now $%.2f at %@",
+                productInContext.productName ?? "Product",
+                price,
+                store
+            )
+            
+            _ = ShoppingExperience(
+                context: context,
+                id: UUID().uuidString,
+                comment: comment,
+                rating: 0,
+                type: "price_update",
+                user: currentUser,
+                groceryItem: productInContext,
+                location: locationInContext
+            )
+            
+            try context.save()
+            
+            // Refresh the feed after creating the experience
+            loadExperiences()
+        } catch {
+            // Non-fatal; skip if feed creation fails
+            print("Failed to create price update experience: \(error)")
+        }
+    }
     func createStoreReviewExperience(location: Location, comment: String, rating: Int16, user: UserEntity? = nil) {
         createExperience(
             comment: comment,
