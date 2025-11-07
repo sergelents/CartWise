@@ -33,10 +33,12 @@ class AddItemsCoordinator: ObservableObject {
     @Published var errorMessage = ""
 
     // MARK: - Dependencies
-    private let productViewModel: ProductViewModel
+    private let addItemsViewModel: AddItemsViewModel
+    private let tagViewModel: TagViewModel
 
-    init(productViewModel: ProductViewModel) {
-        self.productViewModel = productViewModel
+    init(addItemsViewModel: AddItemsViewModel, tagViewModel: TagViewModel) {
+        self.addItemsViewModel = addItemsViewModel
+        self.tagViewModel = tagViewModel
     }
 
     // MARK: - Navigation Methods

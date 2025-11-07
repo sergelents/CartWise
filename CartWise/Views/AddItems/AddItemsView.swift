@@ -7,7 +7,7 @@
 import SwiftUI
 import CoreData
 struct AddItemsView: View {
-    @StateObject private var productViewModel = ProductViewModel(repository: ProductRepository())
+    @StateObject private var addItemsViewModel = AddItemsViewModel(repository: ProductRepository())
     let availableTags: [Tag] // Pass tags as parameter
     @State private var showingCamera = false
     @State private var showingSuccess = false
@@ -226,7 +226,7 @@ struct AddItemsView: View {
         // Check if product already exists and fetch its data
         Task {
             do {
-                let existingProducts = try await productViewModel.searchProductsByBarcode(barcode)
+                let existingProducts = try await addItemsViewModel.searchProductsByBarcode(barcode)
                 await MainActor.run {
                     if let existingProduct = existingProducts.first {
                         // Auto-fill with existing data
@@ -289,7 +289,7 @@ struct AddItemsView: View {
             // Get store name from location or use a default
             let storeName = location?.name ?? "Unknown Store"
             // Check if product already exists before processing
-            let wasExistingProduct = await productViewModel.isDuplicateBarcode(barcode)
+            let wasExistingProduct = await addItemsViewModel.isDuplicateBarcode(barcode)
             // Use ViewModel to create or update product
             let newProduct = await createOrUpdateProductByBarcode(
                 barcode: barcode,
@@ -304,17 +304,17 @@ struct AddItemsView: View {
             if let newProduct = newProduct {
                 // For existing products, replace tags instead of adding to them
                 if wasExistingProduct {
-                    await productViewModel.replaceTagsForProduct(newProduct, tags: tags)
+                    await addItemsViewModel.replaceTagsForProduct(newProduct, tags: tags)
                 } else {
-                    await productViewModel.addTagsToProduct(newProduct, tags: tags)
+                    await addItemsViewModel.addTagsToProduct(newProduct, tags: tags)
                 }
 
                 // Add to shopping list if requested
                 if addToShoppingList {
-                    await productViewModel.addExistingProductToShoppingList(newProduct)
+                    await addItemsViewModel.addExistingProductToShoppingList(newProduct)
                 }
                 // Refresh price comparison after adding product
-                await productViewModel.loadLocalPriceComparison()
+                await addItemsViewModel.loadLocalPriceComparison()
                 // Create social feed entry for new product with price
                 if priceValue > 0 {
                     await createSocialFeedEntryForProduct(
@@ -330,7 +330,7 @@ struct AddItemsView: View {
             }
             await MainActor.run {
                 isProcessing = false
-                if let error = productViewModel.errorMessage {
+                if let error = addItemsViewModel.errorMessage {
                     errorMessage = error
                     showingError = true
                 } else {
@@ -360,9 +360,9 @@ struct AddItemsView: View {
         isOnSale: Bool
     ) async -> GroceryItem? {
         // First check if product already exists with this barcode
-        if await productViewModel.isDuplicateBarcode(barcode) {
+        if await addItemsViewModel.isDuplicateBarcode(barcode) {
             // Product exists, update it
-            if let updatedProduct = await productViewModel.updateProductByBarcode(
+            if let updatedProduct = await addItemsViewModel.updateProductByBarcode(
                 barcode: barcode,
                 productName: productName,
                 brand: brand,
@@ -375,7 +375,7 @@ struct AddItemsView: View {
             }
         } else {
             // Product doesn't exist, create new product
-            return await productViewModel.createProductByBarcode(
+            return await addItemsViewModel.createProductByBarcode(
                 barcode: barcode,
                 productName: productName,
                 brand: brand,

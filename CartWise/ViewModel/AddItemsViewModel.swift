@@ -219,6 +219,35 @@ final class AddItemsViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Post-Creation Operations
+    
+    func addTagsToProduct(_ product: GroceryItem, tags: [Tag]) async {
+        do {
+            try await repository.addTagsToProduct(product, tags: tags)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func replaceTagsForProduct(_ product: GroceryItem, tags: [Tag]) async {
+        do {
+            try await repository.replaceTagsForProduct(product, tags: tags)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func addExistingProductToShoppingList(_ product: GroceryItem) async {
+        do {
+            try await repository.addProductToShoppingList(product)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
     // MARK: - Image Fetching
     
     private func fetchImageForProduct(_ product: GroceryItem) async {

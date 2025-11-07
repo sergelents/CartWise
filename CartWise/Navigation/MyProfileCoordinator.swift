@@ -27,10 +27,12 @@ class MyProfileCoordinator: ObservableObject {
     }
 
     // MARK: - Dependencies
-    private let productViewModel: ProductViewModel
+    private let profileViewModel: ProfileViewModel
+    private let locationViewModel: LocationViewModel
 
-    init(productViewModel: ProductViewModel) {
-        self.productViewModel = productViewModel
+    init(profileViewModel: ProfileViewModel, locationViewModel: LocationViewModel) {
+        self.profileViewModel = profileViewModel
+        self.locationViewModel = locationViewModel
     }
 
     // MARK: - Navigation Methods
