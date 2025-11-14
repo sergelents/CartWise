@@ -16,12 +16,7 @@ struct YourListView: View {
     private var viewModel: ShoppingListViewModel {
         coordinator.shoppingListViewModel
     }
-    @State private var suggestedStore: String = "Whole Foods Market"
-    @State private var storeAddress: String = "1701 Wewatta St."
-    @State private var total: Double = 0.00
     @State private var allItemsChecked: Bool = false
-    @State private var isEditing: Bool = false
-    @State private var selectedItemsForDeletion: Set<String> = []
 
     var body: some View {
         NavigationStack {
@@ -33,9 +28,7 @@ struct YourListView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     // Item List Card
                     ShoppingListCard(
-                        isEditing: $isEditing,
                         allItemsChecked: $allItemsChecked,
-                        selectedItemsForDeletion: $selectedItemsForDeletion,
                         showingRatingPrompt: Binding(
                             get: { coordinator.showingRatingPrompt },
                             set: { _ in }
