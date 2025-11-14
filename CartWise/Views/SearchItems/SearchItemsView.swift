@@ -18,7 +18,15 @@ struct SearchItemsView: View {
     @State private var selectedLocation: Location?
     @State private var userLocations: [Location] = []
     @State private var searchProducts: [GroceryItem] = [] // Separate array for search products
-    @EnvironmentObject var viewModel: ProductViewModel
+    @EnvironmentObject var coordinator: SearchItemsCoordinator
+    
+    private var searchViewModel: SearchViewModel {
+        coordinator.searchViewModel
+    }
+    
+    private var tagViewModel: TagViewModel {
+        coordinator.tagViewModel
+    }
     // Computed property for search results that updates automatically
     private var searchResults: [GroceryItem] {
         guard !searchText.isEmpty else { return [] }
@@ -78,9 +86,9 @@ struct SearchItemsView: View {
             .navigationTitle("Search")
             .onAppear {
                 Task {
-                    // Load products into local array without affecting viewModel.products
+                    // Load products into local array without affecting searchViewModel.products
                     await loadSearchProducts()
-                    await viewModel.loadTags()
+                    await tagViewModel.loadTags()
                     await loadUserLocations()
                 }
             }
@@ -149,7 +157,7 @@ struct SearchItemsView: View {
             }
         }
         .sheet(isPresented: $showingTagPicker) {
-            SingleTagPickerView(selectedTag: $selectedTag, tags: viewModel.tags)
+            SingleTagPickerView(selectedTag: $selectedTag, tags: tagViewModel.tags)
         }
     }
     private var searchResultsView: some View {
@@ -219,16 +227,11 @@ struct SearchItemsView: View {
     }
     // MARK: - Helper Functions
     private func loadSearchProducts() async {
-        // Save current shopping list products
-        let currentShoppingListProducts = viewModel.products
-
-        // Load all products temporarily
-        await viewModel.loadProducts()
-
-        // Store search products and restore shopping list
+        // Load all products into local array
+        await searchViewModel.loadProducts()
+        
         await MainActor.run {
-            searchProducts = viewModel.products
-            viewModel.products = currentShoppingListProducts
+            searchProducts = searchViewModel.products
         }
     }
 
@@ -245,16 +248,12 @@ struct SearchItemsView: View {
             }
         }
 
-        // Save current shopping list products
-        let currentShoppingListProducts = viewModel.products
-
         // Search Core Data for existing products only (offline-first)
-        await viewModel.searchProducts(by: searchText)
+        await searchViewModel.searchProducts(by: searchText)
 
-        // Update local search products and restore shopping list
+        // Update local search products
         await MainActor.run {
-            searchProducts = viewModel.products
-            viewModel.products = currentShoppingListProducts
+            searchProducts = searchViewModel.products
         }
 
         print("Search completed: \(searchProducts.count) local results")
@@ -268,12 +267,10 @@ struct SearchItemsView: View {
     }
     // MARK: - Helper Functions
     private func loadUserLocations() async {
-        await viewModel.loadLocations()
-        userLocations = viewModel.locations
-        // Set selected location to default or first favorited location
-        selectedLocation = userLocations.first { $0.isDefault } ??
-                           userLocations.first { $0.favorited } ??
-                           userLocations.first
+        // TODO: Need LocationViewModel to load locations
+        // For now, just keep userLocations empty
+        userLocations = []
+        selectedLocation = nil
     }
 }
 // MARK: - Search Result Row

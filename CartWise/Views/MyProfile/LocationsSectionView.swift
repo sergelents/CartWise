@@ -8,7 +8,11 @@ import SwiftUI
 import CoreData
 struct LocationsSectionView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: MyProfileCoordinator
+    
+    private var locationViewModel: LocationViewModel {
+        coordinator.locationViewModel
+    }
     @State private var showAddLocation: Bool = false
     @State private var showAllLocations: Bool = false
     @State private var locations: [Location] = []
@@ -117,7 +121,6 @@ struct LocationsSectionView: View {
         }
         .sheet(isPresented: $showAddLocation) {
             AddLocationView()
-                .environmentObject(productViewModel)
         }
         .sheet(isPresented: $showAllLocations) {
             AllLocationsView(locations: locations)

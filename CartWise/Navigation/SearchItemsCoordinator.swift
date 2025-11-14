@@ -17,12 +17,24 @@ class SearchItemsCoordinator: ObservableObject {
     @Published var showingProductDetail = false
 
     // MARK: - Dependencies
-    private let searchViewModel: SearchViewModel
-    private let tagViewModel: TagViewModel
+    let searchViewModel: SearchViewModel
+    let tagViewModel: TagViewModel
+    let shoppingListViewModel: ShoppingListViewModel
+    let profileViewModel: ProfileViewModel
+    let locationViewModel: LocationViewModel
 
-    init(searchViewModel: SearchViewModel, tagViewModel: TagViewModel) {
+    init(
+        searchViewModel: SearchViewModel,
+        tagViewModel: TagViewModel,
+        shoppingListViewModel: ShoppingListViewModel,
+        profileViewModel: ProfileViewModel,
+        locationViewModel: LocationViewModel
+    ) {
         self.searchViewModel = searchViewModel
         self.tagViewModel = tagViewModel
+        self.shoppingListViewModel = shoppingListViewModel
+        self.profileViewModel = profileViewModel
+        self.locationViewModel = locationViewModel
     }
 
     // MARK: - Navigation Methods

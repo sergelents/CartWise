@@ -13,7 +13,7 @@ struct SmartAddProductModal: View {
     @State private var showCursor = false
     @State private var isCancelPressed = false
     @FocusState private var isSearchFocused: Bool
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: ShoppingListCoordinator
     let onAdd: (String, String?, String?, Double?) -> Void
     var body: some View {
         NavigationView {

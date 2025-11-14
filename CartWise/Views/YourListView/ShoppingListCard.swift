@@ -9,7 +9,7 @@ import SwiftUI
 
 // Shopping List Card
 struct ShoppingListCard: View {
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: ShoppingListCoordinator
     @Binding var isEditing: Bool
     @Binding var allItemsChecked: Bool
     @Binding var selectedItemsForDeletion: Set<String>
@@ -17,18 +17,22 @@ struct ShoppingListCard: View {
     @Binding var showingAddProductModal: Bool
     @Binding var showingCheckAllConfirmation: Bool
 
+    private var viewModel: ShoppingListViewModel {
+        coordinator.shoppingListViewModel
+    }
+
     // Function to handle SwiftUI's native onDelete
     private func deleteItems(offsets: IndexSet) {
         // Capture the products to delete before any async operations
         let productsToDelete = offsets.compactMap { index in
             // Check bounds to prevent index out of range
-            index < productViewModel.products.count ? productViewModel.products[index] : nil
+            index < viewModel.products.count ? viewModel.products[index] : nil
         }
 
         Task {
             // Process deletions sequentially to avoid race conditions
             for product in productsToDelete {
-                await productViewModel.removeProductFromShoppingList(product)
+                await viewModel.removeProductFromShoppingList(product)
                 // Small delay to allow UI to update between deletions
                 try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
             }
@@ -43,9 +47,9 @@ struct ShoppingListCard: View {
                         Button {
                             // Remove selected items from shopping list
                             for id in selectedItemsForDeletion {
-                                if let product = productViewModel.products.first(where: { $0.id == id }) {
+                                if let product = viewModel.products.first(where: { $0.id == id }) {
                                     Task {
-                                        await productViewModel.removeProductFromShoppingList(product)
+                                        await viewModel.removeProductFromShoppingList(product)
                                     }
                                 }
                             }
@@ -58,13 +62,13 @@ struct ShoppingListCard: View {
                                 .foregroundColor(.red)
                         }
                         Button {
-                            if selectedItemsForDeletion.count == productViewModel.products.count {
+                            if selectedItemsForDeletion.count == viewModel.products.count {
                                 selectedItemsForDeletion.removeAll()
                             } else {
-                                selectedItemsForDeletion = Set(productViewModel.products.compactMap { $0.id })
+                                selectedItemsForDeletion = Set(viewModel.products.compactMap { $0.id })
                             }
                         } label: {
-                            Text(selectedItemsForDeletion.count == productViewModel.products.count ?
+                            Text(selectedItemsForDeletion.count == viewModel.products.count ?
                                  "Deselect All" : "Select All")
                                 .font(.poppins(size: 15, weight: .regular))
                                 .underline()
@@ -82,7 +86,7 @@ struct ShoppingListCard: View {
                             .foregroundColor(.gray)
                     }
                 } else {
-                    Text("\(productViewModel.products.count) Items")
+                    Text("\(viewModel.products.count) Items")
                         .font(.poppins(size: 15, weight: .regular))
                         .foregroundColor(.gray)
                     Spacer()
@@ -99,7 +103,7 @@ struct ShoppingListCard: View {
             .padding(.horizontal)
             Divider()
             // Item List
-            if productViewModel.products.isEmpty {
+            if viewModel.products.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "basket")
                         .resizable()
@@ -123,7 +127,7 @@ struct ShoppingListCard: View {
                 .padding(.vertical, 24)
             } else {
                 List {
-                    ForEach(productViewModel.products, id: \.objectID) { product in
+                    ForEach(viewModel.products, id: \.objectID) { product in
                         ShoppingListItemRow(
                             product: product,
                             isEditing: isEditing,
@@ -140,9 +144,9 @@ struct ShoppingListCard: View {
                                 } else {
                                     // Toggle completion status
                                     Task {
-                                        await productViewModel.toggleProductCompletion(product)
+                                        await viewModel.toggleProductCompletion(product)
                                         // Check if all products are completed after toggling
-                                        // if productViewModel.allProductsCompleted {
+                                        // if viewModel.allProductsCompleted {
                                         //     showingRatingPrompt = true
                                         // }
                                     }
@@ -176,17 +180,17 @@ struct ShoppingListCard: View {
                 )
                 Button {
                     // Check if we're about to complete all items (not uncheck them)
-                    let allCompleted = productViewModel.products.allSatisfy { $0.isCompleted }
+                    let allCompleted = viewModel.products.allSatisfy { $0.isCompleted }
                     if allCompleted {
                         // If all are completed, directly uncheck them all (no confirmation needed)
                         Task {
-                            await productViewModel.toggleAllProductsCompletion()
+                            await viewModel.toggleAllProductsCompletion()
                         }
                     } else {
                         // If not all are completed, show alert immediately and check items in background
                         showingCheckAllConfirmation = true
                         Task {
-                            await productViewModel.toggleAllProductsCompletion()
+                            await viewModel.toggleAllProductsCompletion()
                         }
                     }
                 } label: {

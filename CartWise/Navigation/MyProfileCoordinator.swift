@@ -27,8 +27,8 @@ class MyProfileCoordinator: ObservableObject {
     }
 
     // MARK: - Dependencies
-    private let profileViewModel: ProfileViewModel
-    private let locationViewModel: LocationViewModel
+    let profileViewModel: ProfileViewModel
+    let locationViewModel: LocationViewModel
 
     init(profileViewModel: ProfileViewModel, locationViewModel: LocationViewModel) {
         self.profileViewModel = profileViewModel

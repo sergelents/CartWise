@@ -8,7 +8,15 @@ import SwiftUI
 import CoreData
 struct MyProfileView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: MyProfileCoordinator
+    
+    private var profileViewModel: ProfileViewModel {
+        coordinator.profileViewModel
+    }
+    
+    private var locationViewModel: LocationViewModel {
+        coordinator.locationViewModel
+    }
     @State private var currentUsername: String = ""
     @State private var isLoadingUser: Bool = true
     @State private var showAddLocation: Bool = false
@@ -67,7 +75,7 @@ struct MyProfileView: View {
             }
             .sheet(isPresented: $showAddLocation) {
                 AddLocationView()
-                    .environmentObject(productViewModel)
+                    .environmentObject(coordinator)
             }
             .sheet(isPresented: $isAvatarPickerPresented) {
                 ProfileIconPickerView(selectedIcon: $profileIconName)

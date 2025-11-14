@@ -73,14 +73,24 @@ class AppCoordinator: ObservableObject {
 
     func getSearchItemsCoordinator() -> SearchItemsCoordinator {
         if searchItemsCoordinator == nil {
-            searchItemsCoordinator = SearchItemsCoordinator(searchViewModel: searchViewModel, tagViewModel: tagViewModel)
+            searchItemsCoordinator = SearchItemsCoordinator(
+                searchViewModel: searchViewModel,
+                tagViewModel: tagViewModel,
+                shoppingListViewModel: shoppingListViewModel,
+                profileViewModel: profileViewModel,
+                locationViewModel: locationViewModel
+            )
         }
         return searchItemsCoordinator!
     }
 
     func getAddItemsCoordinator() -> AddItemsCoordinator {
         if addItemsCoordinator == nil {
-            addItemsCoordinator = AddItemsCoordinator(addItemsViewModel: addItemsViewModel, tagViewModel: tagViewModel)
+            addItemsCoordinator = AddItemsCoordinator(
+                addItemsViewModel: addItemsViewModel,
+                tagViewModel: tagViewModel,
+                shoppingListViewModel: shoppingListViewModel
+            )
         }
         return addItemsCoordinator!
     }
