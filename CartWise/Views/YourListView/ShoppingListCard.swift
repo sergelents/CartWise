@@ -129,7 +129,7 @@ struct ShoppingListCard: View {
                 List {
                     ForEach(viewModel.products, id: \.objectID) { product in
                         ShoppingListItemRow(
-                            product: product,
+                            itemData: ShoppingListItemData(from: product),
                             isEditing: isEditing,
                             isSelected: selectedItemsForDeletion.contains(product.id ?? ""),
                             onToggle: {
