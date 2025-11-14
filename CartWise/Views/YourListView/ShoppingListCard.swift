@@ -166,7 +166,7 @@ struct ShoppingListCard: View {
             // Add Button & Check All Button
             HStack(spacing: 56) {
                 Button {
-                    showingAddProductModal = true
+                    coordinator.navigateToAddItems()
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 20, weight: .semibold))

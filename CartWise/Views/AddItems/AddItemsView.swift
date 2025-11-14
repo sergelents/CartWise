@@ -11,7 +11,7 @@ import CoreData
 // MARK: - Performance Optimization 1: Consolidated View State
 /// Single source of truth for view state reduces property wrapper overhead
 /// and prevents unnecessary re-renders by grouping related state
-private struct AddItemsViewState: Equatable {
+struct AddItemsViewState: Equatable {
     var showingCamera = false
     var showingSuccess = false
     var showingError = false
@@ -33,7 +33,7 @@ private struct AddItemsViewState: Equatable {
 
 // MARK: - Performance Optimization 2: Separate Barcode State
 /// Isolating barcode confirmation state prevents parent view re-renders
-private struct BarcodeConfirmationState: Equatable {
+struct BarcodeConfirmationState: Equatable {
     var isShowing = false
     var barcode = ""
     var productName = ""
@@ -198,27 +198,26 @@ struct AddItemsView: View {
                 let existingProducts = try await addItemsViewModel.searchProductsByBarcode(barcode)
                 
                 await MainActor.run {
-                        if let existingProduct = existingProducts.first {
-                            populateBarcodeState(with: existingProduct)
-                        }
-                        
-                        viewState.isScanInProgress = false
-                        
-                        // Performance Optimization 12: Single state update instead of multiple
-                        Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                            barcodeState.isShowing = true
-                        }
+                    if let existingProduct = existingProducts.first {
+                        populateBarcodeState(with: existingProduct)
                     }
-                } catch {
-                    await MainActor.run {
-                        barcodeState.isExistingProduct = false
-                        viewState.isScanInProgress = false
-                        
-                        Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 100_000_000)
-                            barcodeState.isShowing = true
-                        }
+                    
+                    viewState.isScanInProgress = false
+                    
+                    // Performance Optimization 12: Single state update instead of multiple
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                        barcodeState.isShowing = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    barcodeState.isExistingProduct = false
+                    viewState.isScanInProgress = false
+                    
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 100_000_000)
+                        barcodeState.isShowing = true
                     }
                 }
             }
@@ -456,7 +455,7 @@ struct AddItemsView: View {
 // MARK: - Extracted Subviews (Performance Optimization 17: View decomposition)
 
 /// Separate view reduces parent re-renders and improves compilation time
-private struct CameraContainerView: View {
+struct CameraContainerView: View {
     let onBarcodeScanned: (String) -> Void
     let onError: (String) -> Void
     
@@ -485,7 +484,7 @@ private struct CameraContainerView: View {
     }
 }
 
-private struct CameraPlaceholderView: View {
+struct CameraPlaceholderView: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 12)
             .fill(AppColors.backgroundSecondary)
@@ -506,7 +505,7 @@ private struct CameraPlaceholderView: View {
     }
 }
 
-private struct ProcessingIndicatorView: View {
+struct ProcessingIndicatorView: View {
     var body: some View {
         VStack(spacing: 8) {
             ProgressView()
@@ -519,7 +518,7 @@ private struct ProcessingIndicatorView: View {
     }
 }
 
-private struct SuccessMessageView: View {
+struct SuccessMessageView: View {
     let message: String
     
     var body: some View {
@@ -535,7 +534,7 @@ private struct SuccessMessageView: View {
     }
 }
 
-private struct ScannedBarcodeView: View {
+struct ScannedBarcodeView: View {
     let barcode: String
     
     var body: some View {
@@ -618,7 +617,7 @@ struct TagPickerView: View {
 }
 
 // Performance Optimization 21: Separate row view for better list performance
-private struct TagPickerRow: View, Equatable {
+struct TagPickerRow: View, Equatable {
     let tag: Tag
     let isSelected: Bool
     let onTap: () -> Void
@@ -641,7 +640,7 @@ private struct TagPickerRow: View, Equatable {
     }
 }
 
-private struct SearchBar: View {
+struct SearchBar: View {
     @Binding var text: String
     
     var body: some View {
@@ -757,7 +756,7 @@ struct BarcodeConfirmationView: View {
 
 // MARK: - Form Sections (Performance Optimization 25: Granular view decomposition)
 
-private struct BarcodeFormFields: View {
+struct BarcodeFormFields: View {
     @Binding var state: BarcodeConfirmationState
     
     var body: some View {
@@ -788,7 +787,7 @@ private struct BarcodeFormFields: View {
     }
 }
 
-private struct FormTextField: View {
+struct FormTextField: View {
     let title: String
     @Binding var text: String
     let placeholder: String
@@ -809,7 +808,7 @@ private struct FormTextField: View {
     }
 }
 
-private struct CategoryPickerField: View {
+struct CategoryPickerField: View {
     @Binding var category: ProductCategory
     @Binding var showPicker: Bool
     
@@ -837,7 +836,7 @@ private struct CategoryPickerField: View {
     }
 }
 
-private struct LocationPickerField: View {
+struct LocationPickerField: View {
     @Binding var location: Location?
     @Binding var showPicker: Bool
     
@@ -865,7 +864,7 @@ private struct LocationPickerField: View {
     }
 }
 
-private struct TagSelectionSection: View {
+struct TagSelectionSection: View {
     @Binding var state: BarcodeConfirmationState
     let availableTags: [Tag]
     
@@ -922,7 +921,7 @@ private struct TagSelectionSection: View {
     }
 }
 
-private struct ToggleSection: View {
+struct ToggleSection: View {
     @Binding var state: BarcodeConfirmationState
     
     var body: some View {
@@ -958,7 +957,7 @@ private struct ToggleSection: View {
     }
 }
 
-private struct ActionButton: View {
+struct ActionButton: View {
     let isExisting: Bool
     let isEnabled: Bool
     let action: () -> Void

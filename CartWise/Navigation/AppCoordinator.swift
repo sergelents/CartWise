@@ -66,7 +66,9 @@ class AppCoordinator: ObservableObject {
 
     func getShoppingListCoordinator() -> ShoppingListCoordinator {
         if shoppingListCoordinator == nil {
-            shoppingListCoordinator = ShoppingListCoordinator(shoppingListViewModel: shoppingListViewModel)
+            let coordinator = ShoppingListCoordinator(shoppingListViewModel: shoppingListViewModel)
+            coordinator.appCoordinator = self
+            shoppingListCoordinator = coordinator
         }
         return shoppingListCoordinator!
     }
