@@ -16,7 +16,7 @@ class AuthViewModel: ObservableObject {
         self.context = context
     }
     @MainActor
-    func signUp(username: String, password: String) async {
+    func signUp(username: String, password: String, fullName: String? = nil) async {
         print("AuthViewModel: Starting sign up for username: \(username)")
         guard !username.isEmpty, !password.isEmpty else {
             error = "Username and password cannot be empty"
@@ -28,8 +28,8 @@ class AuthViewModel: ObservableObject {
             print("AuthViewModel: Validation failed - username too short")
             return
         }
-        guard password.count >= 6 else {
-            error = "Password must be at least 6 characters long"
+        guard password.count >= 8 else {
+            error = "Password must be at least 8 characters long"
             print("AuthViewModel: Validation failed - password too short")
             return
         }
@@ -54,6 +54,10 @@ class AuthViewModel: ObservableObject {
             userEntity.updates = 0
             userEntity.level = "Newbie"
             userEntity.createdAt = Date()
+            // Store fullName in UserDefaults for now (can be added to Core Data model later)
+            if let fullName = fullName, !fullName.isEmpty {
+                UserDefaults.standard.set(fullName, forKey: "user_\(username)_fullName")
+            }
             print("AuthViewModel: Saving context")
             try context.save()
             user = User(
