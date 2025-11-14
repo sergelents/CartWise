@@ -35,6 +35,16 @@ actor CoreDataStack {
     var viewContext: NSManagedObjectContext {
         return persistentContainer.viewContext
     }
+    
+    /// Creates a new background context for performing expensive operations off the main thread
+    /// This is crucial for performance optimization to avoid blocking the UI
+    func newBackgroundContext() -> NSManagedObjectContext {
+        let context = persistentContainer.newBackgroundContext()
+        context.automaticallyMergesChangesFromParent = true
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        return context
+    }
+    
     func save() async throws {
         let context = persistentContainer.viewContext
         if context.hasChanges {

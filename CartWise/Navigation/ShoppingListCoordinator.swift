@@ -23,6 +23,7 @@ class ShoppingListCoordinator: ObservableObject {
     
     // MARK: - Dependencies
     let shoppingListViewModel: ShoppingListViewModel
+    weak var appCoordinator: AppCoordinator?
     
     init(shoppingListViewModel: ShoppingListViewModel) {
         self.shoppingListViewModel = shoppingListViewModel
@@ -72,6 +73,10 @@ class ShoppingListCoordinator: ObservableObject {
     
     func hideCheckAllConfirmation() {
         showingCheckAllConfirmation = false
+    }
+    
+    func navigateToAddItems() {
+        appCoordinator?.selectTab(.addItems)
     }
     
 }
