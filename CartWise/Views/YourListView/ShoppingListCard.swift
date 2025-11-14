@@ -57,7 +57,7 @@ struct ShoppingListCard: View {
             } else {
                 ProductList(
                     products: viewModel.products,
-                    cardState: cardState,
+                    cardState: $cardState,
                     onToggle: { product in
                         handleToggle(product)
                     },
@@ -272,21 +272,17 @@ struct EmptyStateView: View {
 
 struct ProductList: View {
     let products: [GroceryItem]
-    let cardState: ShoppingListCardState
+    @Binding var cardState: ShoppingListCardState
     let onToggle: (GroceryItem) -> Void
     let onDelete: (IndexSet) -> Void
     
     var body: some View {
         List {
             ForEach(products, id: \.objectID) { product in
-                ShoppingListItemRow(
-                    itemData: ShoppingListItemData(from: product),
-                    isEditing: cardState.isEditing,
-                    isSelected: cardState.selectedItemsForDeletion.contains(product.id ?? ""),
-                    onToggle: {
-                        onToggle(product)
-                    },
-                    onDelete: nil
+                ProductRowWrapper(
+                    product: product,
+                    cardState: cardState,
+                    onToggle: { onToggle(product) }
                 )
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
@@ -296,6 +292,23 @@ struct ProductList: View {
         }
         .listStyle(PlainListStyle())
         .background(Color.clear)
+    }
+}
+
+// Performance Fix: Wrapper that observes product changes
+struct ProductRowWrapper: View {
+    @ObservedObject var product: GroceryItem
+    let cardState: ShoppingListCardState
+    let onToggle: () -> Void
+    
+    var body: some View {
+        ShoppingListItemRow(
+            itemData: ShoppingListItemData(from: product),
+            isEditing: cardState.isEditing,
+            isSelected: cardState.selectedItemsForDeletion.contains(product.id ?? ""),
+            onToggle: onToggle,
+            onDelete: nil
+        )
     }
 }
 
