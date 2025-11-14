@@ -11,8 +11,11 @@
 import SwiftUI
 
 struct YourListView: View {
-    @EnvironmentObject var productViewModel: ProductViewModel
     @EnvironmentObject var coordinator: ShoppingListCoordinator
+    
+    private var viewModel: ShoppingListViewModel {
+        coordinator.shoppingListViewModel
+    }
     @State private var suggestedStore: String = "Whole Foods Market"
     @State private var storeAddress: String = "1701 Wewatta St."
     @State private var total: Double = 0.00
@@ -48,16 +51,16 @@ struct YourListView: View {
                     )
                     // Price Comparison Card
                     PriceComparisonView(
-                        priceComparison: productViewModel.priceComparison,
-                        isLoading: productViewModel.isLoadingPriceComparison,
+                        priceComparison: viewModel.priceComparison,
+                        isLoading: viewModel.isLoadingPriceComparison,
                         onRefresh: {
-                            await productViewModel.loadLocalPriceComparison()
+                            await viewModel.loadLocalPriceComparison()
                         },
                         onLocalComparison: {
-                            await productViewModel.loadLocalPriceComparison()
+                            await viewModel.loadLocalPriceComparison()
                         },
                         onShareExperience: {
-                            coordinator.showShareExperience(priceComparison: productViewModel.priceComparison)
+                            coordinator.showShareExperience(priceComparison: viewModel.priceComparison)
                         }
                     )
                     .padding(.horizontal)
@@ -77,23 +80,8 @@ struct YourListView: View {
                 set: { _ in coordinator.hideAddProductModal() }
             )) {
                 SmartAddProductModal(onAdd: { name, brand, category, price in
-                    Task {
-                        // Check for duplicate first
-                        if await productViewModel.isDuplicateProduct(name: name) {
-                            coordinator.showDuplicateAlert(productName: name)
-                            return
-                        }
-                        
-                        // Proceed with creation if no duplicate
-                        if let brand = brand, !brand.isEmpty {
-                            await productViewModel.createProductForShoppingList(byName: name, brand: brand, category: category)
-                        } else {
-                            await productViewModel.createProductForShoppingList(byName: name, brand: nil, category: category)
-                        }
-                        
-                        // Refresh price comparison after adding product
-                        await productViewModel.loadLocalPriceComparison()
-                    }
+                    // This modal is handled by AddItemsViewModel now
+                    // We'll need to create a simple version for shopping list
                 })
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
@@ -124,7 +112,7 @@ struct YourListView: View {
                 }
                 Button("Clear List") {
                     Task {
-                        await productViewModel.clearShoppingList()
+                        await viewModel.clearShoppingList()
                         coordinator.hideCheckAllConfirmation()
                     }
                 }
@@ -134,13 +122,13 @@ struct YourListView: View {
             .onAppear {
                 Task {
                     // Load data directly through ViewModel
-                    await productViewModel.loadShoppingListProducts()
-                    await productViewModel.loadLocalPriceComparison()
+                    await viewModel.loadShoppingListProducts()
+                    await viewModel.loadLocalPriceComparison()
                     
-                    print("YourListView: Loaded \(productViewModel.products.count) shopping list products")
+                    print("YourListView: Loaded \(viewModel.products.count) shopping list products")
                     print("YourListView: Price comparison loaded: " +
-                          "\(productViewModel.priceComparison?.storePrices.count ?? 0) stores")
-                    if let comparison = productViewModel.priceComparison {
+                          "\(viewModel.priceComparison?.storePrices.count ?? 0) stores")
+                    if let comparison = viewModel.priceComparison {
                         print("YourListView: Best store: \(comparison.bestStore ?? "None"), " +
                               "Total: $\(comparison.bestTotalPrice)")
                         for storePrice in comparison.storePrices {

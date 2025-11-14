@@ -7,8 +7,16 @@
 import SwiftUI
 import CoreData
 struct AddItemsView: View {
-    @StateObject private var addItemsViewModel = AddItemsViewModel(repository: ProductRepository())
+    @EnvironmentObject var coordinator: AddItemsCoordinator
     let availableTags: [Tag] // Pass tags as parameter
+    
+    private var addItemsViewModel: AddItemsViewModel {
+        coordinator.addItemsViewModel
+    }
+    
+    private var shoppingListViewModel: ShoppingListViewModel {
+        coordinator.shoppingListViewModel
+    }
     @State private var showingCamera = false
     @State private var showingSuccess = false
     @State private var showingError = false
@@ -312,9 +320,9 @@ struct AddItemsView: View {
                 // Add to shopping list if requested
                 if addToShoppingList {
                     await addItemsViewModel.addExistingProductToShoppingList(newProduct)
+                    // Refresh price comparison after adding product to shopping list
+                    await shoppingListViewModel.loadLocalPriceComparison()
                 }
-                // Refresh price comparison after adding product
-                await addItemsViewModel.loadLocalPriceComparison()
                 // Create social feed entry for new product with price
                 if priceValue > 0 {
                     await createSocialFeedEntryForProduct(

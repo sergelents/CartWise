@@ -22,7 +22,7 @@ class ShoppingListCoordinator: ObservableObject {
     @Published var currentPriceComparison: PriceComparison?
     
     // MARK: - Dependencies
-    private let shoppingListViewModel: ShoppingListViewModel
+    let shoppingListViewModel: ShoppingListViewModel
     
     init(shoppingListViewModel: ShoppingListViewModel) {
         self.shoppingListViewModel = shoppingListViewModel

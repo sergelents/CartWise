@@ -11,11 +11,14 @@ struct SearchResultsSection: View {
     let searchText: String
     let onAdd: (String, String?, String?, Double?) -> Void
     let onCreateNew: () -> Void
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: ShoppingListCoordinator
     let dismiss: DismissAction
     @State private var searchResults: [GroceryItem] = []
     @State private var isSearching = false
-    @State private var showingBarcodeScanner = false
+    
+    private var viewModel: ShoppingListViewModel {
+        coordinator.shoppingListViewModel
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Search Results")
@@ -39,26 +42,11 @@ struct SearchResultsSection: View {
                     Text("No products found")
                         .font(.poppins(size: 18, weight: .semibold))
                         .foregroundColor(.primary)
-                    Text("Use the barcode scanner to add \"\(searchText)\" to your list")
+                    Text("Try scanning a barcode in the Add Items tab to create this product")
                         .font(.poppins(size: 14, weight: .regular))
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
-                    Button {
-                        showingBarcodeScanner = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "camera.fill")
-                                .font(.system(size: 18))
-                            Text("Open Barcode Scanner")
-                                .font(.poppins(size: 16, weight: .semibold))
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(AppColors.accentGreen)
-                        .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
+                        .padding(.horizontal)
                 }
                 .padding(.vertical, 20)
             } else {
@@ -69,7 +57,7 @@ struct SearchResultsSection: View {
                             SearchResultRow(product: product) {
                                 // Add existing product to shopping list
                                 Task {
-                                    await productViewModel.addExistingProductToShoppingList(product)
+                                    await viewModel.addExistingProductToShoppingList(product)
                                 }
                                 dismiss()
                             }
@@ -81,22 +69,12 @@ struct SearchResultsSection: View {
                 // Divider and barcode scanner option
                 Divider()
                     .padding(.horizontal)
-                Button {
-                    showingBarcodeScanner = true
-                } label: {
-                    HStack {
-                        Image(systemName: "barcode.viewfinder")
-                            .foregroundColor(AppColors.accentGreen)
-                        Text("Scan barcode for \"\(searchText)\"")
-                            .font(.poppins(size: 16, weight: .regular))
-                            .foregroundColor(.primary)
-                        Spacer()
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                // TODO: Barcode scanner requires AddItemsCoordinator - navigate to AddItems tab instead
+                Text("Or use the Add Items tab to scan barcodes")
+                    .font(.poppins(size: 14, weight: .regular))
+                    .foregroundColor(.gray)
                     .padding(.horizontal)
-                }
+                    .padding(.top, 8)
             }
         }
         .onChange(of: searchText) { _, newValue in
@@ -106,22 +84,15 @@ struct SearchResultsSection: View {
                 searchResults = []
             }
         }
-        .sheet(isPresented: $showingBarcodeScanner) {
-            AddItemsView(availableTags: productViewModel.tags)
-        }
     }
     private func performSearch() {
         guard !searchText.isEmpty else { return }
         isSearching = true
         Task {
-            // Store current products to restore them later
-            let currentProducts = productViewModel.products
-            // Perform search
-            await productViewModel.searchProducts(by: searchText)
+            // TODO: This needs SearchViewModel to properly search all products
+            // For now, just show empty results
             await MainActor.run {
-                // Store search results and restore original products
-                searchResults = productViewModel.products
-                productViewModel.products = currentProducts
+                searchResults = []
                 isSearching = false
             }
         }

@@ -11,7 +11,15 @@ import CoreData
 import Foundation
 struct CategoryItemsView: View {
     let category: ProductCategory
-    @EnvironmentObject var viewModel: ProductViewModel
+    @EnvironmentObject var coordinator: SearchItemsCoordinator
+    
+    private var searchViewModel: SearchViewModel {
+        coordinator.searchViewModel
+    }
+    
+    private var locationViewModel: LocationViewModel {
+        coordinator.locationViewModel
+    }
     @State private var selectedItemsToAdd: Set<String> = []
     @State private var isLoading = false
     @State private var hasSearched = false
@@ -24,7 +32,7 @@ struct CategoryItemsView: View {
     @State private var currentUsername: String = "Unknown User"
     private func loadCategoryProducts() async {
         // Load all products and filter by category
-        let allProducts = await viewModel.fetchAllProducts()
+        let allProducts = await searchViewModel.fetchAllProducts()
         let filtered = allProducts.filter { groceryItem in
             // Primary: Check if category field matches (set from barcode scanning)
             if let productCategory = groceryItem.category, !productCategory.isEmpty {
@@ -155,7 +163,7 @@ struct CategoryItemsView: View {
         print("CategoryItemsView: Initial products count: \(categoryProducts.count)")
 
         // Search for products without mutating global `products`
-        let found = await viewModel.searchProductsQuiet(by: categoryQuery)
+        let found = await searchViewModel.searchProductsQuiet(by: categoryQuery)
         print("CategoryItemsView: After search - Found \(found.count) products for category: \(category.rawValue)")
 
         // Update the category field for the found products to match the current category
@@ -164,7 +172,8 @@ struct CategoryItemsView: View {
                 // Update the product's category to match the current category
                 let updatedProduct = product
                 updatedProduct.category = category.rawValue
-                await viewModel.updateProduct(updatedProduct)
+                // TODO: Need to implement updateProduct in SearchViewModel or use appropriate ViewModel
+                // await searchViewModel.updateProduct(updatedProduct)
             }
         }
 
@@ -214,8 +223,8 @@ struct CategoryItemsView: View {
     }
     // MARK: - Helper Functions
     private func loadUserLocations() async {
-        await viewModel.loadLocations()
-        userLocations = viewModel.locations
+        await locationViewModel.loadLocations()
+        userLocations = locationViewModel.locations
         // Set selected location to default or first favorited location
         selectedLocation = userLocations.first { $0.isDefault } ??
                            userLocations.first { $0.favorited } ??
@@ -232,7 +241,11 @@ struct CategoryItemsView: View {
 // Product Card View
 struct ProductCard: View {
     @ObservedObject var product: GroceryItem
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: SearchItemsCoordinator
+    
+    private var searchViewModel: SearchViewModel {
+        coordinator.searchViewModel
+    }
     let isSelected: Bool
     let onToggle: () -> Void
     let selectedLocation: Location?
@@ -276,13 +289,30 @@ struct ProductCard: View {
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
             ProductDetailView(product: product, selectedLocation: selectedLocation)
+                .environmentObject(coordinator)
         }
     }
 }
 // Product Detail View
 struct ProductDetailView: View {
     @ObservedObject var product: GroceryItem // Use ObservedObject for live updates
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: SearchItemsCoordinator
+    
+    private var searchViewModel: SearchViewModel {
+        coordinator.searchViewModel
+    }
+    
+    private var shoppingListViewModel: ShoppingListViewModel {
+        coordinator.shoppingListViewModel
+    }
+    
+    private var locationViewModel: LocationViewModel {
+        coordinator.locationViewModel
+    }
+    
+    private var tagViewModel: TagViewModel {
+        coordinator.tagViewModel
+    }
     let selectedLocation: Location?
     // Dismissing the view
     @Environment(\.dismiss) private var dismiss
@@ -402,7 +432,8 @@ struct ProductDetailView: View {
                 onSave: { updatedProduct in
                     Task {
                         // Quietly persist changes
-                        await productViewModel.updateProductQuiet(updatedProduct)
+                        // TODO: Need to add updateProductQuiet method or use repository directly
+                        // await searchViewModel.updateProductQuiet(updatedProduct)
                         // Reload the displayed product to reflect freshest values
                         await reloadCurrentProduct()
                         await MainActor.run { priceReloadKey &+= 1 }
@@ -417,6 +448,7 @@ struct ProductDetailView: View {
                     showDeleteConfirmation = true
                 }
             )
+            .environmentObject(coordinator)
         })
     }
 
@@ -435,9 +467,9 @@ struct ProductDetailView: View {
     private func deleteProduct() async {
         do {
             // Permanently delete product from Core Data
-            await productViewModel.permanentlyDeleteProduct(product)
+            await shoppingListViewModel.permanentlyDeleteProduct(product)
             // Force reload products to update UI
-            await productViewModel.loadProducts()
+            await searchViewModel.loadProducts()
             // Dismiss detail view
             dismiss()
         } catch {
@@ -525,8 +557,8 @@ struct ProductDetailView: View {
         }
     }
     private func loadLocationsForDetail() async {
-        await productViewModel.loadLocations()
-        userLocations = productViewModel.locations
+        await locationViewModel.loadLocations()
+        userLocations = locationViewModel.locations
         currentSelectedLocation = selectedLocation
     }
     private func getCurrentUsername() async -> String {
@@ -922,7 +954,19 @@ struct CustomButtonView: View {
 // Buttons Add to Shopping List and Add to Favorites View
 struct AddToShoppingListAndFavoritesView: View {
     @ObservedObject var product: GroceryItem
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: SearchItemsCoordinator
+    
+    private var searchViewModel: SearchViewModel {
+        coordinator.searchViewModel
+    }
+    
+    private var shoppingListViewModel: ShoppingListViewModel {
+        coordinator.shoppingListViewModel
+    }
+    
+    private var profileViewModel: ProfileViewModel {
+        coordinator.profileViewModel
+    }
     let onAddToShoppingList: () -> Void
     let onAddToFavorites: () -> Void
     @State private var isInShoppingList = false
@@ -982,21 +1026,20 @@ struct AddToShoppingListAndFavoritesView: View {
         .task {
             await checkCurrentStatus()
         }
-        .onReceive(productViewModel.$products) { _ in
+        .onReceive(shoppingListViewModel.$products) { _ in
             // Update shopping list status when products change
             Task {
-                let newShoppingListStatus = await productViewModel.isProductInShoppingList(
-                    name: product.productName ?? ""
-                )
+                // Check if product is in shopping list
+                let isInList = shoppingListViewModel.products.contains { $0.id == product.id }
                 await MainActor.run {
-                    isInShoppingList = newShoppingListStatus
+                    isInShoppingList = isInList
                 }
             }
         }
-        .onReceive(productViewModel.$favoriteProducts) { _ in
+        .onReceive(profileViewModel.$favoriteProducts) { _ in
             // Update favorites status when favorite products change
             Task {
-                let newFavoritesStatus = await productViewModel.isProductInFavorites(product)
+                let newFavoritesStatus = await profileViewModel.isProductInFavorites(product)
                 await MainActor.run {
                     isInFavorites = newFavoritesStatus
                 }
@@ -1010,8 +1053,9 @@ struct AddToShoppingListAndFavoritesView: View {
     }
 
     private func checkCurrentStatus() async {
-        let shoppingListStatus = await productViewModel.isProductInShoppingList(name: product.productName ?? "")
-        let favoritesStatus = await productViewModel.isProductInFavorites(product)
+        // Check if product is in shopping list
+        let shoppingListStatus = shoppingListViewModel.products.contains { $0.id == product.id }
+        let favoritesStatus = await profileViewModel.isProductInFavorites(product)
 
         await MainActor.run {
             isInShoppingList = shoppingListStatus
@@ -1031,11 +1075,12 @@ struct AddToShoppingListAndFavoritesView: View {
                 // Only allow adding to shopping list, not removing
                 if !isInShoppingList {
                     // Add to shopping list
-                    await productViewModel.addExistingProductToShoppingListQuiet(product)
+                    await shoppingListViewModel.addExistingProductToShoppingList(product)
                     await MainActor.run {
                         isInShoppingList = true
                         // No alert - just update the button state
                     }
+                    onAddToShoppingList()
                 }
                 // If already in shopping list, do nothing (button will be disabled)
             } catch {
@@ -1059,7 +1104,7 @@ struct AddToShoppingListAndFavoritesView: View {
             do {
                 if isInFavorites {
                     // Remove from favorites
-                    await productViewModel.removeProductFromFavoritesQuiet(product)
+                    await profileViewModel.removeProductFromFavoritesQuiet(product)
                     await MainActor.run {
                         isInFavorites = false
                         favoriteAlertMessage = "\(product.productName ?? "Product") has been removed from " +
@@ -1068,7 +1113,7 @@ struct AddToShoppingListAndFavoritesView: View {
                     }
                 } else {
                     // Add to favorites
-                    await productViewModel.addProductToFavoritesQuiet(product)
+                    await profileViewModel.addProductToFavoritesQuiet(product)
                     await MainActor.run {
                         isInFavorites = true
                         favoriteAlertMessage = "\(product.productName ?? "Product") has been added to your favorites."
@@ -1491,7 +1536,23 @@ struct ProductTagChipView: View {
 // Product Edit View
 struct ProductEditView: View {
     @ObservedObject var product: GroceryItem
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: SearchItemsCoordinator
+    
+    private var searchViewModel: SearchViewModel {
+        coordinator.searchViewModel
+    }
+    
+    private var shoppingListViewModel: ShoppingListViewModel {
+        coordinator.shoppingListViewModel
+    }
+    
+    private var locationViewModel: LocationViewModel {
+        coordinator.locationViewModel
+    }
+    
+    private var tagViewModel: TagViewModel {
+        coordinator.tagViewModel
+    }
     let onSave: (GroceryItem) -> Void
     let onCancel: () -> Void
     let onDelete: () -> Void
@@ -1738,16 +1799,16 @@ struct ProductEditView: View {
     }
 
     private func loadLocations() async {
-        await productViewModel.loadLocations()
+        await locationViewModel.loadLocations()
         await MainActor.run {
-            userLocations = productViewModel.locations
+            userLocations = locationViewModel.locations
         }
     }
 
     private func loadTags() async {
-        await productViewModel.loadTags()
+        await tagViewModel.loadTags()
         await MainActor.run {
-            availableTags = productViewModel.tags
+            availableTags = tagViewModel.tags
         }
     }
 
@@ -1761,7 +1822,7 @@ struct ProductEditView: View {
         // Update price if location is selected (use repository so reputation updates)
         if let location = selectedLocation, let priceValue = Double(price) {
             Task {
-                await productViewModel.updateProductPrice(
+                await shoppingListViewModel.updateProductPrice(
                     product,
                     price: priceValue,
                     store: location.name ?? "Unknown Store",

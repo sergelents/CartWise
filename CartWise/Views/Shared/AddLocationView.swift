@@ -9,7 +9,11 @@ import CoreData
 struct AddLocationView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: MyProfileCoordinator
+    
+    private var locationViewModel: LocationViewModel {
+        coordinator.locationViewModel
+    }
     @State private var name: String = ""
     @State private var address: String = ""
     @State private var city: String = ""

@@ -6,7 +6,11 @@
 //
 import SwiftUI
 struct FavoriteItemsView: View {
-    @EnvironmentObject var productViewModel: ProductViewModel
+    @EnvironmentObject var coordinator: MyProfileCoordinator
+    
+    private var profileViewModel: ProfileViewModel {
+        coordinator.profileViewModel
+    }
     @State private var selectedProduct: GroceryItem?
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -41,7 +45,7 @@ struct FavoriteItemsView: View {
                 }
 
                 Spacer()
-                Text("\(productViewModel.favoriteProducts.count) items")
+                Text("\(profileViewModel.favoriteProducts.count) items")
                     .font(.poppins(size: 15, weight: .medium))
                     .foregroundColor(.gray)
                     .padding(.horizontal, 12)
@@ -61,7 +65,7 @@ struct FavoriteItemsView: View {
                 .padding(.vertical, 8)
 
             // Enhanced Favorites List
-            if productViewModel.favoriteProducts.isEmpty {
+            if profileViewModel.favoriteProducts.isEmpty {
                 // Enhanced Empty State
                 VStack(spacing: 20) {
                     ZStack {
@@ -98,7 +102,7 @@ struct FavoriteItemsView: View {
                 // Enhanced Favorites List
                 ScrollView {
                     LazyVStack(spacing: 16) {
-                        ForEach(productViewModel.favoriteProducts, id: \.objectID) { product in
+                        ForEach(profileViewModel.favoriteProducts, id: \.objectID) { product in
                             FavoriteItemRow(
                                 product: product,
                                 onTap: {
@@ -106,7 +110,7 @@ struct FavoriteItemsView: View {
                                 },
                                 onRemoveFromFavorites: {
                                     Task {
-                                        await productViewModel.removeProductFromFavorites(product)
+                                        await profileViewModel.removeProductFromFavorites(product)
                                     }
                                 }
                             )
@@ -127,7 +131,7 @@ struct FavoriteItemsView: View {
             ProductDetailView(product: product, selectedLocation: nil)
         }
         .task {
-            await productViewModel.loadFavoriteProducts()
+            await profileViewModel.loadFavoriteProducts()
         }
     }
 }
