@@ -106,7 +106,13 @@ class AppCoordinator: ObservableObject {
 
     func getMyProfileCoordinator() -> MyProfileCoordinator {
         if myProfileCoordinator == nil {
-            myProfileCoordinator = MyProfileCoordinator(profileViewModel: profileViewModel, locationViewModel: locationViewModel)
+            myProfileCoordinator = MyProfileCoordinator(
+                profileViewModel: profileViewModel, 
+                locationViewModel: locationViewModel,
+                searchViewModel: searchViewModel,
+                shoppingListViewModel: shoppingListViewModel,
+                tagViewModel: tagViewModel
+            )
         }
         return myProfileCoordinator!
     }

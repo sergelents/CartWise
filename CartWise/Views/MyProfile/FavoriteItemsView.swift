@@ -7,11 +7,23 @@
 import SwiftUI
 struct FavoriteItemsView: View {
     @EnvironmentObject var coordinator: MyProfileCoordinator
-    
-    private var profileViewModel: ProfileViewModel {
-        coordinator.profileViewModel
-    }
     @State private var selectedProduct: GroceryItem?
+    
+    var body: some View {
+        FavoriteItemsContentView(
+            profileViewModel: coordinator.profileViewModel,
+            coordinator: coordinator,
+            selectedProduct: $selectedProduct
+        )
+    }
+}
+
+// Separate view that observes the ProfileViewModel
+struct FavoriteItemsContentView: View {
+    @ObservedObject var profileViewModel: ProfileViewModel
+    let coordinator: MyProfileCoordinator
+    @Binding var selectedProduct: GroceryItem?
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             // Enhanced Header
@@ -128,90 +140,109 @@ struct FavoriteItemsView: View {
         )
         .padding(.vertical, 16)
         .sheet(item: $selectedProduct) { product in
+            // Create a SearchItemsCoordinator with the ViewModels from MyProfileCoordinator
+            let searchCoordinator = SearchItemsCoordinator(
+                searchViewModel: coordinator.searchViewModel,
+                tagViewModel: coordinator.tagViewModel,
+                shoppingListViewModel: coordinator.shoppingListViewModel,
+                profileViewModel: coordinator.profileViewModel,
+                locationViewModel: coordinator.locationViewModel
+            )
             ProductDetailView(product: product, selectedLocation: nil)
+                .environmentObject(searchCoordinator)
         }
         .task {
             await profileViewModel.loadFavoriteProducts()
         }
+        .onAppear {
+            Task {
+                await profileViewModel.loadFavoriteProducts()
+            }
+        }
     }
 }
+
 struct FavoriteItemRow: View {
     let product: GroceryItem
     let onTap: () -> Void
     let onRemoveFromFavorites: () -> Void
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 16) {
-                                            // Product image
-                            ProductImageView(
-                                product: product,
-                                size: CGSize(width: 56, height: 56),
-                                cornerRadius: 12,
-                                showSaleBadge: false
-                            )
-                            .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(product.productName ?? "Unknown Product")
-                        .font(.poppins(size: 17, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    if let brand = product.brand, !brand.isEmpty {
-                        Text(brand)
-                            .font(.poppins(size: 14, weight: .regular))
-                            .foregroundColor(.gray)
+        HStack(spacing: 16) {
+            // Product image
+            ProductImageView(
+                product: product,
+                size: CGSize(width: 56, height: 56),
+                cornerRadius: 12,
+                showSaleBadge: false
+            )
+            .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(product.productName ?? "Unknown Product")
+                    .font(.poppins(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                if let brand = product.brand, !brand.isEmpty {
+                    Text(brand)
+                        .font(.poppins(size: 14, weight: .regular))
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
+                }
+                if let store = product.store, !store.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(AppColors.accentGreen)
+                        Text(store)
+                            .font(.poppins(size: 12, weight: .medium))
+                            .foregroundColor(AppColors.accentGreen)
                             .lineLimit(1)
                     }
-                    if let store = product.store, !store.isEmpty {
-                        HStack(spacing: 4) {
-                            Image(systemName: "mappin.circle.fill")
-                                .font(.system(size: 12))
-                                .foregroundColor(AppColors.accentGreen)
-                            Text(store)
-                                .font(.poppins(size: 12, weight: .medium))
-                                .foregroundColor(AppColors.accentGreen)
-                                .lineLimit(1)
-                        }
-                    }
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 8) {
-                    if product.price > 0 {
-                        Text("$\(String(format: "%.2f", product.price))")
-                            .font(.poppins(size: 17, weight: .bold))
-                            .foregroundColor(AppColors.accentGreen)
-                    }
-                    // Enhanced Remove from favorites button
-                    Button(action: onRemoveFromFavorites) {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            AppColors.accentGreen.opacity(0.2),
-                                            AppColors.accentGreen.opacity(0.1)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .frame(width: 32, height: 32)
-                            Image(systemName: "heart.fill")
-                                .foregroundColor(AppColors.accentGreen)
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
                 }
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
-            )
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 8) {
+                if product.price > 0 {
+                    Text("$\(String(format: "%.2f", product.price))")
+                        .font(.poppins(size: 17, weight: .bold))
+                        .foregroundColor(AppColors.accentGreen)
+                }
+                // Enhanced Remove from favorites button
+                Button(action: onRemoveFromFavorites) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        AppColors.accentGreen.opacity(0.2),
+                                        AppColors.accentGreen.opacity(0.1)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 32, height: 32)
+                        Image(systemName: "heart.fill")
+                            .foregroundColor(AppColors.accentGreen)
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onTap()
+        }
     }
 }
 #Preview {

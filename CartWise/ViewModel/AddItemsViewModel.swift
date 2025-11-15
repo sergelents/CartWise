@@ -49,7 +49,6 @@ final class AddItemsViewModel: ObservableObject {
                 isOnSale: isOnSale
             )
             
-            
             errorMessage = nil
             return savedProduct
         } catch {
@@ -102,7 +101,6 @@ final class AddItemsViewModel: ObservableObject {
             
             print("AddItemsViewModel: Product created successfully")
             print("AddItemsViewModel: Saved product store: '\(savedProduct.store ?? "nil")'")
-            
             
             errorMessage = nil
             return savedProduct

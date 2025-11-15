@@ -29,10 +29,20 @@ class MyProfileCoordinator: ObservableObject {
     // MARK: - Dependencies
     let profileViewModel: ProfileViewModel
     let locationViewModel: LocationViewModel
+    let searchViewModel: SearchViewModel
+    let shoppingListViewModel: ShoppingListViewModel
+    let tagViewModel: TagViewModel
 
-    init(profileViewModel: ProfileViewModel, locationViewModel: LocationViewModel) {
+    init(profileViewModel: ProfileViewModel, 
+         locationViewModel: LocationViewModel,
+         searchViewModel: SearchViewModel,
+         shoppingListViewModel: ShoppingListViewModel,
+         tagViewModel: TagViewModel) {
         self.profileViewModel = profileViewModel
         self.locationViewModel = locationViewModel
+        self.searchViewModel = searchViewModel
+        self.shoppingListViewModel = shoppingListViewModel
+        self.tagViewModel = tagViewModel
     }
 
     // MARK: - Navigation Methods
