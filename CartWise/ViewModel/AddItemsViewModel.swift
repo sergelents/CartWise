@@ -14,14 +14,9 @@ final class AddItemsViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
-    private let imageService: ImageServiceProtocol
     
-    init(
-        repository: ProductRepositoryProtocol,
-        imageService: ImageServiceProtocol = ImageService()
-    ) {
+    init(repository: ProductRepositoryProtocol) {
         self.repository = repository
-        self.imageService = imageService
     }
     
     // MARK: - Product Creation
@@ -54,8 +49,6 @@ final class AddItemsViewModel: ObservableObject {
                 isOnSale: isOnSale
             )
             
-            // Fetch image for the newly created product
-            await fetchImageForProduct(savedProduct)
             
             errorMessage = nil
             return savedProduct
@@ -110,8 +103,6 @@ final class AddItemsViewModel: ObservableObject {
             print("AddItemsViewModel: Product created successfully")
             print("AddItemsViewModel: Saved product store: '\(savedProduct.store ?? "nil")'")
             
-            // Fetch image for the newly created product
-            await fetchImageForProduct(savedProduct)
             
             errorMessage = nil
             return savedProduct
@@ -245,37 +236,6 @@ final class AddItemsViewModel: ObservableObject {
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-    
-    // MARK: - Image Fetching
-    
-    private func fetchImageForProduct(_ product: GroceryItem) async {
-        do {
-            let productName = product.productName ?? ""
-            let brand = product.brand
-            let category = product.category
-            
-            if let imageURL = try await imageService.fetchImageURL(for: productName, brand: brand, category: category) {
-                // Download image data
-                if let url = URL(string: imageURL) {
-                    let (imageData, _) = try await URLSession.shared.data(from: url)
-                    
-                    // Save image to Core Data using new ProductImage entity
-                    do {
-                        try await repository.saveProductImage(
-                            for: product,
-                            imageURL: imageURL,
-                            imageData: imageData
-                        )
-                    } catch {
-                        print("AddItemsViewModel: Error saving image data: \(error.localizedDescription)")
-                    }
-                }
-            }
-        } catch {
-            print("AddItemsViewModel: Error fetching image for '\(product.productName ?? "")': " +
-                  "\(error.localizedDescription)")
         }
     }
 }

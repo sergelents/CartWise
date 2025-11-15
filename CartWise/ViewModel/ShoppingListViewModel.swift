@@ -17,7 +17,6 @@ final class ShoppingListViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     private let repository: ProductRepositoryProtocol
-    private let imageService: ImageServiceProtocol
     private let socialFeedViewModel: SocialFeedViewModel
     
     // Computed property to check if all products are completed
@@ -27,11 +26,9 @@ final class ShoppingListViewModel: ObservableObject {
     
     init(
         repository: ProductRepositoryProtocol,
-        imageService: ImageServiceProtocol = ImageService(),
         socialFeedViewModel: SocialFeedViewModel
     ) {
         self.repository = repository
-        self.imageService = imageService
         self.socialFeedViewModel = socialFeedViewModel
     }
     
@@ -40,8 +37,6 @@ final class ShoppingListViewModel: ObservableObject {
     func loadShoppingListProducts() async {
         do {
             products = try await repository.fetchListProducts()
-            // Fetch images for products that don't have them
-            await fetchImagesForProducts()
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -221,57 +216,6 @@ final class ShoppingListViewModel: ObservableObject {
         }
         
         isLoadingPriceComparison = false
-    }
-    
-    // MARK: - Image Fetching
-    
-    private func fetchImagesForProducts() async {
-        await fetchImagesForProductArray(products)
-    }
-    
-    private func fetchImagesForProductArray(_ productArray: [GroceryItem]) async {
-        // Get products that don't have image URLs
-        let productsWithoutImages = productArray.filter { $0.imageURL == nil || $0.imageURL?.isEmpty == true }
-        
-        if productsWithoutImages.isEmpty {
-            return
-        }
-        
-        // Fetch images for each product
-        for product in productsWithoutImages {
-            await fetchImageForProduct(product)
-        }
-    }
-    
-    private func fetchImageForProduct(_ product: GroceryItem) async {
-        do {
-            let productName = product.productName ?? ""
-            let brand = product.brand
-            let category = product.category
-            
-            if let imageURL = try await imageService.fetchImageURL(for: productName, brand: brand, category: category) {
-                // Download image data
-                if let url = URL(string: imageURL) {
-                    let (imageData, _) = try await URLSession.shared.data(from: url)
-                    
-                    // Save image to Core Data using new ProductImage entity
-                    do {
-                        try await repository.saveProductImage(
-                            for: product,
-                            imageURL: imageURL,
-                            imageData: imageData
-                        )
-                        // Force a UI update by triggering objectWillChange
-                        objectWillChange.send()
-                    } catch {
-                        print("ShoppingListViewModel: Error saving image data: \(error.localizedDescription)")
-                    }
-                }
-            }
-        } catch {
-            print("ShoppingListViewModel: Error fetching image for '\(product.productName ?? "")': " +
-                  "\(error.localizedDescription)")
-        }
     }
 }
 

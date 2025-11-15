@@ -13,27 +13,16 @@ struct CartWiseApp: App {
     init() {
         // Create shared dependencies
         let repository = ProductRepository()
-        let imageService = ImageService()
         let socialFeedViewModel = SocialFeedViewModel()
         
         // Initialize all view models with dependencies
         let shoppingListViewModel = ShoppingListViewModel(
             repository: repository,
-            imageService: imageService,
             socialFeedViewModel: socialFeedViewModel
         )
-        let searchViewModel = SearchViewModel(
-            repository: repository,
-            imageService: imageService
-        )
-        let addItemsViewModel = AddItemsViewModel(
-            repository: repository,
-            imageService: imageService
-        )
-        let profileViewModel = ProfileViewModel(
-            repository: repository,
-            imageService: imageService
-        )
+        let searchViewModel = SearchViewModel(repository: repository)
+        let addItemsViewModel = AddItemsViewModel(repository: repository)
+        let profileViewModel = ProfileViewModel(repository: repository)
         let locationViewModel = LocationViewModel(
             repository: repository
         )
