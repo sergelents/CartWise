@@ -140,25 +140,43 @@ struct FavoriteItemsContentView: View {
         )
         .padding(.vertical, 16)
         .sheet(item: $selectedProduct) { product in
-            // Create a SearchItemsCoordinator with the ViewModels from MyProfileCoordinator
-            let searchCoordinator = SearchItemsCoordinator(
-                searchViewModel: coordinator.searchViewModel,
-                tagViewModel: coordinator.tagViewModel,
-                shoppingListViewModel: coordinator.shoppingListViewModel,
-                profileViewModel: coordinator.profileViewModel,
-                locationViewModel: coordinator.locationViewModel
+            ProductDetailSheetWrapper(
+                product: product,
+                coordinator: coordinator
             )
-            ProductDetailView(product: product, selectedLocation: nil)
-                .environmentObject(searchCoordinator)
-        }
-        .task {
-            await profileViewModel.loadFavoriteProducts()
         }
         .onAppear {
             Task {
                 await profileViewModel.loadFavoriteProducts()
             }
         }
+    }
+}
+
+// Wrapper view to properly manage SearchItemsCoordinator lifecycle
+struct ProductDetailSheetWrapper: View {
+    let product: GroceryItem
+    let coordinator: MyProfileCoordinator
+    
+    @StateObject private var searchCoordinator: SearchItemsCoordinator
+    
+    init(product: GroceryItem, coordinator: MyProfileCoordinator) {
+        self.product = product
+        self.coordinator = coordinator
+        
+        // Initialize StateObject outside of body
+        _searchCoordinator = StateObject(wrappedValue: SearchItemsCoordinator(
+            searchViewModel: coordinator.searchViewModel,
+            tagViewModel: coordinator.tagViewModel,
+            shoppingListViewModel: coordinator.shoppingListViewModel,
+            profileViewModel: coordinator.profileViewModel,
+            locationViewModel: coordinator.locationViewModel
+        ))
+    }
+    
+    var body: some View {
+        ProductDetailView(product: product, selectedLocation: nil)
+            .environmentObject(searchCoordinator)
     }
 }
 

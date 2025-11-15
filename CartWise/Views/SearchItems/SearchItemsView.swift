@@ -84,13 +84,11 @@ struct SearchItemsView: View {
                 }
             }
             .navigationTitle("Search")
-            .onAppear {
-                Task {
-                    // Load products into local array without affecting searchViewModel.products
-                    await loadSearchProducts()
-                    await tagViewModel.loadTags()
-                    await loadUserLocations()
-                }
+            .task {
+                // Load products into local array without affecting searchViewModel.products
+                await loadSearchProducts()
+                await tagViewModel.loadTags()
+                await loadUserLocations()
             }
         }
     }
