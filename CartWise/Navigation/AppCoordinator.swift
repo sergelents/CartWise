@@ -212,6 +212,7 @@ struct AppCoordinatorView: View {
                     LoginView()
                 }
             }
+            .animation(nil, value: isLoggedIn)
 
             // Splash screen overlay
             if coordinator.showSplash {
