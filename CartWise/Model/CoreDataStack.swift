@@ -180,6 +180,30 @@ actor CoreDataStack {
         }
     }
     
+    /// Refreshes the lastUpdated dates for all sample data prices to make them current
+    /// This is useful when sample data prices become outdated (>2 weeks old)
+    func refreshSampleDataPrices() async {
+        await persistentContainer.performBackgroundTask { context in
+            do {
+                let fetchRequest: NSFetchRequest<GroceryItemPrice> = GroceryItemPrice.fetchRequest()
+                let prices = try context.fetch(fetchRequest)
+                
+                let twoWeeksAgo = Calendar.current.date(byAdding: .day, value: -14, to: Date()) ?? Date()
+                
+                for price in prices {
+                    // Update prices that are older than 2 weeks OR have no lastUpdated date
+                    if price.lastUpdated == nil || (price.lastUpdated! < twoWeeksAgo) {
+                        price.lastUpdated = Date()
+                    }
+                }
+                
+                try context.save()
+            } catch {
+                print("CoreDataStack: Error refreshing sample data prices: \(error.localizedDescription)")
+            }
+        }
+    }
+    
     // MARK: - Private Helper Methods
     
     private func createSampleLocations(in context: NSManagedObjectContext) -> [Location] {
@@ -309,7 +333,11 @@ actor CoreDataStack {
                 price.store = location.name // Set the store name for price comparison
                 price.groceryItem = product
                 price.createdAt = Date()
-                price.lastUpdated = Date() // Set lastUpdated for price comparison logic
+                price.lastUpdated = Date() // Set lastUpdated to current date for price comparison
+                
+                // Set updatedBy to simulate community contributions
+                let shoppers = ["Alex", "Jordan", "Taylor", "Morgan", "Casey"]
+                price.updatedBy = shoppers.randomElement()
             }
             
             // Assign relevant tags to products

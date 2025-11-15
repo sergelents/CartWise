@@ -84,13 +84,9 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             let request: NSFetchRequest<GroceryItem> = GroceryItem.fetchRequest()
             request.predicate = NSPredicate(format: "isInShoppingList == YES")
             request.sortDescriptors = [NSSortDescriptor(keyPath: \GroceryItem.createdAt, ascending: false)]
-            let products = try context.fetch(request)
-            print("CoreDataContainer: Fetched \(products.count) shopping list products")
-            for (index, product) in products.enumerated() {
-                print("CoreDataContainer: Product \(index + 1): '\(product.productName ?? "Unknown")' " +
-                      "- Store: '\(product.store ?? "nil")' - Price: $\(product.price)")
-            }
-            return products
+            // Prefetch the prices relationship to avoid faulting issues
+            request.relationshipKeyPathsForPrefetching = ["prices", "prices.location"]
+            return try context.fetch(request)
         }
     }
 
@@ -629,14 +625,6 @@ final class CoreDataContainer: CoreDataContainerProtocol, @unchecked Sendable {
             // Find the price for this specific store that's not older than 2 weeks
             let storePrice = prices.first { price in
                 price.store == store && self.isPriceRecent(price.lastUpdated)
-            }
-
-            // Log if we found an outdated price
-            if let outdatedPrice = prices.first(where: { price in
-                price.store == store && !self.isPriceRecent(price.lastUpdated)
-            }) {
-                print("Repository: Excluding outdated price for \(item.productName ?? "Unknown") at \(store) " +
-                      "- last updated: \(outdatedPrice.lastUpdated?.description ?? "Unknown")")
             }
 
             return (storePrice?.price, storePrice?.updatedBy)

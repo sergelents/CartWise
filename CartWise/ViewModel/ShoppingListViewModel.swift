@@ -159,6 +159,9 @@ final class ShoppingListViewModel: ObservableObject {
     // MARK: - Price Comparison
     
     func loadLocalPriceComparison() async {
+        // First, refresh any outdated sample data prices (older than 2 weeks)
+        await CoreDataStack.shared.refreshSampleDataPrices()
+        
         // Get the current shopping list products specifically
         let shoppingListProducts = try? await repository.fetchListProducts()
         print("ShoppingListViewModel: Starting local price comparison")
@@ -212,7 +215,6 @@ final class ShoppingListViewModel: ObservableObject {
             )
             
             priceComparison = comparison
-            print("ShoppingListViewModel: Local price comparison loaded successfully")
         } catch {
             print("ShoppingListViewModel: Error loading local price comparison: \(error)")
             errorMessage = "Failed to load local price comparison: \(error.localizedDescription)"

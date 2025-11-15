@@ -73,7 +73,7 @@ struct YourListView: View {
 // MARK: - Performance Optimization 8: Extracted Main Content
 
 struct MainContentView: View {
-    let viewModel: ShoppingListViewModel
+    @ObservedObject var viewModel: ShoppingListViewModel
     let coordinator: ShoppingListCoordinator
     
     var body: some View {
